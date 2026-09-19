@@ -36,11 +36,48 @@ tareas a costa del flujo mínimo.
 
 Después de esto, un ajuste pedido por el equipo: los índices únicos de
 correo en `negocios`/`usuarios`/`clientes` pasaron a ser parciales
-(`WHERE eliminado_en IS NULL`), ver detalle en Decisiones técnicas.
+(`WHERE eliminado_en IS NULL`), ver detalle en Decisiones técnicas. También
+se roté la contraseña de Supabase y se confirmó que todo sigue conectando
+(solo cambia `.env`, cero cambios de código).
+
+- **Backend: Módulo Auth — registro de negocio + login JWT + refresh token
+  + guards de rol** ✅
+  - `POST /auth/registro`: transacción que crea Negocio + Usuario(admin) +
+    Suscripcion(plan gratis) atómicamente; `errorCode: EMAIL_YA_REGISTRADO`
+    si el correo del negocio o del admin ya existe.
+  - `POST /auth/login`: valida contra `contrasenaHash` (bcryptjs),
+    `errorCode: CREDENCIALES_INVALIDAS` sin revelar si el correo existe o
+    no; `CUENTA_INACTIVA` si `usuario.activo=false`.
+  - `POST /auth/refresh`: rotación de refresh token con detección de
+    reuso — si alguien reutiliza un refresh token ya rotado, se revoca la
+    sesión completa (`refreshTokenHash = null`), obligando a loguear de
+    nuevo.
+  - `POST /auth/logout`: invalida el refresh token vigente.
+  - `JwtAuthGuard` + `RolesGuard` registrados como `APP_GUARD` globales:
+    toda ruta futura requiere JWT válido salvo `@Public()`, y `@Roles(...)`
+    restringe por rol cuando se declare. `GET /health` marcado `@Public()`.
+  - Política de contraseña: mínimo 8 caracteres, al menos una letra y un
+    número (class-validator en el DTO).
+  - Columna nueva `usuarios.refresh_token_hash` (migración
+    `UsuarioRefreshTokenHash`), aplicada en local y Supabase.
+  - **Bug real encontrado y corregido durante las pruebas**: el hash del
+    refresh token usaba bcrypt, que trunca su entrada a 72 bytes. Como
+    todos los refresh tokens de un mismo usuario comparten un prefijo
+    (mismo `sub`/`idNegocio`/`rol`) más largo que eso, `bcrypt.compare()`
+    los trataba como idénticos entre sí — la detección de reuso NUNCA
+    fallaba, cualquier refresh token viejo seguía siendo aceptado
+    indefinidamente. Se cambió a SHA-256 (más `jti` aleatorio para evitar
+    colisiones si dos refresh caen en el mismo segundo) — apropiado porque
+    un refresh token ya es de alta entropía y no necesita el salteo lento
+    de bcrypt, a diferencia de una contraseña. Verificado con una prueba
+    manual completa: login → refresh → reuso del token viejo (401,
+    correcto) → el sucesor legítimo también queda revocado (correcto,
+    respuesta a un reuso detectado) → logout con token válido (204) →
+    ruta protegida sin token (401).
 
 ## Tarea en curso
-Ninguna — lista para **"Backend: Módulo Auth — registro de negocio + login
-JWT + refresh token + guards de rol"**.
+Ninguna — lista para **"Backend: Guard/interceptor multi-tenant (filtrar
+automáticamente por id_negocio)"**.
 
 ## Pendiente de seguridad — acción del equipo
 La contraseña de la base de datos de Supabase se compartió en texto plano
@@ -59,6 +96,14 @@ npm run migration:run             # crea las 9 tablas
 npm run seed                      # negocio + admin + servicios + clientes demo
 ```
 Admin demo: `admin@turnify.app` / `Turnify123!` (negocio "Barbería Demo Turnify").
+
+```bash
+curl -X POST localhost:3000/auth/login -H "Content-Type: application/json" \
+  -d '{"correoElectronico":"admin@turnify.app","contrasena":"Turnify123!"}'
+# -> { usuario: {...}, tokens: { accessToken, refreshToken } }
+curl -X POST localhost:3000/auth/refresh -H "Content-Type: application/json" \
+  -d '{"refreshToken":"<el de arriba>"}'
+```
 
 ## Decisiones técnicas tomadas
 - **TypeORM sobre Prisma**: ya era la decisión del equipo (ver README). Se
@@ -118,6 +163,18 @@ Admin demo: `admin@turnify.app` / `Turnify123!` (negocio "Barbería Demo Turnify
   22.22+ para los schematics de `@angular-devkit/schematics`, usados por
   `nest generate`). No bloquea `nest build`/`start`, que es lo único usado
   hasta ahora. Si el equipo usa `nest generate` y falla, actualizar Node.
+- **`@nestjs/jwt` directo, sin Passport**: la guía oficial de NestJS
+  documenta ambos caminos; se eligió `JwtService` + un guard propio
+  (`JwtAuthGuard`) en vez de `@nestjs/passport` + `passport-jwt` para tener
+  menos dependencias transitivas y poder firmar el access y el refresh
+  token con secretos y expiraciones distintas en la misma llamada
+  (`jwtService.signAsync(payload, { secret, expiresIn })`), algo más
+  directo que configurar dos estrategias de Passport.
+- **Regla general para cualquier hash futuro de tokens largos (no
+  contraseñas)**: usar SHA-256, nunca bcrypt — bcrypt trunca a 72 bytes
+  (ver bug de refresh token arriba). bcrypt sigue siendo correcto para
+  `contrasena_hash` porque las contraseñas son cortas y sí necesitan el
+  salteo lento contra fuerza bruta offline.
 
 ## Cómo continuar si se corta la sesión
 Ver reglas de commit/pausa en el prompt original de arquitectura (punto 18
