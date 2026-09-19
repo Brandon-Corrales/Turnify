@@ -535,10 +535,75 @@ el primer commit como pide el brief. Ver detalle en el commit
     resto del formulario → validación de campos obligatorios en el
     cliente antes de tocar la red.
 
+- **Frontend: Calendario (FullCalendar) conectado a
+  Reservas/Disponibilidad** ✅ — última tarjeta de Frontend priorizada
+  para el Seguimiento #2.
+  - **Backend, cambio pequeño pero necesario**: `ReservasService.listar()`
+    y `obtenerUna()` no traían las relaciones `cliente`/`servicio`/
+    `usuario` — el calendario los necesita para mostrar algo útil en vez
+    de UUID crudos de las FK. Se agregó `relations: { cliente: true,
+    servicio: true, usuario: true }` en ambos métodos, con test propio
+    en `reservas.service.spec.ts`.
+  - **Versión de FullCalendar fijada exacta**: verificado en npm que
+    `@fullcalendar/core`/`react` están en `7.1.0` "latest", pero los
+    plugins (`daygrid`/`timegrid`/`interaction`/`list`) siguen en
+    `6.1.21` con `peerDependencies: "~6.1.21"` — se fijaron los 6
+    paquetes a `6.1.21` exacto (sin `^`) para evitar un mismatch de
+    versión mayor entre core y plugins.
+    `CalendarioPage.tsx` (nueva): vistas mes/semana/agenda con locale
+    español, filtro por empleado (de `/usuarios`), `businessHours`
+    calculado desde `/disponibilidad`, click en evento abre modal de
+    detalle con opción de cancelar (con `ConfirmDialog`), arrastrar un
+    evento reprograma la reserva (revierte visualmente si el backend
+    rechaza el cambio). Cambia sola entre vista de mes (desktop) y
+    agenda/lista (mobile) según el ancho de ventana (Ley de Jakob, punto
+    12 del brief — igual que Google Calendar/Calendly).
+  - `AppLayout.tsx` (nuevo): barra superior con enlaces Turnify/Calendario
+    y botón de logout, ahora usada por `InicioPage` y `CalendarioPage`.
+  - `lib/reservas-api.ts`, `lib/disponibilidad-api.ts`, `lib/usuarios-api.ts`
+    (nuevos): wrappers tipados sobre `apiFetch`. El límite por página del
+    lado del frontend se fijó en 100 (no 200) porque
+    `PaginationQueryDto` del backend tiene `@Max(100)` compartido por
+    todos los listados — se decidió NO subir ese límite global solo para
+    este caso de uso.
+  - Tres bugs encontrados y corregidos durante pruebas en navegador real:
+    1. El calendario nunca se montaba: `rango` (que habilita la query de
+       reservas) solo lo fija el propio `datesSet` de FullCalendar, pero
+       el calendario estaba oculto detrás de `isLoading` de esa misma
+       query — candado sin salida. Ahora el calendario SIEMPRE se monta;
+       solo un texto "Actualizando…" refleja `isLoading`/`isFetching`.
+    2. `GET /reservas` devolvía 400: el frontend pedía `limit=200`, por
+       encima del `@Max(100)` del backend (ver arriba).
+    3. El tachado de una reserva cancelada no se veía: el CSS propio de
+       FullCalendar (`.fc-event`) fuerza `text-decoration:none` y gana
+       por especificidad sobre la clase `line-through` de Tailwind.
+       Reemplazado por el sufijo explícito `" (cancelada)"` en el título
+       del evento — además más accesible, ya que un lector de pantalla
+       no anuncia un tachado puramente visual.
+  - **Probado de verdad en un Chrome real** con backend + Postgres reales:
+    vistas mes/semana/agenda en español; click en evento → modal de
+    detalle → cancelar → confirmar (toast, estado en BD, título con
+    "(cancelada)" y opacidad reducida); arrastrar un evento a otro día
+    (simulado con una secuencia realista de eventos de mouse, ya que un
+    solo salto instantáneo no dispara el umbral de drag de FullCalendar)
+    → reprograma y se confirma persistido con una llamada de API de
+    verificación aparte; filtro de empleado puebla desde `/usuarios`.
+    Limitación honesta: la herramienta de redimensionar ventana del
+    entorno de pruebas no cambia el `window.innerWidth` real de la
+    página, así que el disparo automático del cambio de vista al cruzar
+    el punto de quiebre mobile no se pudo verificar con un viewport
+    angosto real — sí se verificó manualmente que la vista de Agenda
+    (el destino de ese cambio) funciona correctamente al seleccionarla
+    a mano.
+
 ## Tarea en curso
-Ninguna — lista para **"Frontend: Calendario (FullCalendar) conectado a
-Reservas/Disponibilidad"**. Última tarjeta de Frontend priorizada para
-el Seguimiento #2 (2026-09-24).
+Ninguna — Seguimiento #2 completo (DB → Auth → guard multi-tenant →
+Negocios/Usuarios/Clientes/Servicios/Disponibilidad/Reservas en backend →
+Setup/UI-kit/Login-Registro/Calendario en frontend). Punto de decisión:
+seguir con las tarjetas de **Seguridad** pendientes (p. ej. rate limiting
+en endpoints públicos) o pasar a las tarjetas marcadas "después del
+Seguimiento #2" (freemium, chatbot, notificaciones, pagos, dark mode,
+i18n, responsive) — pendiente de confirmar con el equipo.
 
 ## Seguridad
 ✅ La contraseña de la base de datos de Supabase, compartida en texto

@@ -3,6 +3,7 @@ import { RutaProtegida } from '@/components/layout/RutaProtegida';
 import LoginPage from '@/pages/LoginPage';
 import RegistroPage from '@/pages/RegistroPage';
 import InicioPage from '@/pages/InicioPage';
+import CalendarioPage from '@/pages/CalendarioPage';
 
 function App() {
   return (
@@ -14,6 +15,14 @@ function App() {
         element={
           <RutaProtegida>
             <InicioPage />
+          </RutaProtegida>
+        }
+      />
+      <Route
+        path="/calendario"
+        element={
+          <RutaProtegida>
+            <CalendarioPage />
           </RutaProtegida>
         }
       />
