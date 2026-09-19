@@ -4,6 +4,10 @@
   "private": true,
   "description": "Turnify backend (NestJS + TypeORM + PostgreSQL)",
   "scripts": {
+    "build": "nest build",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:prod": "node dist/main.js",
     "typeorm": "typeorm-ts-node-commonjs -d src/database/data-source.ts",
     "migration:generate": "npm run typeorm -- migration:generate",
     "migration:run": "npm run typeorm -- migration:run",
@@ -11,15 +15,26 @@
     "seed": "ts-node src/database/seed.ts"
   },
   "dependencies": {
+    "@nestjs/common": "^12.0.3",
+    "@nestjs/config": "^12.0.0",
+    "@nestjs/core": "^12.0.3",
+    "@nestjs/platform-express": "^12.0.3",
+    "@nestjs/swagger": "^12.0.1",
+    "@nestjs/typeorm": "^12.0.1",
     "bcryptjs": "^2.4.3",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
     "dotenv": "^16.4.7",
     "pg": "^8.13.1",
     "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
     "typeorm": "^0.3.20",
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@nestjs/cli": "^12.0.3",
     "@types/bcryptjs": "^2.4.6",
+    "@types/express": "^5.0.0",
     "@types/node": "^22.10.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3"

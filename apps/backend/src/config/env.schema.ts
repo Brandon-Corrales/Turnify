@@ -9,7 +9,10 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
 
-  DATABASE_URL: z.string().url().optional(),
+  DATABASE_URL: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().url().optional(),
+  ),
   DB_HOST: z.string().default('localhost'),
   DB_PORT: z.coerce.number().int().positive().default(5432),
   DB_USERNAME: z.string().default('turnify'),
@@ -28,17 +31,21 @@ export type Env = z.infer<typeof envSchema>;
 
 let cachedEnv: Env | undefined;
 
+/** Usado por scripts fuera de Nest (CLI de TypeORM, seed). */
 export function loadEnv(): Env {
   if (cachedEnv) return cachedEnv;
+  cachedEnv = validateEnv(process.env);
+  return cachedEnv;
+}
 
-  const parsed = envSchema.safeParse(process.env);
+/** Usado como `validate` de `ConfigModule.forRoot` para fallar rápido al arrancar Nest. */
+export function validateEnv(config: Record<string, unknown>): Env {
+  const parsed = envSchema.safeParse(config);
   if (!parsed.success) {
     const details = parsed.error.issues
       .map((issue) => `  - ${issue.path.join('.')}: ${issue.message}`)
       .join('\n');
     throw new Error(`Variables de entorno inválidas o faltantes:\n${details}`);
   }
-
-  cachedEnv = parsed.data;
-  return cachedEnv;
+  return parsed.data;
 }

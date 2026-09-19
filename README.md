@@ -39,14 +39,15 @@ turnify/
 
 ## Puesta en marcha local
 ```bash
-# Base de datos local
-docker-compose up -d
+# Desde la raíz del monorepo
+npm install
+cp .env.example .env      # un solo .env compartido por docker-compose, TypeORM y NestJS
+docker compose up -d      # Postgres local
 
 # Backend
-cd apps/backend
-npm install
-cp .env.example .env
-npm run start:dev
+npm run backend:migrate --workspace=apps/backend   # o: cd apps/backend && npm run migration:run
+npm run backend:seed --workspace=apps/backend       # datos demo (negocio, admin, servicios, clientes)
+npm run backend:dev                                 # http://localhost:3000 (Swagger en /docs)
 
 # Frontend
 cd apps/frontend
