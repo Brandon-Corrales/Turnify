@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegistroNegocioDto } from './dto/registro-negocio.dto';
@@ -38,5 +38,12 @@ export class AuthController {
   @Post('logout')
   async logout(@CurrentUser() usuario: JwtPayload) {
     await this.authService.logout(usuario.sub);
+  }
+
+  /** Permite al frontend restaurar la sesión tras un refresh de página. */
+  @ApiBearerAuth()
+  @Get('me')
+  obtenerPerfil(@CurrentUser() usuario: JwtPayload) {
+    return this.authService.obtenerPerfil(usuario.sub);
   }
 }
