@@ -11,17 +11,32 @@ mode, i18n completo y responsive quedan para DESPUÉS — no adelantar esas
 tareas a costa del flujo mínimo.
 
 ## Última tarea completada
-Categoría **Base de Datos** completa (6/6 tarjetas):
-- DB: Ajustar diagrama ER final (evaluar tabla EXCEPCION_DISPONIBILIDAD)
-- DB: Configurar PostgreSQL en Supabase + variables de entorno
-- DB: Migraciones iniciales (TypeORM/Prisma) de las 8 entidades del ER
-- DB: Índices y constraints (email único, FK con cascada en reservas)
-- DB: Seed de datos de prueba (negocio demo, servicios, usuarios, clientes)
-- DB: Definir límites de plan freemium (gratis vs pago) en configuración del sistema
+- Categoría **Base de Datos** completa (6/6 tarjetas, ver detalle abajo).
+- **Backend: Setup del proyecto NestJS + estructura de módulos** ✅
+  - `main.ts`: bootstrap, CORS desde env, `ValidationPipe` global
+    (whitelist + transform + `exceptionFactory` propio), filtro global de
+    excepciones, Swagger en `/docs`.
+  - `app.module.ts`: `ConfigModule` con validación Zod al arrancar
+    (`src/config/env.schema.ts`), `TypeOrmModule.forRootAsync` reusando las
+    mismas entidades del data-source de TypeORM CLI.
+  - Filtro global de errores (`src/common/errors/all-exceptions.filter.ts`)
+    ya deja lista la forma estándar `{ statusCode, errorCode, message,
+    field? }` del punto 7 del brief — antes de que exista ningún módulo de
+    negocio con errores propios.
+  - `GET /health` con chequeo real de conexión a la base de datos.
+  - Módulos vacíos ya registrados en `AppModule` para que cada tarjeta
+    siguiente solo tenga que rellenarlos: `auth`, `negocios`, `usuarios`,
+    `clientes`, `servicios`, `disponibilidad`, `reservas` (en
+    `src/modules/*`). Notificaciones/Suscripciones/Reportes no se crearon
+    todavía — son tarjetas de después del Seguimiento #2.
+  - Probado de verdad: `nest build` sin errores, servidor arrancado con
+    Postgres local real, `GET /health` → `200 {"status":"ok","database":"up"}`,
+    `GET /docs` → 200 (Swagger), ruta inexistente → `404` con el shape de
+    error estándar.
 
 ## Tarea en curso
-Ninguna — lista para arrancar la siguiente categoría (Backend), empezando
-por **"Backend: Setup del proyecto NestJS + estructura de módulos"**.
+Ninguna — lista para **"Backend: Módulo Auth — registro de negocio + login
+JWT + refresh token + guards de rol"**.
 
 ## Cómo probar lo que ya existe
 ```bash
@@ -71,6 +86,23 @@ Admin demo: `admin@turnify.app` / `Turnify123!` (negocio "Barbería Demo Turnify
   o usuario soft-deleted no se puede reutilizar todavía. Si el equipo lo
   necesita, se resuelve con un índice único parcial en una migración
   posterior.
+
+- **NestJS 12, no 10**: se verificó en npm (`npm view @nestjs/core dist-tags`)
+  que 10.x ya es la etiqueta `old` y 12.x es `latest` a esta fecha — no se
+  asumió de memoria. `@nestjs/platform-express@12` trae Express 5 y multer
+  2.4 (arregla las vulnerabilidades altas de multer que traía la línea 10).
+  `npm audit` en 0 vulnerabilidades después del bump.
+- **Un solo `.env` en la raíz del monorepo**, no uno por app: tanto
+  `apps/backend/src/database/data-source.ts` (CLI de TypeORM) como
+  `app.module.ts` (`ConfigModule.forRoot({ envFilePath: ... })`) apuntan
+  explícitamente al `.env` de la raíz, para no mantener dos copias de las
+  mismas credenciales de Postgres. El README todavía dice "cp .env.example
+  .env" parado en `apps/backend/` — pendiente de corregir esa línea a que
+  apunte a la raíz.
+- **`@nestjs/cli` bajo Node 22.17 tira un warning EBADENGINE** (pide
+  22.22+ para los schematics de `@angular-devkit/schematics`, usados por
+  `nest generate`). No bloquea `nest build`/`start`, que es lo único usado
+  hasta ahora. Si el equipo usa `nest generate` y falla, actualizar Node.
 
 ## Cómo continuar si se corta la sesión
 Ver reglas de commit/pausa en el prompt original de arquitectura (punto 18
