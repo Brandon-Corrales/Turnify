@@ -209,8 +209,39 @@ migrar el backend a ESM ni parchear Jest con Babel.
     duplicado (409) → id no-UUID (400, no 500) → un `empleado` recibe 403
     al intentar crear usuarios pero sí puede listarlos (200).
 
+- **Backend: Módulo Clientes — CRUD** ✅
+  - `POST/GET/GET:id/PATCH/DELETE /clientes`, paginado con
+    `PaginationQueryDto`/`PaginatedResult<T>` (ya creados en la tarjeta de
+    Usuarios). `DELETE` = desactivar (soft delete + `activo:false`).
+  - **Sin `@Roles`**: a diferencia de Usuarios, gestionar clientes es
+    trabajo operativo del día a día (recepción), no una acción
+    administrativa — cualquier rol autenticado del negocio puede crear,
+    ver, editar o desactivar clientes.
+  - Correo duplicado dentro del mismo negocio →
+    `errorCode: CLIENTE_CORREO_YA_REGISTRADO` (409), tanto al crear como
+    al editar el correo de un cliente existente.
+  - `nivelCliente` (gratis/premium) y `canalPreferido` (email/whatsapp) ya
+    se pueden leer/escribir desde este CRUD — la restricción real de
+    WhatsApp según el plan del negocio y el techo del punto 4.2 (un
+    cliente premium nunca desbloquea un canal que el negocio no tiene) son
+    trabajo de los guards de freemium, tarjetas de después del
+    Seguimiento #2. Este módulo solo persiste el dato.
+  - Tests: `clientes.service.spec.ts` (8 casos).
+  - Probado además contra la app real: crear → correo duplicado (409) →
+    listar paginado → `PATCH` → `DELETE` (204) → `GET` posterior (404).
+  - **Nota de metodología de prueba, no un bug de código**: probar manualmente
+    con acentos (`María`) tecleados directo en un `curl -d` de Git Bash en
+    Windows corrompía los bytes antes de salir del cliente (problema de
+    code page de la consola, no de Turnify). Se confirmó con un cliente
+    HTTP en Node y una lectura de bytes crudos en Postgres
+    (`encode(campo::bytea,'hex')`) que el pipeline HTTP → NestJS → Postgres
+    guarda UTF-8 perfectamente. Para pruebas manuales futuras con acentos
+    en esta máquina, usar un script Node/Postman en vez de escribir tildes
+    directo en el argumento de `curl` en Git Bash.
+
 ## Tarea en curso
-Ninguna — lista para **"Backend: Módulo Clientes — CRUD"**.
+Ninguna — lista para **"Backend: Módulo Servicios — CRUD (nombre,
+duración, precio)"**.
 
 ## Seguridad
 ✅ La contraseña de la base de datos de Supabase, compartida en texto
