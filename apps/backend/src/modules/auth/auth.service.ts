@@ -1,4 +1,9 @@
-import { ConflictException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
@@ -61,7 +66,9 @@ export class AuthService {
     private readonly configService: ConfigService<Env, true>,
   ) {}
 
-  async registrarNegocio(dto: RegistroNegocioDto): Promise<{ usuario: UsuarioPublico; tokens: TokenPair }> {
+  async registrarNegocio(
+    dto: RegistroNegocioDto,
+  ): Promise<{ usuario: UsuarioPublico; tokens: TokenPair }> {
     const contrasenaHash = await bcrypt.hash(dto.contrasena, BCRYPT_ROUNDS);
 
     try {
@@ -124,7 +131,10 @@ export class AuthService {
       .getOne();
 
     const credencialesInvalidas = () =>
-      new UnauthorizedException({ errorCode: 'CREDENCIALES_INVALIDAS', message: 'Correo o contraseña incorrectos' });
+      new UnauthorizedException({
+        errorCode: 'CREDENCIALES_INVALIDAS',
+        message: 'Correo o contraseña incorrectos',
+      });
 
     if (!usuario) throw credencialesInvalidas();
 
@@ -132,7 +142,10 @@ export class AuthService {
     if (!contrasenaValida) throw credencialesInvalidas();
 
     if (!usuario.activo) {
-      throw new ForbiddenException({ errorCode: 'CUENTA_INACTIVA', message: 'Esta cuenta está desactivada' });
+      throw new ForbiddenException({
+        errorCode: 'CUENTA_INACTIVA',
+        message: 'Esta cuenta está desactivada',
+      });
     }
 
     const tokens = await this.emitirTokens(usuario);
@@ -141,7 +154,10 @@ export class AuthService {
 
   async refrescar(refreshToken: string): Promise<TokenPair> {
     const invalido = () =>
-      new UnauthorizedException({ errorCode: 'REFRESH_TOKEN_INVALIDO', message: 'Refresh token inválido o expirado' });
+      new UnauthorizedException({
+        errorCode: 'REFRESH_TOKEN_INVALIDO',
+        message: 'Refresh token inválido o expirado',
+      });
 
     let payload: JwtPayload;
     try {
@@ -175,18 +191,26 @@ export class AuthService {
   }
 
   private async emitirTokens(usuario: Usuario): Promise<TokenPair> {
-    const payload: JwtPayload = { sub: usuario.idUsuario, idNegocio: usuario.idNegocio, rol: usuario.rol };
+    const payload: JwtPayload = {
+      sub: usuario.idUsuario,
+      idNegocio: usuario.idNegocio,
+      rol: usuario.rol,
+    };
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
         secret: this.configService.get('JWT_ACCESS_SECRET', { infer: true }),
-        expiresIn: this.configService.get('JWT_ACCESS_EXPIRES_IN', { infer: true }) as JwtSignOptions['expiresIn'],
+        expiresIn: this.configService.get('JWT_ACCESS_EXPIRES_IN', {
+          infer: true,
+        }) as JwtSignOptions['expiresIn'],
       }),
       this.jwtService.signAsync(
         { ...payload, jti: randomUUID() }, // jti evita colisiones si dos refresh caen en el mismo segundo (iat con resolución de 1s)
         {
           secret: this.configService.get('JWT_REFRESH_SECRET', { infer: true }),
-          expiresIn: this.configService.get('JWT_REFRESH_EXPIRES_IN', { infer: true }) as JwtSignOptions['expiresIn'],
+          expiresIn: this.configService.get('JWT_REFRESH_EXPIRES_IN', {
+            infer: true,
+          }) as JwtSignOptions['expiresIn'],
         },
       ),
     ]);

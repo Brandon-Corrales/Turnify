@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { DisponibilidadService } from './disponibilidad.service';
 import { TenantContextService } from '../../common/tenant';
 import { Disponibilidad, RolUsuario, Usuario } from '../../database/entities';
@@ -38,10 +43,16 @@ describe('DisponibilidadService', () => {
   });
 
   function comoAdmin<T>(fn: () => T): T {
-    return tenantContext.run({ idNegocio: 'negocio-1', idUsuario: ADMIN_ID, rol: RolUsuario.ADMIN }, fn);
+    return tenantContext.run(
+      { idNegocio: 'negocio-1', idUsuario: ADMIN_ID, rol: RolUsuario.ADMIN },
+      fn,
+    );
   }
   function comoEmpleado<T>(fn: () => T): T {
-    return tenantContext.run({ idNegocio: 'negocio-1', idUsuario: EMPLEADO_ID, rol: RolUsuario.EMPLEADO }, fn);
+    return tenantContext.run(
+      { idNegocio: 'negocio-1', idUsuario: EMPLEADO_ID, rol: RolUsuario.EMPLEADO },
+      fn,
+    );
   }
 
   const dtoValido = { idUsuario: EMPLEADO_ID, diaSemana: 1, horaInicio: '09:00', horaFin: '12:00' };
@@ -91,7 +102,9 @@ describe('DisponibilidadService', () => {
 
   it('permite un horario que NO se traslapa (ej. justo a continuación del anterior)', async () => {
     dispRepo.find.mockResolvedValue([]); // 09:00-12:00 ya existe, este pide 12:00-15:00 → sin overlap
-    const resultado = await comoAdmin(() => service.crear({ ...dtoValido, horaInicio: '12:00', horaFin: '15:00' }));
+    const resultado = await comoAdmin(() =>
+      service.crear({ ...dtoValido, horaInicio: '12:00', horaFin: '15:00' }),
+    );
     expect(resultado.idDisponibilidad).toBe('disp-nueva');
   });
 
@@ -116,13 +129,16 @@ describe('DisponibilidadService', () => {
       horaInicio: '09:00',
       horaFin: '12:00',
     } as Disponibilidad);
-    await expect(comoEmpleado(() => service.actualizar('disp-1', { horaFin: '13:00' }))).rejects.toThrow(
-      ForbiddenException,
-    );
+    await expect(
+      comoEmpleado(() => service.actualizar('disp-1', { horaFin: '13:00' })),
+    ).rejects.toThrow(ForbiddenException);
   });
 
   it('desactivar() marca activo=false sin tocar otras columnas', async () => {
-    dispRepo.findOne.mockResolvedValue({ idDisponibilidad: 'disp-1', idUsuario: EMPLEADO_ID } as Disponibilidad);
+    dispRepo.findOne.mockResolvedValue({
+      idDisponibilidad: 'disp-1',
+      idUsuario: EMPLEADO_ID,
+    } as Disponibilidad);
     await comoEmpleado(() => service.desactivar('disp-1'));
     expect(dispRepo.update).toHaveBeenCalledWith({ idDisponibilidad: 'disp-1' }, { activo: false });
   });

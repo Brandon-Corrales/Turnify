@@ -50,7 +50,9 @@ describe('ServiciosService', () => {
   it('listar() pagina con skip/take calculados desde page/limit', async () => {
     repoMock.findAndCount.mockResolvedValue([[crearServicioFalso()], 1]);
     const resultado = await service.listar({ page: 1, limit: 20 });
-    expect(repoMock.findAndCount).toHaveBeenCalledWith(expect.objectContaining({ skip: 0, take: 20 }));
+    expect(repoMock.findAndCount).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 0, take: 20 }),
+    );
     expect(resultado.total).toBe(1);
   });
 
@@ -62,13 +64,19 @@ describe('ServiciosService', () => {
   it('actualizar() convierte precio a string solo cuando viene en el DTO', async () => {
     repoMock.findOne.mockResolvedValue(crearServicioFalso());
     await service.actualizar('servicio-1', { precio: 9500 });
-    expect(repoMock.update).toHaveBeenCalledWith({ idServicio: 'servicio-1' }, { precio: '9500.00' });
+    expect(repoMock.update).toHaveBeenCalledWith(
+      { idServicio: 'servicio-1' },
+      { precio: '9500.00' },
+    );
   });
 
   it('actualizar() sin precio no toca ese campo', async () => {
     repoMock.findOne.mockResolvedValue(crearServicioFalso());
     await service.actualizar('servicio-1', { nombre: 'Corte premium' });
-    expect(repoMock.update).toHaveBeenCalledWith({ idServicio: 'servicio-1' }, { nombre: 'Corte premium' });
+    expect(repoMock.update).toHaveBeenCalledWith(
+      { idServicio: 'servicio-1' },
+      { nombre: 'Corte premium' },
+    );
   });
 
   it('desactivar() marca activo=false y hace soft delete', async () => {

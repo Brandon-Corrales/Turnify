@@ -1,6 +1,17 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { LessThan, MoreThan, Not } from 'typeorm';
-import { InjectTenantRepository, TenantContextService, TenantScopedRepository } from '../../common/tenant';
+import {
+  InjectTenantRepository,
+  TenantContextService,
+  TenantScopedRepository,
+} from '../../common/tenant';
 import { Disponibilidad, RolUsuario, Usuario } from '../../database/entities';
 import { CrearDisponibilidadDto } from './dto/crear-disponibilidad.dto';
 import { ActualizarDisponibilidadDto } from './dto/actualizar-disponibilidad.dto';
@@ -23,7 +34,9 @@ export class DisponibilidadService {
     await this.asegurarSinTraslape(dto.idUsuario, dto.diaSemana, dto.horaInicio, dto.horaFin);
 
     const disponibilidad = await this.disponibilidadRepo.save(this.disponibilidadRepo.create(dto));
-    this.logger.log(`Disponibilidad ${disponibilidad.idDisponibilidad} creada para usuario ${dto.idUsuario}`);
+    this.logger.log(
+      `Disponibilidad ${disponibilidad.idDisponibilidad} creada para usuario ${dto.idUsuario}`,
+    );
     return disponibilidad;
   }
 
@@ -38,7 +51,10 @@ export class DisponibilidadService {
     return this.buscarOFallar(idDisponibilidad);
   }
 
-  async actualizar(idDisponibilidad: string, dto: ActualizarDisponibilidadDto): Promise<Disponibilidad> {
+  async actualizar(
+    idDisponibilidad: string,
+    dto: ActualizarDisponibilidadDto,
+  ): Promise<Disponibilidad> {
     const actual = await this.buscarOFallar(idDisponibilidad);
     this.asegurarPuedeGestionar(actual.idUsuario);
 
@@ -46,7 +62,13 @@ export class DisponibilidadService {
     const horaFin = dto.horaFin ?? actual.horaFin;
     const diaSemana = dto.diaSemana ?? actual.diaSemana;
     this.asegurarRangoValido(horaInicio, horaFin);
-    await this.asegurarSinTraslape(actual.idUsuario, diaSemana, horaInicio, horaFin, idDisponibilidad);
+    await this.asegurarSinTraslape(
+      actual.idUsuario,
+      diaSemana,
+      horaInicio,
+      horaFin,
+      idDisponibilidad,
+    );
 
     await this.disponibilidadRepo.update({ idDisponibilidad } as any, dto as any);
     this.logger.log(`Disponibilidad ${idDisponibilidad} actualizada`);
@@ -86,7 +108,10 @@ export class DisponibilidadService {
   private async asegurarUsuarioExiste(idUsuario: string): Promise<void> {
     const usuario = await this.usuarioRepo.findOne({ where: { idUsuario } as any });
     if (!usuario) {
-      throw new NotFoundException({ errorCode: 'USUARIO_NO_ENCONTRADO', message: 'Usuario no encontrado' });
+      throw new NotFoundException({
+        errorCode: 'USUARIO_NO_ENCONTRADO',
+        message: 'Usuario no encontrado',
+      });
     }
   }
 
@@ -115,13 +140,16 @@ export class DisponibilidadService {
     if (traslapes.length > 0) {
       throw new ConflictException({
         errorCode: 'DISPONIBILIDAD_TRASLAPADA',
-        message: 'Ese horario se traslapa con otra disponibilidad ya registrada para este usuario ese día',
+        message:
+          'Ese horario se traslapa con otra disponibilidad ya registrada para este usuario ese día',
       });
     }
   }
 
   private async buscarOFallar(idDisponibilidad: string): Promise<Disponibilidad> {
-    const disponibilidad = await this.disponibilidadRepo.findOne({ where: { idDisponibilidad } as any });
+    const disponibilidad = await this.disponibilidadRepo.findOne({
+      where: { idDisponibilidad } as any,
+    });
     if (!disponibilidad) {
       throw new NotFoundException({
         errorCode: 'DISPONIBILIDAD_NO_ENCONTRADA',

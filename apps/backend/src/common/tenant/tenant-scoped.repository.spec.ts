@@ -42,7 +42,9 @@ describe('TenantScopedRepository', () => {
   });
 
   it('inyecta idNegocio en find() aunque el caller no lo pida', async () => {
-    await runComoNegocio(tenantContext, NEGOCIO_A, () => tenantRepo.find({ where: { nombre: 'x' } as any } as any));
+    await runComoNegocio(tenantContext, NEGOCIO_A, () =>
+      tenantRepo.find({ where: { nombre: 'x' } as any } as any),
+    );
     expect(repoMock.find).toHaveBeenCalledWith(
       expect.objectContaining({ where: { nombre: 'x', idNegocio: NEGOCIO_A } }),
     );
@@ -50,14 +52,18 @@ describe('TenantScopedRepository', () => {
 
   it('inyecta idNegocio en find() incluso sin where alguno', async () => {
     await runComoNegocio(tenantContext, NEGOCIO_A, () => tenantRepo.find());
-    expect(repoMock.find).toHaveBeenCalledWith(expect.objectContaining({ where: { idNegocio: NEGOCIO_A } }));
+    expect(repoMock.find).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { idNegocio: NEGOCIO_A } }),
+    );
   });
 
   it('ignora un idNegocio distinto que el caller intente colar en el where (el del contexto siempre gana)', async () => {
     await runComoNegocio(tenantContext, NEGOCIO_A, () =>
       tenantRepo.findOne({ where: { idNegocio: NEGOCIO_B } as any }),
     );
-    expect(repoMock.findOne).toHaveBeenCalledWith(expect.objectContaining({ where: { idNegocio: NEGOCIO_A } }));
+    expect(repoMock.findOne).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { idNegocio: NEGOCIO_A } }),
+    );
   });
 
   it('create() fija idNegocio del tenant actual', () => {
@@ -76,16 +82,25 @@ describe('TenantScopedRepository', () => {
     await runComoNegocio(tenantContext, NEGOCIO_A, () =>
       tenantRepo.update({ idFake: '1' } as any, { nombre: 'y' } as any),
     );
-    expect(repoMock.update).toHaveBeenCalledWith(expect.objectContaining({ idFake: '1', idNegocio: NEGOCIO_A }), {
-      nombre: 'y',
-    });
+    expect(repoMock.update).toHaveBeenCalledWith(
+      expect.objectContaining({ idFake: '1', idNegocio: NEGOCIO_A }),
+      {
+        nombre: 'y',
+      },
+    );
 
-    await runComoNegocio(tenantContext, NEGOCIO_A, () => tenantRepo.softDelete({ idFake: '1' } as any));
-    expect(repoMock.softDelete).toHaveBeenCalledWith(expect.objectContaining({ idFake: '1', idNegocio: NEGOCIO_A }));
+    await runComoNegocio(tenantContext, NEGOCIO_A, () =>
+      tenantRepo.softDelete({ idFake: '1' } as any),
+    );
+    expect(repoMock.softDelete).toHaveBeenCalledWith(
+      expect.objectContaining({ idFake: '1', idNegocio: NEGOCIO_A }),
+    );
   });
 
   it('findAndCount() también inyecta idNegocio, para listados paginados', async () => {
-    await runComoNegocio(tenantContext, NEGOCIO_A, () => tenantRepo.findAndCount({ skip: 0, take: 10 } as any));
+    await runComoNegocio(tenantContext, NEGOCIO_A, () =>
+      tenantRepo.findAndCount({ skip: 0, take: 10 } as any),
+    );
     expect(repoMock.findAndCount).toHaveBeenCalledWith(
       expect.objectContaining({ skip: 0, take: 10, where: { idNegocio: NEGOCIO_A } }),
     );
@@ -96,7 +111,9 @@ describe('TenantScopedRepository', () => {
       runComoNegocio(tenantContext, NEGOCIO_A, () => tenantRepo.find()),
       runComoNegocio(tenantContext, NEGOCIO_B, () => tenantRepo.find()),
     ]);
-    const wheresUsados = (repoMock.find as any).mock.calls.map((call: any) => call[0].where.idNegocio);
+    const wheresUsados = (repoMock.find as any).mock.calls.map(
+      (call: any) => call[0].where.idNegocio,
+    );
     expect(wheresUsados.sort()).toEqual([NEGOCIO_A, NEGOCIO_B]);
   });
 

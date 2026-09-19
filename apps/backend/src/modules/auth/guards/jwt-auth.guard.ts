@@ -24,7 +24,10 @@ export class JwtAuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const token = this.extractToken(request);
     if (!token) {
-      throw new UnauthorizedException({ errorCode: 'TOKEN_FALTANTE', message: 'Falta el token de acceso' });
+      throw new UnauthorizedException({
+        errorCode: 'TOKEN_FALTANTE',
+        message: 'Falta el token de acceso',
+      });
     }
 
     try {
@@ -34,7 +37,10 @@ export class JwtAuthGuard implements CanActivate {
       request.user = { sub: payload.sub, idNegocio: payload.idNegocio, rol: payload.rol };
       return true;
     } catch {
-      throw new UnauthorizedException({ errorCode: 'TOKEN_INVALIDO', message: 'Token de acceso inválido o expirado' });
+      throw new UnauthorizedException({
+        errorCode: 'TOKEN_INVALIDO',
+        message: 'Token de acceso inválido o expirado',
+      });
     }
   }
 

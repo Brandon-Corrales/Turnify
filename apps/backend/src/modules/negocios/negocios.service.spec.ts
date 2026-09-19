@@ -50,13 +50,18 @@ describe('NegociosService', () => {
 
   it('obtenerMiNegocio() lanza NEGOCIO_NO_ENCONTRADO si no existe', async () => {
     (repoMock.findOne as any).mockResolvedValue(null);
-    await expect(comoNegocioActual(() => service.obtenerMiNegocio())).rejects.toThrow(NotFoundException);
+    await expect(comoNegocioActual(() => service.obtenerMiNegocio())).rejects.toThrow(
+      NotFoundException,
+    );
   });
 
   it('actualizarMiNegocio() solo escribe en el negocio del tenant actual', async () => {
     (repoMock.findOne as any).mockResolvedValue(crearNegocioFalso());
     await comoNegocioActual(() => service.actualizarMiNegocio({ nombre: 'Nuevo nombre' }));
-    expect(repoMock.update).toHaveBeenCalledWith({ idNegocio: IDNEGOCIO }, { nombre: 'Nuevo nombre' });
+    expect(repoMock.update).toHaveBeenCalledWith(
+      { idNegocio: IDNEGOCIO },
+      { nombre: 'Nuevo nombre' },
+    );
   });
 
   it('desactivarMiNegocio() marca estado inactivo y hace soft delete, ambos scoped al tenant', async () => {

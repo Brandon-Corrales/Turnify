@@ -1,6 +1,24 @@
-import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Between, DataSource, LessThan, LessThanOrEqual, MoreThan, MoreThanOrEqual, Not } from 'typeorm';
-import { InjectTenantRepository, TenantContextService, TenantScopedRepository } from '../../common/tenant';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  Between,
+  DataSource,
+  LessThan,
+  LessThanOrEqual,
+  MoreThan,
+  MoreThanOrEqual,
+  Not,
+} from 'typeorm';
+import {
+  InjectTenantRepository,
+  TenantContextService,
+  TenantScopedRepository,
+} from '../../common/tenant';
 import { PaginatedResult } from '../../common/pagination';
 import { aMomentoLocalCR } from '../../common/utils/zona-horaria-negocio';
 import {
@@ -32,7 +50,8 @@ export class ReservasService {
     private readonly dataSource: DataSource,
     @InjectTenantRepository(Reserva) private readonly reservaRepo: TenantScopedRepository<Reserva>,
     @InjectTenantRepository(Cliente) private readonly clienteRepo: TenantScopedRepository<Cliente>,
-    @InjectTenantRepository(Servicio) private readonly servicioRepo: TenantScopedRepository<Servicio>,
+    @InjectTenantRepository(Servicio)
+    private readonly servicioRepo: TenantScopedRepository<Servicio>,
     @InjectTenantRepository(Usuario) private readonly usuarioRepo: TenantScopedRepository<Usuario>,
     @InjectTenantRepository(Disponibilidad)
     private readonly disponibilidadRepo: TenantScopedRepository<Disponibilidad>,
@@ -42,21 +61,36 @@ export class ReservasService {
   async crear(dto: CrearReservaDto): Promise<Reserva> {
     const idNegocio = this.tenantContext.idNegocio;
 
-    const servicio = await this.servicioRepo.findOne({ where: { idServicio: dto.idServicio } as any });
+    const servicio = await this.servicioRepo.findOne({
+      where: { idServicio: dto.idServicio } as any,
+    });
     if (!servicio) {
-      throw new NotFoundException({ errorCode: 'SERVICIO_NO_ENCONTRADO', message: 'Servicio no encontrado' });
+      throw new NotFoundException({
+        errorCode: 'SERVICIO_NO_ENCONTRADO',
+        message: 'Servicio no encontrado',
+      });
     }
     const cliente = await this.clienteRepo.findOne({ where: { idCliente: dto.idCliente } as any });
     if (!cliente) {
-      throw new NotFoundException({ errorCode: 'CLIENTE_NO_ENCONTRADO', message: 'Cliente no encontrado' });
+      throw new NotFoundException({
+        errorCode: 'CLIENTE_NO_ENCONTRADO',
+        message: 'Cliente no encontrado',
+      });
     }
     const usuario = await this.usuarioRepo.findOne({ where: { idUsuario: dto.idUsuario } as any });
     if (!usuario) {
-      throw new NotFoundException({ errorCode: 'USUARIO_NO_ENCONTRADO', message: 'Usuario no encontrado' });
+      throw new NotFoundException({
+        errorCode: 'USUARIO_NO_ENCONTRADO',
+        message: 'Usuario no encontrado',
+      });
     }
 
     const fechaHoraInicio = new Date(dto.fechaHoraInicio);
-    this.asegurarNoEsPasado(fechaHoraInicio, 'FECHA_EN_EL_PASADO', 'No se puede reservar en una fecha/hora que ya pasó');
+    this.asegurarNoEsPasado(
+      fechaHoraInicio,
+      'FECHA_EN_EL_PASADO',
+      'No se puede reservar en una fecha/hora que ya pasó',
+    );
     const fechaHoraFin = new Date(fechaHoraInicio.getTime() + servicio.duracionMinutos * 60_000);
 
     await this.asegurarDentroDeDisponibilidad(dto.idUsuario, fechaHoraInicio, fechaHoraFin);
@@ -130,7 +164,10 @@ export class ReservasService {
   async cancelar(idReserva: string): Promise<Reserva> {
     const reserva = await this.buscarOFallar(idReserva);
     if (reserva.estado === EstadoReserva.CANCELADA) {
-      throw new ConflictException({ errorCode: 'RESERVA_YA_CANCELADA', message: 'Esta reserva ya estaba cancelada' });
+      throw new ConflictException({
+        errorCode: 'RESERVA_YA_CANCELADA',
+        message: 'Esta reserva ya estaba cancelada',
+      });
     }
     await this.reservaRepo.update({ idReserva } as any, { estado: EstadoReserva.CANCELADA } as any);
     this.logger.log(`Reserva ${idReserva} cancelada`);
@@ -147,9 +184,14 @@ export class ReservasService {
       });
     }
 
-    const servicio = await this.servicioRepo.findOne({ where: { idServicio: actual.idServicio } as any });
+    const servicio = await this.servicioRepo.findOne({
+      where: { idServicio: actual.idServicio } as any,
+    });
     if (!servicio) {
-      throw new NotFoundException({ errorCode: 'SERVICIO_NO_ENCONTRADO', message: 'Servicio no encontrado' });
+      throw new NotFoundException({
+        errorCode: 'SERVICIO_NO_ENCONTRADO',
+        message: 'Servicio no encontrado',
+      });
     }
 
     const fechaHoraInicio = new Date(dto.fechaHoraInicio);
@@ -197,7 +239,11 @@ export class ReservasService {
   }
 
   /** Valida que [inicio, fin) caiga dentro de una franja activa de DISPONIBILIDAD del usuario, en hora local de Costa Rica. */
-  private async asegurarDentroDeDisponibilidad(idUsuario: string, inicio: Date, fin: Date): Promise<void> {
+  private async asegurarDentroDeDisponibilidad(
+    idUsuario: string,
+    inicio: Date,
+    fin: Date,
+  ): Promise<void> {
     const { diaSemana, horaMinuto: horaInicio } = aMomentoLocalCR(inicio);
     const { diaSemana: diaFin, horaMinuto: horaFin } = aMomentoLocalCR(fin);
     if (diaFin !== diaSemana) {
@@ -227,7 +273,10 @@ export class ReservasService {
   private async buscarOFallar(idReserva: string): Promise<Reserva> {
     const reserva = await this.reservaRepo.findOne({ where: { idReserva } as any });
     if (!reserva) {
-      throw new NotFoundException({ errorCode: 'RESERVA_NO_ENCONTRADA', message: 'Reserva no encontrada' });
+      throw new NotFoundException({
+        errorCode: 'RESERVA_NO_ENCONTRADA',
+        message: 'Reserva no encontrada',
+      });
     }
     return reserva;
   }

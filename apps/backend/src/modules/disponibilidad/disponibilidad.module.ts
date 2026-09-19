@@ -8,6 +8,10 @@ import { DisponibilidadService } from './disponibilidad.service';
 @Module({
   imports: [TypeOrmModule.forFeature([Disponibilidad, Usuario])],
   controllers: [DisponibilidadController],
-  providers: [DisponibilidadService, TenantRepositoryProvider(Disponibilidad), TenantRepositoryProvider(Usuario)],
+  providers: [
+    DisponibilidadService,
+    TenantRepositoryProvider(Disponibilidad),
+    TenantRepositoryProvider(Usuario),
+  ],
 })
 export class DisponibilidadModule {}

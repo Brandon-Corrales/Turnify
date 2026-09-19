@@ -34,7 +34,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
 
     if (exception instanceof ErrorCodeException) {
-      this.respond(response, exception.statusCode, exception.errorCode, exception.message, exception.field);
+      this.respond(
+        response,
+        exception.statusCode,
+        exception.errorCode,
+        exception.message,
+        exception.field,
+      );
       return;
     }
 
@@ -48,7 +54,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
           message: string | string[];
           field?: string;
         };
-        this.respond(response, status, errorCode, Array.isArray(message) ? message[0] : message, field);
+        this.respond(
+          response,
+          status,
+          errorCode,
+          Array.isArray(message) ? message[0] : message,
+          field,
+        );
         return;
       }
 
@@ -76,6 +88,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
     message: string,
     field?: string,
   ): void {
-    response.status(statusCode).json({ statusCode, errorCode, message, ...(field ? { field } : {}) });
+    response
+      .status(statusCode)
+      .json({ statusCode, errorCode, message, ...(field ? { field } : {}) });
   }
 }

@@ -46,7 +46,13 @@ export class Usuario extends AuditableEntity {
   contrasenaHash!: string;
 
   /** Hash bcrypt del refresh token vigente (rotación en cada uso, ver AuthService). */
-  @Column({ name: 'refresh_token_hash', type: 'varchar', length: 255, nullable: true, select: false })
+  @Column({
+    name: 'refresh_token_hash',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+    select: false,
+  })
   refreshTokenHash?: string | null;
 
   @Column({ name: 'rol', type: 'enum', enum: RolUsuario, default: RolUsuario.EMPLEADO })

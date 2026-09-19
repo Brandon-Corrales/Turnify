@@ -73,7 +73,10 @@ export class ClientesService {
   private async buscarOFallar(idCliente: string): Promise<Cliente> {
     const cliente = await this.clienteRepo.findOne({ where: { idCliente } as any });
     if (!cliente) {
-      throw new NotFoundException({ errorCode: 'CLIENTE_NO_ENCONTRADO', message: 'Cliente no encontrado' });
+      throw new NotFoundException({
+        errorCode: 'CLIENTE_NO_ENCONTRADO',
+        message: 'Cliente no encontrado',
+      });
     }
     return cliente;
   }

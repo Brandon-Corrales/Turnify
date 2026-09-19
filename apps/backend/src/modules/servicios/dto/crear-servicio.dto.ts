@@ -1,5 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsNumber, IsOptional, IsPositive, IsString, Matches, Max, MaxLength, Min, MinLength } from 'class-validator';
+import {
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+  Matches,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+} from 'class-validator';
 
 export class CrearServicioDto {
   @ApiProperty({ example: 'Corte clásico' })
@@ -27,6 +38,8 @@ export class CrearServicioDto {
   @ApiProperty({ required: false, example: '#4f46e5', description: 'Color hex para FullCalendar' })
   @IsOptional()
   @IsString()
-  @Matches(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, { message: 'colorCalendario debe ser un color hex válido (#rrggbb)' })
+  @Matches(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, {
+    message: 'colorCalendario debe ser un color hex válido (#rrggbb)',
+  })
   colorCalendario?: string;
 }

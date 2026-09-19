@@ -15,7 +15,10 @@ export class CrearReservaDto {
   @IsUUID()
   idUsuario!: string;
 
-  @ApiProperty({ example: '2026-10-01T15:00:00.000Z', description: 'Fecha/hora de inicio en ISO 8601' })
+  @ApiProperty({
+    example: '2026-10-01T15:00:00.000Z',
+    description: 'Fecha/hora de inicio en ISO 8601',
+  })
   @IsDateString()
   fechaHoraInicio!: string;
 
