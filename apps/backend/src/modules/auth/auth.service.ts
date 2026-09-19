@@ -2,6 +2,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -188,6 +189,18 @@ export class AuthService {
 
   async logout(idUsuario: string): Promise<void> {
     await this.usuarioRepo.update(idUsuario, { refreshTokenHash: null });
+  }
+
+  /** Restaura la sesión en el frontend tras un refresh de página (el JWT solo trae sub/idNegocio/rol, no el perfil completo). */
+  async obtenerPerfil(idUsuario: string): Promise<UsuarioPublico> {
+    const usuario = await this.usuarioRepo.findOne({ where: { idUsuario } });
+    if (!usuario) {
+      throw new NotFoundException({
+        errorCode: 'USUARIO_NO_ENCONTRADO',
+        message: 'Usuario no encontrado',
+      });
+    }
+    return this.aPublico(usuario);
   }
 
   private async emitirTokens(usuario: Usuario): Promise<TokenPair> {
