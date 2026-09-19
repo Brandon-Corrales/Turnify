@@ -170,4 +170,17 @@ describe('ReservasService', () => {
     const filtro = managerMock.find.mock.calls[0][1].where;
     expect(filtro.idReserva).toBeDefined(); // Not('reserva-1')
   });
+
+  it('listar() y obtenerUna() piden las relaciones cliente/servicio/usuario (el calendario del frontend las necesita para mostrar algo útil)', async () => {
+    await comoAdmin(() => service.listar({ page: 1, limit: 20 } as any));
+    expect(reservaRepo.findAndCount).toHaveBeenCalledWith(
+      expect.objectContaining({ relations: { cliente: true, servicio: true, usuario: true } }),
+    );
+
+    reservaRepo.findOne.mockResolvedValue({ idReserva: 'reserva-1' });
+    await service.obtenerUna('reserva-1');
+    expect(reservaRepo.findOne).toHaveBeenCalledWith(
+      expect.objectContaining({ relations: { cliente: true, servicio: true, usuario: true } }),
+    );
+  });
 });

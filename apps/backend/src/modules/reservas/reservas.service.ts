@@ -150,6 +150,10 @@ export class ReservasService {
 
     const [reservas, total] = await this.reservaRepo.findAndCount({
       where: where as any,
+      // El calendario del frontend necesita nombre de cliente, nombre/color
+      // del servicio y nombre del empleado para mostrar algo útil — sin
+      // esto solo tendría los UUID crudos de las FK.
+      relations: { cliente: true, servicio: true, usuario: true },
       order: { fechaHoraInicio: 'ASC' },
       skip: (page - 1) * limit,
       take: limit,
@@ -271,7 +275,10 @@ export class ReservasService {
   }
 
   private async buscarOFallar(idReserva: string): Promise<Reserva> {
-    const reserva = await this.reservaRepo.findOne({ where: { idReserva } as any });
+    const reserva = await this.reservaRepo.findOne({
+      where: { idReserva } as any,
+      relations: { cliente: true, servicio: true, usuario: true },
+    });
     if (!reserva) {
       throw new NotFoundException({
         errorCode: 'RESERVA_NO_ENCONTRADA',
