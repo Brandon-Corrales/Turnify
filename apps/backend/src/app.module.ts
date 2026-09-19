@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { validateEnv, Env } from './config/env.schema';
 import * as entities from './database/entities';
 import { HealthModule } from './health/health.module';
+import { TenantModule } from './common/tenant';
 import { AuthModule } from './modules/auth/auth.module';
 import { NegociosModule } from './modules/negocios/negocios.module';
 import { UsuariosModule } from './modules/usuarios/usuarios.module';
@@ -44,6 +45,7 @@ import { ReservasModule } from './modules/reservas/reservas.module';
       },
     }),
     HealthModule,
+    TenantModule,
     AuthModule,
     NegociosModule,
     UsuariosModule,
