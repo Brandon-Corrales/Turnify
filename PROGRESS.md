@@ -814,8 +814,8 @@ Cerrado en esta sesión: Seguridad (categoría completa), las 5 tarjetas de
 plantillas por vertical, y las 2 tarjetas de Worker de Notificaciones
 (Resend + Meta WhatsApp Cloud API, reemplazando Twilio). Siguiente en el
 orden de docs/spec.md (punto 18, sección "después del Seguimiento #2"):
-Reportes → Suscripciones (Stripe) → i18n backend, y después el resto de
-Frontend.
+Suscripciones (Stripe) → Reportes → Documentación Swagger → i18n
+backend, y después el resto de Frontend.
 
 ## Cómo probar lo que ya existe
 ```bash
