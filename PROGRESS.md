@@ -716,14 +716,106 @@ Negocios, Servicios), no un rediseño.
   Ambos caminos del onboarding (con y sin plantillas) quedan así
   verificados de punta a punta en navegador real.
 
+## Notificaciones — 2 tarjetas cerradas (Resend + Meta WhatsApp Cloud API)
+Cambio de proveedor a mitad de esta categoría: Twilio bloqueó la
+verificación de cuenta del equipo, así que docs/spec.md se actualizó para
+usar **Meta WhatsApp Cloud API** (modo sandbox de prueba) en vez de
+Twilio Sandbox en todo el documento — ver commit de docs. Las 2 tarjetas
+de Worker de Notificaciones se cierran juntas porque comparten el mismo
+worker, solo cambia el proveedor de envío.
+
+- **Backend: Worker de Notificaciones — integración Resend (email)** ✅
+- **Backend: Worker de Notificaciones — integración Meta WhatsApp Cloud
+  API (modo sandbox de prueba)** ✅
+  - **Decisión técnica — cola de trabajo**: `@nestjs/schedule` (node-cron
+    por debajo) en vez de BullMQ+Redis. El brief autoriza este fallback
+    explícitamente si BullMQ+Redis "no es viable", y el proyecto no tenía
+    Redis en ningún lado todavía — agregarlo solo para esto era
+    infraestructura nueva sin un beneficio claro para el alcance actual.
+    `NotificacionesService.procesarPendientes()` corre cada minuto
+    (`@Cron(CronExpression.EVERY_MINUTE)`), revisa
+    `NOTIFICACION.estado=pendiente AND programado_para <= now()` (máx. 50
+    por corrida) y despacha por canal.
+  - `ResendService` y `WhatsappCloudApiService` (`modules/notificaciones/providers/`):
+    envoltorios inyectables sobre cada proveedor externo (Clean
+    Architecture, punto 14 — capa de infraestructura aislada y
+    mockeable), nunca llamados directo desde `NotificacionesService`.
+    WhatsApp usa `fetch` nativo contra la Graph API de Meta (`v26.0`,
+    versión vigente verificada en la documentación oficial, no asumida
+    de memoria) — no hay SDK oficial de Node para la Cloud API y agregar
+    un wrapper de terceros no verificado no vale la pena para un solo
+    endpoint REST.
+  - **Notificacion no tiene id_negocio** (por diseño del ER original) —
+    `NotificacionesModule` usa un `Repository` normal, no
+    `TenantScopedRepository`, mismo caso documentado que `NegociosService`:
+    el worker necesita procesar pendientes de TODOS los negocios en cada
+    corrida, no solo del tenant de una request.
+  - **Disparo real**: `ReservasService.crear()` y `.cancelar()` ahora
+    inyectan `NotificacionesService` y programan una notificación
+    (`CONFIRMACION`/`CANCELACION`) fuera de la transacción de la reserva
+    — si el registro de la notificación fallara, no debe revertir una
+    reserva ya confirmada; el envío real en sí lo reintenta el propio
+    worker. `RECORDATORIO` (aviso anticipado antes de la cita) queda
+    fuera de esta tarjeta — necesitaría un segundo cron que mire
+    reservas próximas, no solo procesar lo ya encolado; anotado como
+    mejora futura, no bloquea el alcance de "Worker de Notificaciones"
+    tal como está escrito en el backlog.
+  - **Idioma del mensaje** (punto 10 del brief: se genera en el idioma
+    preferido del CLIENTE, nunca el del negocio, desde el primer módulo
+    que lo necesite): `mensajes-notificacion.ts` es un diccionario ES/EN
+    mínimo *solo* para el texto de notificaciones — cuando se construya
+    la tarjeta de "i18n backend" con `nestjs-i18n`, este archivo se
+    reemplaza por claves de traducción reales sin tocar
+    `NotificacionesService`. Fecha/hora del mensaje formateada en hora
+    de Costa Rica con `Intl.DateTimeFormat` (nueva
+    `formatearFechaHoraLocalCR` en `zona-horaria-negocio.ts`).
+  - **Reintentos**: hasta `MAX_REINTENTOS=3` fallos consecutivos antes de
+    marcar `FALLIDA` (si no, sigue `PENDIENTE` y el próximo tick del cron
+    reintenta).
+  - Variables de entorno nuevas (opcionales a propósito — el worker
+    marca la notificación como fallida con un motivo claro si faltan, en
+    vez de tumbar el arranque de todo el servidor por un secreto de una
+    feature específica): `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (default
+    `onboarding@resend.dev`, el remitente de prueba sin dominio
+    verificado), `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`.
+  - **Probado de verdad con proveedores reales, no solo mocks de test**
+    (además de 6 tests unitarios propios en
+    `notificaciones.service.spec.ts` cubriendo programar/enviar/reintentar/agotar):
+    se creó un negocio + cliente + reserva real contra Postgres real, lo
+    que disparó una notificación de confirmación real. Resultado en la
+    tabla `notificaciones` tras el tick del cron:
+    - **WhatsApp**: enviado con éxito a un número real vía Meta Graph
+      API — confirmado por el usuario que el mensaje llegó de verdad a
+      su WhatsApp con el contenido esperado ("Tu reserva de ... quedó
+      confirmada").
+    - **Email**: el primer intento falló con un error real y útil de
+      Resend ("solo puedes enviar a tu propia dirección sin dominio
+      verificado") — reveló que la dirección real de la cuenta de Resend
+      no era la que se asumió al principio; corregido usando la
+      dirección correcta, reintentado, y confirmado `estado: enviada`.
+    - **Limitación real de WhatsApp Business descubierta en esta prueba
+      (no es un bug de Turnify)**: un mensaje de texto libre (el que usa
+      este worker) solo se entrega si el cliente le escribió primero al
+      número de negocio en las últimas 24 horas (ventana de servicio al
+      cliente de WhatsApp). El primer intento a un cliente que nunca le
+      había escrito al negocio de prueba falló; tras que el cliente le
+      escribiera al negocio abriendo esa ventana, el reenvío sí llegó.
+      Documentado como comentario en `whatsapp-cloud-api.service.ts` —
+      Turnify va a necesitar plantillas de WhatsApp pre-aprobadas por
+      Meta más adelante para que las notificaciones lleguen también a
+      clientes que reservan por primera vez sin haberle escrito nunca al
+      negocio. No bloquea esta tarjeta (el worker y la integración
+      funcionan correctamente; es una restricción de la plataforma de
+      WhatsApp, no del código).
+
 ## Tarea en curso
-Ninguna de las priorizadas explícitamente por el usuario está pendiente:
-Seguridad (categoría cerrada completa, `npm audit` en 0 vulnerabilidades
-en los 3 workspaces) y las 5 tarjetas de plantillas por vertical, todas
-completas y verificadas en navegador real. Siguiente en el orden de
-docs/spec.md (punto 18, sección "después del Seguimiento #2"):
-Notificaciones (Resend + Twilio) → Reportes → Suscripciones (Stripe) →
-i18n backend, y después el resto de Frontend.
+Ninguna de las priorizadas explícitamente por el usuario está pendiente.
+Cerrado en esta sesión: Seguridad (categoría completa), las 5 tarjetas de
+plantillas por vertical, y las 2 tarjetas de Worker de Notificaciones
+(Resend + Meta WhatsApp Cloud API, reemplazando Twilio). Siguiente en el
+orden de docs/spec.md (punto 18, sección "después del Seguimiento #2"):
+Reportes → Suscripciones (Stripe) → i18n backend, y después el resto de
+Frontend.
 
 ## Cómo probar lo que ya existe
 ```bash

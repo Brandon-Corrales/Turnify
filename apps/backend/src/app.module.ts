@@ -4,6 +4,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { validateEnv, Env } from './config/env.schema';
 import { listaEntidades } from './database/entity-list';
 import { HealthModule } from './health/health.module';
@@ -16,6 +17,7 @@ import { ServiciosModule } from './modules/servicios/servicios.module';
 import { DisponibilidadModule } from './modules/disponibilidad/disponibilidad.module';
 import { ReservasModule } from './modules/reservas/reservas.module';
 import { PlantillasServicioModule } from './modules/plantillas-servicio/plantillas-servicio.module';
+import { NotificacionesModule } from './modules/notificaciones/notificaciones.module';
 
 @Module({
   imports: [
@@ -54,6 +56,9 @@ import { PlantillasServicioModule } from './modules/plantillas-servicio/plantill
       throttlers: [{ ttl: 60_000, limit: 60 }],
       errorMessage: 'Demasiadas solicitudes. Espera un minuto e intenta de nuevo.',
     }),
+    // Habilita @Cron en cualquier provider del árbol de módulos — el
+    // worker de Notificaciones lo usa para revisar pendientes cada minuto.
+    ScheduleModule.forRoot(),
     HealthModule,
     TenantModule,
     AuthModule,
@@ -64,6 +69,7 @@ import { PlantillasServicioModule } from './modules/plantillas-servicio/plantill
     DisponibilidadModule,
     ReservasModule,
     PlantillasServicioModule,
+    NotificacionesModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

@@ -30,6 +30,7 @@ import {
   Servicio,
   Usuario,
 } from '../../database/entities';
+import { NotificacionesService } from '../notificaciones/notificaciones.service';
 import { CrearReservaDto } from './dto/crear-reserva.dto';
 import { ReprogramarReservaDto } from './dto/reprogramar-reserva.dto';
 import { ListarReservasQueryDto } from './dto/listar-reservas-query.dto';
@@ -56,6 +57,7 @@ export class ReservasService {
     @InjectTenantRepository(Disponibilidad)
     private readonly disponibilidadRepo: TenantScopedRepository<Disponibilidad>,
     private readonly tenantContext: TenantContextService,
+    private readonly notificaciones: NotificacionesService,
   ) {}
 
   async crear(dto: CrearReservaDto): Promise<Reserva> {
@@ -95,7 +97,7 @@ export class ReservasService {
 
     await this.asegurarDentroDeDisponibilidad(dto.idUsuario, fechaHoraInicio, fechaHoraFin);
 
-    return this.dataSource.transaction(async (manager) => {
+    const guardada = await this.dataSource.transaction(async (manager) => {
       // Serializa por usuario: dos requests concurrentes para el MISMO
       // usuario nunca corren la validación de traslapes en paralelo (el
       // lock se libera solo al terminar la transacción). El EXCLUDE
@@ -136,6 +138,13 @@ export class ReservasService {
         throw err;
       }
     });
+
+    // Fuera de la transacción a propósito: si el envío/programación de la
+    // notificación fallara, no debe revertir una reserva ya confirmada —
+    // el propio worker (NotificacionesService) tiene su lógica de
+    // reintentos para el envío en sí.
+    await this.notificaciones.programarConfirmacion(guardada, cliente, servicio);
+    return guardada;
   }
 
   async listar(query: ListarReservasQueryDto): Promise<PaginatedResult<Reserva>> {
@@ -175,7 +184,9 @@ export class ReservasService {
     }
     await this.reservaRepo.update({ idReserva } as any, { estado: EstadoReserva.CANCELADA } as any);
     this.logger.log(`Reserva ${idReserva} cancelada`);
-    return this.buscarOFallar(idReserva);
+    const actualizada = await this.buscarOFallar(idReserva);
+    await this.notificaciones.programarCancelacion(actualizada, reserva.cliente, reserva.servicio);
+    return actualizada;
   }
 
   async reprogramar(idReserva: string, dto: ReprogramarReservaDto): Promise<Reserva> {
