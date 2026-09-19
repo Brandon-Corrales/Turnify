@@ -104,48 +104,45 @@ se roté la contraseña de Supabase y se confirmó que todo sigue conectando
     usa todavía (siguen vacíos) — lo consumirán las tarjetas de CRUD que
     vienen después (Negocios, Usuarios, Clientes, Servicios,
     Disponibilidad, Reservas).
-  - Verificado con un script `ts-node` desechable (no con Jest, ver nota
-    de ESM abajo): inyecta `idNegocio` con y sin `where` explícito, un
-    `idNegocio` ajeno que el caller intente colar SIEMPRE es sobreescrito,
+  - Verificado primero con un script `ts-node` desechable, y después
+    migrado a un test formal real (ver resolución de Jest/Vitest abajo):
+    `src/common/tenant/tenant-scoped.repository.spec.ts`, 8 casos —
+    inyecta `idNegocio` con y sin `where` explícito, un `idNegocio` ajeno
+    que el caller intente colar SIEMPRE es sobreescrito,
     `create`/`save`/`update`/`softDelete` quedan filtrados, dos contextos
-    concurrentes de negocios distintos no se mezclan (aislamiento real
-    vía `AsyncLocalStorage`), y usar el repositorio fuera de contexto
-    rechaza la promesa en vez de correr sin filtrar.
+    concurrentes de negocios distintos no se mezclan (aislamiento real vía
+    `AsyncLocalStorage`), y usar el repositorio fuera de contexto rechaza
+    la promesa en vez de correr sin filtrar.
   - Probado además contra la app real: `GET /health` (pública, sin
     `request.user`) y `POST /auth/logout` (protegida, dispara el
     interceptor) ambas siguen respondiendo correctamente con
     `TenantModule` cargado.
 
-## Decisión pendiente para el equipo — Jest no corre todavía (NestJS 12 es ESM-only)
-Al intentar montar Jest para probar `TenantScopedRepository` como test
-formal, se encontró que `@nestjs/common@12` (y el resto de paquetes
-`@nestjs/*`) se publican como **ESM puro** (`"type": "module"` en su
-`package.json`, sin build CommonJS). La app real corre perfecto igual
-(`node dist/main.js` funciona) porque Node 22.12+ ya sabe hacer
-`require()` de un módulo ESM síncrono de forma nativa — pero el motor de
-módulos propio de Jest todavía no soporta ese puente (su propio mensaje
-de error dice literalmente "Use Node v24.9+ where Jest supports
-require(esm) natively"). Por eso se revirtió el intento de agregar
-`jest`/`ts-jest` como dependencias — habría quedado un `npm test` roto en
-el repo. La verificación de esta tarjeta se hizo con un script `ts-node`
-temporal (borrado al terminar), documentado arriba.
+## Resuelto — Jest reemplazado por Vitest (decisión del equipo)
+El bloqueo de la sección anterior (NestJS 12 es ESM-only, Jest no sabe
+`require(esm)` hasta Node 24.9+) se resolvió con la opción correcta según
+la documentación oficial de NestJS: **usar Vitest en vez de Jest como test
+runner**, sin tocar el resto del código de la app. Vitest corre sobre
+Vite, que maneja ESM de forma nativa, así que el conflicto desaparece sin
+migrar el backend a ESM ni parchear Jest con Babel.
 
-Esto bloquea específicamente la tarjeta **"QA: Tests unitarios de reglas
-de negocio críticas"** y hay que decidir un camino antes de esa tarjeta:
-1. Migrar el backend completo a ESM (`"type": "module"`, tsconfig
-   `NodeNext`, extensiones `.js` en todos los imports relativos, ajustar
-   el CLI de TypeORM) — la ruta "correcta" a largo plazo, pero es un
-   cambio transversal grande.
-2. Agregar un transform de Babel (`babel-jest` + `@babel/preset-env`)
-   limitado a `node_modules/@nestjs/**` para convertir su ESM a CommonJS
-   solo dentro de Jest, sin tocar el resto del proyecto — más rápido, más
-   parche.
-3. Esperar/objetivo Node 24.9+ en el entorno de CI/dev del equipo, donde
-   Jest ya soporta `require(esm)` nativo sin configuración especial.
-
-No se tomó esta decisión unilateralmente porque cambia cómo se escribe
-TODO el código del backend (opción 1) o añade una pieza de tooling nueva
-(opción 2) — se necesita alineación del equipo antes del Seguimiento #2.
+- `vitest.config.mts` (extensión `.mts` a propósito: evita el warning de
+  Vite por sintaxis ESM en un archivo cargado como CommonJS).
+- `unplugin-swc` + `.swcrc` (`decoratorMetadata: true`) reemplazan el
+  transform TS por defecto de Vitest (esbuild, que NO implementa
+  `emitDecoratorMetadata`) — necesario para que `@nestjs/testing` y la
+  inyección de dependencias de Nest funcionen en tests futuros igual que
+  con `tsc`. Se agregó `@nestjs/testing` como devDependency ya, aunque
+  ningún test lo use todavía.
+- `npm test` (`vitest run`) y `npm run test:watch` (`vitest`) en
+  `apps/backend/package.json`.
+- El test de `TenantScopedRepository` (8 casos, ver arriba) corre y pasa
+  con este setup. `nest build` se volvió a probar después del cambio y
+  sigue sin errores — Vitest es una dependencia de desarrollo aislada, no
+  toca el build de producción ni el CLI de TypeORM.
+- Esto desbloquea **"QA: Tests unitarios de reglas de negocio críticas"**
+  sin decisiones pendientes: cualquier módulo nuevo ya puede traer sus
+  `*.spec.ts` desde el primer commit.
 
 ## Tarea en curso
 Ninguna — lista para **"Backend: Módulo Negocios — CRUD + onboarding"**.
