@@ -5,7 +5,7 @@ de servicios (clínicas, barberías, consultorios, academias). Proyecto académi
 de producción real: SOLID, Clean Architecture, buenas prácticas, seguridad real.
 
 Antes de escribir código, consulta la documentación oficial vigente de NestJS,
-TypeORM/Prisma, React, FullCalendar.js, Resend, Twilio, Stripe, Supabase,
+TypeORM/Prisma, React, FullCalendar.js, Resend, Meta WhatsApp Cloud API, Stripe, Supabase,
 nestjs-i18n/react-i18next y Framer Motion para confirmar sintaxis y APIs
 actuales — no asumas versiones ni APIs de memoria, verifica.
 
@@ -125,7 +125,7 @@ reservas ya establecidas (Fresha, Vagaro, SalonBoost) — no inventada.
 - Notificaciones: worker separado del request/response principal (cola con
   BullMQ+Redis si es viable, si no, un cron job simple con node-cron) que
   revisa NOTIFICACION.estado=pendiente y programado_para, y envía por
-  Resend (email) o Twilio Sandbox (whatsapp), actualizando estado y reintentos
+  Resend (email) o Meta WhatsApp Cloud API (whatsapp), actualizando estado y reintentos
 - Pagos: Stripe en modo test para simular cambios de plan de SUSCRIPCION
 - Variables de entorno para TODAS las credenciales, nunca hardcodeadas.
   Valida el .env al arrancar la app con un esquema (Joi o Zod) para fallar
@@ -447,7 +447,7 @@ al widget del chatbot del punto 16, en desktop y en mobile, sin excepciones.
   que se puedan mockear en tests)
 - Clean Architecture: separación clara entre capa de dominio, capa de
   aplicación (casos de uso) y capa de infraestructura (DB, proveedores
-  externos como Resend/Twilio/Stripe)
+  externos como Resend/Meta WhatsApp/Stripe)
 - Manejo de estado en frontend con TanStack Query para datos del servidor
   (cache, revalidación, estados de loading/error automáticos) — evita
   useEffect + fetch manual repetido en cada componente
@@ -586,7 +586,7 @@ flujo de reserva básico.
 --- (lo de abajo va DESPUÉS del Seguimiento #2, no antes) ---
 
 - Backend: Worker de Notificaciones — integración Resend (email)
-- Backend: Worker de Notificaciones — integración Twilio Sandbox (WhatsApp)
+- Backend: Worker de Notificaciones — integración Meta WhatsApp Cloud API (modo sandbox de prueba)
 - Backend: Módulo Suscripciones — Stripe Test Mode + webhook + guard de límites del plan gratis
 - Backend: Módulo Reportes — agregaciones (reservas por período, ingresos estimados)
 - Backend: Documentación Swagger/OpenAPI en todos los endpoints
