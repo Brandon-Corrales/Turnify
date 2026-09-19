@@ -481,9 +481,64 @@ el primer commit como pide el brief. Ver detalle en el commit
     página de showcase temporal para esta prueba y se borró antes de
     cerrar la tarjeta — no queda código de demostración en el repo.
 
+- **Frontend: Login / Registro conectado al módulo Auth** ✅
+  - **Backend, cambio pequeño pero necesario para que esto funcione de
+    verdad**: se agregó `GET /auth/me` (protegido, devuelve el perfil
+    público del usuario a partir del JWT). Sin este endpoint no había
+    forma de restaurar la sesión al recargar la página — el access token
+    solo trae `sub`/`idNegocio`/`rol`, no `nombreCompleto`/
+    `correoElectronico` para mostrar en la UI. Con test unitario propio
+    (`auth.service.spec.ts`, 2 casos) y probado contra la app real.
+  - `src/lib/api.ts`: cliente HTTP único de la app. Adjunta el access
+    token, y si una request autenticada responde 401, refresca UNA vez
+    (varias llamadas 401 simultáneas comparten el mismo refresh en
+    curso, para no disparar varios `/auth/refresh` en paralelo) y
+    reintenta antes de rendirse. `ApiError` replica la forma exacta del
+    filtro global del backend (`statusCode`/`errorCode`/`message`/`field`).
+  - `src/context/AuthContext.tsx`: restaura la sesión al recargar la
+    página (si hay algún token guardado, `/auth/me` confirma quién es;
+    si el access ya expiró, `apiFetch` lo refresca solo antes de esto).
+    Se suscribe a un callback de "sesión expirada" del cliente HTTP para
+    cuando ni el refresh token sirve ya.
+  - **Decisión técnica — tokens en localStorage**: el backend no usa
+    cookies httpOnly (devuelve los tokens en el body), así que el
+    frontend necesariamente los maneja accesibles por JS de un modo u
+    otro. La mitigación real contra robo de token ya vive en el backend
+    (access de vida corta + refresh rotativo con detección de reuso);
+    mover a cookies httpOnly es un cambio de backend, fuera de esta
+    tarjeta de frontend — anotado como posible mejora futura.
+  - `RutaProtegida` (`components/layout/`): redirige a `/login`
+    conservando de dónde venía (`state.from`), para volver ahí después de
+    iniciar sesión.
+  - **Primer uso de `react-hook-form` + `zod`** en el proyecto (agregados
+    ahora, no estaban en el stack obligatorio): dado que esta es la
+    primera tarjeta con formularios reales y vienen muchos más
+    (Servicios, Clientes, wizard de Reserva), vale la pena esta base en
+    vez de `useState` por campo. `contrasenaSchema` en
+    `lib/validation.ts` replica la MISMA regla que
+    `EsContrasenaValida()` del backend (punto 13: validar en ambos lados
+    sin duplicar la fuente de verdad de negocio — el backend manda,
+    esto es solo feedback instantáneo).
+  - `RegistroPage`: el error `EMAIL_YA_REGISTRADO` del backend se mapea a
+    un error de campo específico (`correoAdmin`) vía `setError` de
+    react-hook-form, no a un toast genérico — mejor UX, y demuestra el
+    patrón que las próximas pantallas con formularios deberían seguir
+    para errores de negocio ligados a un campo.
+  - **Probado de verdad en un Chrome real** con backend y frontend
+    corriendo juntos: `/` redirige a `/login` sin sesión → login con el
+    admin demo → sesión persiste tras recargar la página completa (RUTA
+    de restauración vía `/auth/me` confirmada) → logout limpia
+    `localStorage` y redirige → credenciales inválidas muestran el toast
+    de error correcto → registro de un negocio nuevo entra directo
+    autenticado → registrar el mismo correo de administrador dos veces
+    muestra el error en el campo exacto, sin perder lo ya escrito en el
+    resto del formulario → validación de campos obligatorios en el
+    cliente antes de tocar la red.
+
 ## Tarea en curso
-Ninguna — lista para **"Frontend: Login / Registro conectado al módulo
-Auth"**.
+Ninguna — lista para **"Frontend: Calendario (FullCalendar) conectado a
+Reservas/Disponibilidad"**. Última tarjeta de Frontend priorizada para
+el Seguimiento #2 (2026-09-24).
 
 ## Seguridad
 ✅ La contraseña de la base de datos de Supabase, compartida en texto
