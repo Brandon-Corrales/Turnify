@@ -265,11 +265,50 @@ migrar el backend a ESM ni parchear Jest con Babel.
     → listar paginado → `PATCH` precio con decimales → `DELETE` (204) →
     `GET` posterior (404).
 
+- **Backend: Módulo Disponibilidad — CRUD + validación de traslapes de
+  horario** ✅
+  - `POST/GET/GET:id/PATCH/DELETE /disponibilidad`. `GET` acepta
+    `?idUsuario=` para filtrar. Sin paginación a propósito: la
+    disponibilidad de un usuario son a lo sumo unas pocas decenas de
+    franjas, no una lista que crezca sin límite como clientes/reservas —
+    el punto 3 del brief pide paginación para listas grandes, esta no lo
+    es.
+  - **Autorización por objetivo, no por rol fijo del endpoint**: un
+    `empleado` solo puede crear/editar/desactivar SU PROPIO horario; un
+    `admin` puede gestionar el de cualquier usuario del negocio
+    (`errorCode: DISPONIBILIDAD_AJENA` si un empleado intenta tocar el de
+    otro). Por eso el controller no usa `@Roles` — la decisión depende del
+    `idUsuario` del body/registro, no puede resolverse antes de leer el
+    payload.
+  - **Validación de traslapes** (la que da nombre a la tarjeta): dos
+    franjas del mismo usuario y mismo `diaSemana` se traslapan si
+    `existente.horaInicio < nueva.horaFin` Y `existente.horaFin >
+    nueva.horaInicio` — implementado con `LessThan`/`MoreThan` de TypeORM
+    para que la comparación de horas la haga Postgres (tipo `time`), no
+    JS. Al editar, el propio registro se excluye del chequeo (`Not(id)`).
+    Casos límite probados: un horario justo a continuación de otro
+    (`12:00` empieza cuando el anterior termina) NO se considera traslape
+    — intervalos semiabiertos `[inicio, fin)`, igual que uno esperaría de
+    Google Calendar.
+  - Valida que `horaFin > horaInicio` y que el `idUsuario` exista dentro
+    del negocio actual antes de aceptar la franja.
+  - Sin soft delete propio (el ER no le da `eliminado_en` a esta tabla):
+    `DELETE` solo pone `activo:false`, consistente con el diseño de la
+    entidad.
+  - Tests: `disponibilidad.service.spec.ts` (11 casos) — autorización
+    empleado/admin en ambas direcciones, rango inválido, usuario
+    inexistente, traslape detectado y traslape evitado, exclusión del
+    propio registro al editar.
+  - Probado además contra la app real: empleado crea su propio horario →
+    empleado intenta crear el del admin (403) → admin crea uno traslapado
+    para el empleado (409) → admin crea uno consecutivo sin traslape
+    (201) → rango inválido (400) → listado filtrado por usuario.
+
 ## Tarea en curso
-Ninguna — lista para **"Backend: Módulo Disponibilidad — CRUD +
-validación de traslapes de horario"**. Esta es la última tarjeta de
-Backend antes de "Módulo Reservas" — ambas son las más sensibles del
-Seguimiento #2 (traslapes de horario y doble-booking bajo concurrencia).
+Ninguna — lista para **"Backend: Módulo Reservas — crear/cancelar/
+reprogramar + validación de choques de horario"**. Última tarjeta de
+Backend priorizada para el Seguimiento #2 — la más sensible de todas
+(doble-booking bajo concurrencia, transacción de base de datos).
 
 ## Seguridad
 ✅ La contraseña de la base de datos de Supabase, compartida en texto
