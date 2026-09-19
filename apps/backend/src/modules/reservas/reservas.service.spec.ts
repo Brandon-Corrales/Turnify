@@ -44,6 +44,10 @@ describe('ReservasService', () => {
   let usuarioRepo: ReturnType<typeof crearRepoMock>;
   let disponibilidadRepo: ReturnType<typeof crearRepoMock>;
   let tenantContext: TenantContextService;
+  let notificaciones: {
+    programarConfirmacion: ReturnType<typeof vi.fn>;
+    programarCancelacion: ReturnType<typeof vi.fn>;
+  };
   let service: ReservasService;
 
   beforeEach(() => {
@@ -59,6 +63,10 @@ describe('ReservasService', () => {
       find: vi.fn().mockResolvedValue([{ idDisponibilidad: 'disp-1' }]), // dentro de disponibilidad por defecto
     });
     tenantContext = new TenantContextService();
+    notificaciones = {
+      programarConfirmacion: vi.fn().mockResolvedValue(undefined),
+      programarCancelacion: vi.fn().mockResolvedValue(undefined),
+    };
     service = new ReservasService(
       dataSourceMock as any,
       reservaRepo as any,
@@ -67,6 +75,7 @@ describe('ReservasService', () => {
       usuarioRepo as any,
       disponibilidadRepo as any,
       tenantContext,
+      notificaciones as any,
     );
   });
 
@@ -127,6 +136,21 @@ describe('ReservasService', () => {
     });
   });
 
+  it('crear() programa una notificación de confirmación (fuera de la transacción, no bloquea la reserva si fallara)', async () => {
+    const reserva = await comoAdmin(() => service.crear(dtoValido));
+    expect(notificaciones.programarConfirmacion).toHaveBeenCalledWith(
+      reserva,
+      expect.objectContaining({ idCliente: CLIENTE_ID }),
+      expect.objectContaining({ idServicio: SERVICIO_ID }),
+    );
+  });
+
+  it('crear() no programa notificación si la reserva no llegó a crearse (traslape)', async () => {
+    managerMock.find.mockResolvedValue([{ idReserva: 'reserva-existente' }]);
+    await expect(comoAdmin(() => service.crear(dtoValido))).rejects.toThrow(ConflictException);
+    expect(notificaciones.programarConfirmacion).not.toHaveBeenCalled();
+  });
+
   it('cancelar() marca estado=cancelada', async () => {
     reservaRepo.findOne.mockResolvedValue({
       idReserva: 'reserva-1',
@@ -136,6 +160,21 @@ describe('ReservasService', () => {
     expect(reservaRepo.update).toHaveBeenCalledWith(
       { idReserva: 'reserva-1' },
       { estado: EstadoReserva.CANCELADA },
+    );
+  });
+
+  it('cancelar() programa una notificación de cancelación', async () => {
+    reservaRepo.findOne.mockResolvedValue({
+      idReserva: 'reserva-1',
+      estado: EstadoReserva.CONFIRMADA,
+      cliente: { idCliente: CLIENTE_ID },
+      servicio: { idServicio: SERVICIO_ID },
+    });
+    await service.cancelar('reserva-1');
+    expect(notificaciones.programarCancelacion).toHaveBeenCalledWith(
+      expect.objectContaining({ idReserva: 'reserva-1' }),
+      expect.objectContaining({ idCliente: CLIENTE_ID }),
+      expect.objectContaining({ idServicio: SERVICIO_ID }),
     );
   });
 

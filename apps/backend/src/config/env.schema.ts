@@ -25,6 +25,16 @@ const envSchema = z.object({
   JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
 
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
+
+  // Opcionales a propósito: el worker de Notificaciones detecta su
+  // ausencia en tiempo de ejecución y marca la notificación como fallida
+  // con un motivo claro, en vez de tumbar el arranque de todo el
+  // servidor por un secreto de una feature específica (el token de
+  // WhatsApp Cloud API, además, es de prueba y expira en 24h).
+  RESEND_API_KEY: z.string().optional(),
+  RESEND_FROM_EMAIL: z.string().default('onboarding@resend.dev'),
+  WHATSAPP_ACCESS_TOKEN: z.string().optional(),
+  WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

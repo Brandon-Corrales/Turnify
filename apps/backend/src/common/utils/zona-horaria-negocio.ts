@@ -20,3 +20,12 @@ export function aMomentoLocalCR(fecha: Date): MomentoLocalCR {
   const minuto = String(local.getUTCMinutes()).padStart(2, '0');
   return { diaSemana: local.getUTCDay(), horaMinuto: `${hora}:${minuto}` };
 }
+
+/** Fecha/hora legible en el idioma del cliente, para el texto de las notificaciones (punto 10 del brief). */
+export function formatearFechaHoraLocalCR(fecha: Date, idioma: 'es' | 'en'): string {
+  return new Intl.DateTimeFormat(idioma === 'en' ? 'en-US' : 'es-CR', {
+    timeZone: 'America/Costa_Rica',
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(fecha);
+}
