@@ -7,7 +7,6 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
-  Unique,
 } from 'typeorm';
 import { AuditableEntity } from './base.entity';
 import { CanalPreferido, Idioma, NivelCliente } from './enums';
@@ -15,8 +14,15 @@ import { Negocio } from './negocio.entity';
 import { Reserva } from './reserva.entity';
 import { Notificacion } from './notificacion.entity';
 
+/**
+ * Índice único parcial por negocio (solo `eliminado_en IS NULL`): un
+ * cliente soft-deleted libera su correo dentro de ese mismo negocio.
+ */
 @Entity('clientes')
-@Unique('uq_cliente_negocio_correo', ['idNegocio', 'correoElectronico'])
+@Index('uq_cliente_negocio_correo_activo', ['idNegocio', 'correoElectronico'], {
+  unique: true,
+  where: '"eliminado_en" IS NULL',
+})
 export class Cliente extends AuditableEntity {
   @PrimaryGeneratedColumn('uuid', { name: 'id_cliente' })
   idCliente!: string;

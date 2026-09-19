@@ -11,7 +11,7 @@ const useUrl = Boolean(process.env.DATABASE_URL);
 export const AppDataSource = new DataSource({
   type: 'postgres',
   ...(useUrl
-    ? { url: process.env.DATABASE_URL }
+    ? { url: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }
     : {
         host: process.env.DB_HOST ?? 'localhost',
         port: Number(process.env.DB_PORT ?? 5432),

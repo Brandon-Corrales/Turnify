@@ -34,9 +34,20 @@ tareas a costa del flujo mínimo.
     `GET /docs` → 200 (Swagger), ruta inexistente → `404` con el shape de
     error estándar.
 
+Después de esto, un ajuste pedido por el equipo: los índices únicos de
+correo en `negocios`/`usuarios`/`clientes` pasaron a ser parciales
+(`WHERE eliminado_en IS NULL`), ver detalle en Decisiones técnicas.
+
 ## Tarea en curso
 Ninguna — lista para **"Backend: Módulo Auth — registro de negocio + login
 JWT + refresh token + guards de rol"**.
+
+## Pendiente de seguridad — acción del equipo
+La contraseña de la base de datos de Supabase se compartió en texto plano
+en un chat. Funciona bien para desarrollo, pero como buena práctica
+alguien del equipo debería rotarla desde el dashboard de Supabase
+(Project Settings → Database → Reset database password) cuando sea
+conveniente, y actualizar el `.env` local de cada quien con la nueva.
 
 ## Cómo probar lo que ya existe
 ```bash
@@ -62,12 +73,16 @@ Admin demo: `admin@turnify.app` / `Turnify123!` (negocio "Barbería Demo Turnify
 - **9 entidades, no 8**: el ER lista 8 en el título de la tarjeta pero el
   cuerpo del punto 1 describe 9 tablas (incluye SUSCRIPCION). Se
   implementaron las 9.
-- **Postgres local vía docker-compose para desarrollo**, en vez de crear ya
-  el proyecto real en Supabase: la creación del proyecto Supabase requiere
-  la cuenta/credenciales del equipo. `DATABASE_URL` en `.env` tiene
-  prioridad sobre las variables sueltas — para pasar a Supabase en
-  producción solo hay que setear esa variable con la connection string que
-  entregue el dashboard de Supabase, sin tocar código.
+- **Supabase real ya conectado** (proyecto del equipo, pooler
+  `aws-0-us-east-1.pooler.supabase.com`): `DATABASE_URL` en el `.env` local
+  (nunca commiteado) apunta ahí y tiene prioridad sobre las variables
+  sueltas de Postgres local. Se agregó `ssl: { rejectUnauthorized: false }`
+  en `data-source.ts` y en `app.module.ts` cuando hay `DATABASE_URL` — el
+  pooler de Supabase exige TLS y su cadena de certificados no siempre
+  valida limpio contra el store por defecto de Node (patrón documentado
+  por Supabase para node-postgres). Migraciones y seed ya corridos ahí
+  también; docker-compose sigue siendo el default para desarrollo sin
+  tocar el recurso compartido.
 - **bcryptjs en vez de bcrypt**: `bcrypt` trae `@mapbox/node-pre-gyp` →
   `tar` con una vulnerabilidad crítica activa (ver advisories GHSA-34x7-*,
   entre otros) y requiere toolchain nativo para compilar en Windows.
@@ -80,12 +95,13 @@ Admin demo: `admin@turnify.app` / `Turnify123!` (negocio "Barbería Demo Turnify
   de negocio/usuario/cliente/servicio es soft-delete (no dispara cascada
   real), así que esto es una red de seguridad para un borrado físico real
   (ej. purga tipo GDPR de un negocio), no el flujo habitual.
-- **Límite conocido, pendiente de confirmar con el equipo**: el índice
-  único de `correo_electronico` en `negocios` y `usuarios` no es parcial
-  (no excluye `eliminado_en IS NOT NULL`), así que un correo de un negocio
-  o usuario soft-deleted no se puede reutilizar todavía. Si el equipo lo
-  necesita, se resuelve con un índice único parcial en una migración
-  posterior.
+- **Resuelto — índices únicos de correo ahora son parciales** (migración
+  `PartialUniqueEmailIndexes`): `negocios.correo_electronico`,
+  `usuarios.correo_electronico` y `(clientes.id_negocio,
+  clientes.correo_electronico)` solo aplican `WHERE eliminado_en IS NULL`.
+  Un correo de una cuenta soft-deleted ya se puede reutilizar en un
+  registro nuevo. Probado con un INSERT/ROLLBACK manual contra Postgres
+  local. Aplicada tanto en local como en el Supabase real del equipo.
 
 - **NestJS 12, no 10**: se verificó en npm (`npm view @nestjs/core dist-tags`)
   que 10.x ya es la etiqueta `old` y 12.x es `latest` a esta fecha — no se
@@ -96,9 +112,8 @@ Admin demo: `admin@turnify.app` / `Turnify123!` (negocio "Barbería Demo Turnify
   `apps/backend/src/database/data-source.ts` (CLI de TypeORM) como
   `app.module.ts` (`ConfigModule.forRoot({ envFilePath: ... })`) apuntan
   explícitamente al `.env` de la raíz, para no mantener dos copias de las
-  mismas credenciales de Postgres. El README todavía dice "cp .env.example
-  .env" parado en `apps/backend/` — pendiente de corregir esa línea a que
-  apunte a la raíz.
+  mismas credenciales de Postgres. El README ya quedó actualizado con este
+  flujo.
 - **`@nestjs/cli` bajo Node 22.17 tira un warning EBADENGINE** (pide
   22.22+ para los schematics de `@angular-devkit/schematics`, usados por
   `nest generate`). No bloquea `nest build`/`start`, que es lo único usado
