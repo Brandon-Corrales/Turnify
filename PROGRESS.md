@@ -171,9 +171,46 @@ migrar el backend a ESM ni parchear Jest con Babel.
     (200, cambio persistido) → sin token (401) → `DELETE` (204) → `GET`
     posterior (404, confirma la desactivación).
 
+- **Backend: Módulo Usuarios — CRUD + roles admin/empleado** ✅
+  - `POST /usuarios` (crear empleado/admin), `GET /usuarios` (paginado),
+    `GET /usuarios/:id`, `PATCH /usuarios/:id`, `DELETE /usuarios/:id`
+    (desactivar). Crear/editar/desactivar son solo ADMIN vía `@Roles`;
+    listar/ver son de cualquier rol autenticado del negocio.
+  - **Primer consumidor real de `TenantScopedRepository` /
+    `TenantRepositoryProvider`** (las tarjetas de DB y del guard
+    multi-tenant dejaron el mecanismo listo, este módulo es el que
+    finalmente lo usa) — el servicio nunca menciona `idNegocio`
+    explícitamente, todo el filtrado por tenant queda delegado al wrapper.
+  - **Regla de negocio nueva, no pedida literal pero necesaria por
+    integridad de datos**: no se puede desactivar ni degradar de rol al
+    último ADMIN activo de un negocio (`errorCode: ULTIMO_ADMIN_REQUERIDO`)
+    — evitaría dejar un negocio sin nadie que lo administre.
+  - Al desactivar un usuario también se limpia su `refresh_token_hash`
+    (mismo criterio que logout), para que no pueda seguir renovando su
+    sesión aunque su access token de corta duración no haya expirado
+    todavía.
+  - `TenantScopedRepository` ganó `findAndCount()` (find+count en una sola
+    llamada, ya con `idNegocio` inyectado) para soportar el listado
+    paginado — reutilizable por Clientes/Servicios/Reservas más adelante.
+  - Se extrajo `EsContrasenaValida()` (`common/validation/`) para no
+    repetir la regex/mensaje de política de contraseña entre
+    `RegistroNegocioDto` y `CrearUsuarioDto`.
+  - Se creó `PaginationQueryDto`/`PaginatedResult<T>`
+    (`common/pagination/`) como el mecanismo compartido de paginación que
+    pide el punto 3 del brief para todo endpoint de listado — primer uso
+    aquí, listo para reusar en Clientes/Servicios/Reservas.
+  - Tests: `usuarios.service.spec.ts` (9 casos) — hash de contraseña,
+    `EMAIL_YA_REGISTRADO`, paginación, `USUARIO_NO_ENCONTRADO`, permitir
+    degradar un admin si hay otro admin activo, bloquear degradar/desactivar
+    al último admin, y que desactivar limpia el refresh token.
+  - Probado además contra la app real: crear empleado → listar (paginado,
+    sin `contrasenaHash` filtrado) → bloquear desactivar al único admin
+    (409) → desactivar empleado (204) → `GET` posterior (404) → correo
+    duplicado (409) → id no-UUID (400, no 500) → un `empleado` recibe 403
+    al intentar crear usuarios pero sí puede listarlos (200).
+
 ## Tarea en curso
-Ninguna — lista para **"Backend: Módulo Usuarios — CRUD + roles
-admin/empleado"**.
+Ninguna — lista para **"Backend: Módulo Clientes — CRUD"**.
 
 ## Seguridad
 ✅ La contraseña de la base de datos de Supabase, compartida en texto

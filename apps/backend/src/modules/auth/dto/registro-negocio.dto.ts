@@ -1,9 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
-
-/** Política mínima de contraseña: 8+ caracteres, al menos una letra y un número. */
-const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d).+$/;
-const PASSWORD_MESSAGE = 'La contraseña debe tener al menos 8 caracteres, una letra y un número';
+import { IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { EsContrasenaValida } from '../../../common/validation/es-contrasena-valida.decorator';
 
 export class RegistroNegocioDto {
   @ApiProperty({ example: 'Barbería El Corte' })
@@ -45,8 +42,6 @@ export class RegistroNegocioDto {
   correoAdmin!: string;
 
   @ApiProperty({ example: 'Turnify123' })
-  @IsString()
-  @MinLength(8, { message: PASSWORD_MESSAGE })
-  @Matches(PASSWORD_REGEX, { message: PASSWORD_MESSAGE })
+  @EsContrasenaValida()
   contrasena!: string;
 }

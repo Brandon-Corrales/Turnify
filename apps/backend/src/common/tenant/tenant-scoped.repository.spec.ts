@@ -15,6 +15,7 @@ function crearRepoMock() {
     find: vi.fn().mockResolvedValue([]),
     findOne: vi.fn().mockResolvedValue(null),
     count: vi.fn().mockResolvedValue(0),
+    findAndCount: vi.fn().mockResolvedValue([[], 0]),
     create: vi.fn((data) => data),
     save: vi.fn((entity) => Promise.resolve(entity)),
     update: vi.fn().mockResolvedValue({ affected: 1 }),
@@ -81,6 +82,13 @@ describe('TenantScopedRepository', () => {
 
     await runComoNegocio(tenantContext, NEGOCIO_A, () => tenantRepo.softDelete({ idFake: '1' } as any));
     expect(repoMock.softDelete).toHaveBeenCalledWith(expect.objectContaining({ idFake: '1', idNegocio: NEGOCIO_A }));
+  });
+
+  it('findAndCount() también inyecta idNegocio, para listados paginados', async () => {
+    await runComoNegocio(tenantContext, NEGOCIO_A, () => tenantRepo.findAndCount({ skip: 0, take: 10 } as any));
+    expect(repoMock.findAndCount).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 0, take: 10, where: { idNegocio: NEGOCIO_A } }),
+    );
   });
 
   it('nunca deja ver datos de otro negocio: dos contextos concurrentes no se mezclan', async () => {
