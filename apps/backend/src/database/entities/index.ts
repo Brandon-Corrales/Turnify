@@ -9,3 +9,4 @@ export * from './notificacion.entity';
 export * from './disponibilidad.entity';
 export * from './excepcion-disponibilidad.entity';
 export * from './suscripcion.entity';
+export * from './plantilla-servicio.entity';

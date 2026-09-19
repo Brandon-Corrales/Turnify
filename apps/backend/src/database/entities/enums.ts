@@ -60,3 +60,22 @@ export enum EstadoSuscripcion {
   SUSPENDIDA = 'suspendida',
   CANCELADA = 'cancelada',
 }
+
+/**
+ * Verticales soportadas (punto 2 del brief) — Turnify es una plantilla
+ * funcional que se amolda al rubro del negocio, no una app de un solo
+ * rubro. Lista tomada de categorías reales de plataformas de reservas ya
+ * establecidas (Fresha, Vagaro, SalonBoost), no inventada.
+ */
+export enum TipoNegocio {
+  BARBERIA = 'barberia',
+  SALON_BELLEZA = 'salon_belleza',
+  CLINICA = 'clinica',
+  CLINICA_DENTAL = 'clinica_dental',
+  SPA = 'spa',
+  ESTUDIO_TATUAJES = 'estudio_tatuajes',
+  ENTRENAMIENTO_PERSONAL = 'entrenamiento_personal',
+  ESTETICA = 'estetica',
+  VETERINARIA_GROOMING = 'veterinaria_grooming',
+  OTRO = 'otro',
+}
