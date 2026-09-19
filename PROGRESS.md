@@ -430,9 +430,60 @@ el primer commit como pide el brief. Ver detalle en el commit
     se aplican, el toggle de `dark` funciona, y la consola del navegador
     no tiene errores.
 
+- **Frontend: Set de componentes UI compartidos (Button, Input, Toast,
+  Modal, Skeleton, Banner)** ✅ (`src/components/ui/`)
+  - `Boton`: variantes primario/secundario/destructivo/icono, estados
+    default/hover/disabled/loading (spinner), altura mínima 44px (Ley de
+    Fitts, punto 12 — zona de pulgar cómoda en mobile), micro-interacción
+    de Framer Motion en hover/tap.
+  - `Input`: mismo indicador de campo obligatorio (asterisco rojo) y mismo
+    estado de error (borde rojo + mensaje debajo) en todo el sistema,
+    ligado con `aria-describedby` de verdad (punto 10, accesibilidad) —
+    probado que el mensaje de error se asocia al campo, no solo se ve
+    parecido.
+  - **Toast**: `ToastProvider` + `useToast()` — un único punto de entrada
+    para disparar notificaciones desde cualquier parte del sistema, 4
+    variantes con el mismo color/ícono/duración (éxito y error con
+    duración distinta a propósito: el error da más tiempo de lectura).
+    `aria-live="polite"` para lectores de pantalla.
+  - **Modal**: shell genérico con `createPortal` (evita que un `overflow`
+    de un contenedor padre lo recorte) + **trampa de foco real** (Tab
+    cicla dentro del diálogo, Escape cierra, el foco vuelve al elemento
+    que abrió el modal al cerrar) — verificado con teclado de verdad en
+    Chrome, no solo revisado a simple vista.
+  - `ConfirmDialog`: construido sobre `Modal`, el único punto de
+    confirmación para TODA acción destructiva del sistema — mismo texto
+    "Cancelar"/"Confirmar" siempre, nunca redactado de nuevo por módulo.
+  - `Skeleton`: átomo base + 3 patrones de composición
+    (`SkeletonText`/`SkeletonCard`/`SkeletonTable`) para los 3 tipos de
+    contenido que pide el punto 7 (texto, tarjeta, tabla) — Dashboard,
+    Calendario, Reportes y Notificaciones los reusan tal cual en vez de
+    inventar un spinner distinto cada uno.
+  - `Banner`: mismo set de 4 variantes que Toast (comparten
+    `feedback-variants.ts`, un solo lugar para colores/íconos de
+    feedback en todo el sistema), para avisos persistentes tipo
+    "suscripción vencida"/"negocio inactivo".
+  - `MotionConfig reducedMotion="user"` agregado en `main.tsx`: la regla
+    CSS de `prefers-reduced-motion` de la tarjeta de Setup solo cubre
+    animaciones CSS puras — las animaciones de Framer Motion (whileHover,
+    whileTap, AnimatePresence) son manejadas por JS y necesitan este
+    wrapper aparte para respetar la preferencia del sistema operativo.
+  - Se agregaron `clsx` + `tailwind-merge` (utilidad `cn()` en
+    `lib/cn.ts`) y `lucide-react` para íconos — no estaban en el stack
+    obligatorio del brief pero son estándar de facto para este patrón de
+    componentes con variantes en Tailwind, de bajo riesgo.
+  - **Probado de verdad en un Chrome real** (no solo compilado): las 5
+    variantes de botón, el estado de error del Input, un toast de éxito y
+    uno de error disparados por click, el `ConfirmDialog` abierto con
+    backdrop blur, navegación por teclado dentro del modal (Tab cicla
+    Cerrar→Cancelar→Confirmar→Cerrar), Escape cierra y devuelve el foco,
+    y modo oscuro correcto en los 6 componentes a la vez. Se armó una
+    página de showcase temporal para esta prueba y se borró antes de
+    cerrar la tarjeta — no queda código de demostración en el repo.
+
 ## Tarea en curso
-Ninguna — lista para **"Frontend: Set de componentes UI compartidos
-(Button, Input, Toast, Modal, Skeleton, Banner)"**.
+Ninguna — lista para **"Frontend: Login / Registro conectado al módulo
+Auth"**.
 
 ## Seguridad
 ✅ La contraseña de la base de datos de Supabase, compartida en texto
