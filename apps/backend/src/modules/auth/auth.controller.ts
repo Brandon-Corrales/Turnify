@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegistroNegocioDto } from './dto/registro-negocio.dto';
@@ -13,13 +14,17 @@ import { JwtPayload } from './interfaces/jwt-payload.interface';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  // Límite más estricto que el global (60/min) para los endpoints públicos
+  // más sensibles a fuerza bruta/abuso: registro, login y refresh.
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('registro')
   registrar(@Body() dto: RegistroNegocioDto) {
     return this.authService.registrarNegocio(dto);
   }
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @Post('login')
   login(@Body() dto: LoginDto) {
@@ -27,6 +32,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @Post('refresh')
   refrescar(@Body() dto: RefreshTokenDto) {

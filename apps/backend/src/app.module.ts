@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import * as path from 'path';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { validateEnv, Env } from './config/env.schema';
 import { listaEntidades } from './database/entity-list';
 import { HealthModule } from './health/health.module';
@@ -13,6 +15,7 @@ import { ClientesModule } from './modules/clientes/clientes.module';
 import { ServiciosModule } from './modules/servicios/servicios.module';
 import { DisponibilidadModule } from './modules/disponibilidad/disponibilidad.module';
 import { ReservasModule } from './modules/reservas/reservas.module';
+import { PlantillasServicioModule } from './modules/plantillas-servicio/plantillas-servicio.module';
 
 @Module({
   imports: [
@@ -44,6 +47,13 @@ import { ReservasModule } from './modules/reservas/reservas.module';
         };
       },
     }),
+    // Límite global por IP (punto 15 del brief); los endpoints públicos
+    // sensibles a fuerza bruta (login/registro/refresh) se sobrescriben con
+    // un límite más estricto vía @Throttle en su propio controller.
+    ThrottlerModule.forRoot({
+      throttlers: [{ ttl: 60_000, limit: 60 }],
+      errorMessage: 'Demasiadas solicitudes. Espera un minuto e intenta de nuevo.',
+    }),
     HealthModule,
     TenantModule,
     AuthModule,
@@ -53,6 +63,8 @@ import { ReservasModule } from './modules/reservas/reservas.module';
     ServiciosModule,
     DisponibilidadModule,
     ReservasModule,
+    PlantillasServicioModule,
   ],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

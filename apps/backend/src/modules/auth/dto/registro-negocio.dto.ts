@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsEmail, IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { EsContrasenaValida } from '../../../common/validation/es-contrasena-valida.decorator';
+import { TipoNegocio } from '../../../database/entities';
 
 export class RegistroNegocioDto {
   @ApiProperty({ example: 'Barbería El Corte' })
@@ -9,11 +10,11 @@ export class RegistroNegocioDto {
   @MaxLength(150)
   nombreNegocio!: string;
 
-  @ApiProperty({ example: 'barberia' })
-  @IsString()
-  @MinLength(2)
-  @MaxLength(100)
-  tipoNegocio!: string;
+  @ApiProperty({ example: TipoNegocio.BARBERIA, enum: TipoNegocio })
+  @IsEnum(TipoNegocio, {
+    message: `tipoNegocio debe ser uno de: ${Object.values(TipoNegocio).join(', ')}`,
+  })
+  tipoNegocio!: TipoNegocio;
 
   @ApiProperty({ example: 'contacto@elcorte.com' })
   @IsEmail()
