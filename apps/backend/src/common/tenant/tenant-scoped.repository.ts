@@ -54,6 +54,11 @@ export class TenantScopedRepository<T extends ConNegocio> {
     return this.repo.count({ ...options, where: this.withTenant(options.where) });
   }
 
+  /** Para endpoints de listado paginado (find + count en una sola llamada, como Repository.findAndCount). */
+  async findAndCount(options: FindManyOptions<T> = {}): Promise<[T[], number]> {
+    return this.repo.findAndCount({ ...options, where: this.withTenant(options.where) });
+  }
+
   /** Crea la entidad en memoria con idNegocio ya fijado (no persiste, igual que Repository.create). */
   create(data: DeepPartial<Omit<T, 'idNegocio'>>): T {
     return this.repo.create({ ...data, idNegocio: this.tenantContext.idNegocio } as DeepPartial<T>);
