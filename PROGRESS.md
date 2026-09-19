@@ -376,13 +376,63 @@ migrar el backend a ESM ni parchear Jest con Babel.
     hacia un horario libre (200), y el filtro `desde`/`hasta` para el
     calendario.
 
+Con las tarjetas de Backend del Seguimiento #2 cerradas, se agregó
+además (no era su propia tarjeta, pero cerraba un vacío del punto 13 del
+brief) **ESLint + Prettier en el backend** — nunca los había tenido desde
+el primer commit como pide el brief. Ver detalle en el commit
+`chore: agregar ESLint + Prettier en backend...`.
+
+- **Frontend: Setup Vite + TypeScript + Tailwind + estructura de
+  carpetas** ✅
+  - Versiones verificadas en npm, no de memoria (React 19.3, Vite 8.3,
+    Tailwind 4.3 — CSS-first config, ESLint 10, TanStack Query 5.103,
+    React Router 7.18). **TypeScript se fijó en 5.9.3, NO en la 7.0.2 que
+    marca "latest"**: `typescript-eslint`, la pieza que integra ESLint
+    con TS, declara como peer dependency `typescript: '>=4.8.4 <6.1.0'` —
+    TS7 (el compilador nativo reescrito en Go) todavía no es compatible
+    con esa cadena de herramientas. Confirmado con
+    `npm view typescript-eslint peerDependencies` antes de decidir, no
+    asumido.
+  - Estructura exacta del punto 16 del brief:
+    `components/{ui,forms,layout}/`, `pages/`, `i18n/locales/` (todas
+    vacías por ahora, con `.gitkeep` — las llena cada tarjeta específica
+    que corresponda, empezando por "Frontend: Set de componentes UI
+    compartidos"). Además `lib/` (cliente de TanStack Query) y `assets/`,
+    convenciones estándar de Vite no listadas explícitamente en el brief
+    pero de bajo riesgo y ya esperadas por la comunidad React.
+  - **Tailwind v4 usa configuración CSS-first** (`@theme` en
+    `src/index.css`), no `tailwind.config.js` — cambio real de la
+    herramienta entre v3 y v4, verificado antes de escribir el setup.
+    Design tokens del punto 6: paleta `primary`/`secondary` (escalas
+    50-900) y `success`/`warning`/`danger`/`info` para el futuro
+    Toast/Alert de 4 variantes (punto 7), más radios de borde
+    (`--radius-sm/md/lg/xl`).
+  - **Dark mode preparado desde ya, aunque su tarjeta es de después del
+    Seguimiento #2**: `@custom-variant dark (&:where(.dark, .dark *))`
+    hace que `dark:` funcione por clase en `<html>` en vez de solo por
+    `prefers-color-scheme` — así ningún componente que se construya
+    mientras tanto (UI kit, Login, Calendario) necesita retocarse cuando
+    llegue el toggle real; ese toggle solo tendrá que alternar la clase.
+    Verificado en un navegador real (Chrome vía automatización): agregar
+    la clase `dark` cambia el fondo/texto/color primario correctamente.
+  - `prefers-reduced-motion` respetado a nivel de CSS global (punto 6:
+    "ninguna animación debe bloquear la interacción"), antes de que
+    exista ninguna animación real de Framer Motion todavía.
+  - Alias `@/*` → `src/*` configurado tanto en `tsconfig.app.json` como
+    en `vite.config.ts` (deben coincidir siempre que se agregue uno).
+  - Providers ya montados en `main.tsx` (`QueryClientProvider`,
+    `BrowserRouter`) con una única ruta placeholder en `App.tsx` — las
+    rutas reales llegan con cada pantalla en su propia tarjeta, no se
+    adelantan aquí.
+  - Probado de verdad: `tsc -b` y `vite build` sin errores/warnings,
+    `eslint .` limpio, y el dev server abierto en un Chrome real vía
+    automatización — la página renderiza, los tokens de color de Tailwind
+    se aplican, el toggle de `dark` funciona, y la consola del navegador
+    no tiene errores.
+
 ## Tarea en curso
-Con esto, **todas las tarjetas de Backend priorizadas para el Seguimiento
-#2 están cerradas** (Setup, Auth, guard multi-tenant, y los módulos de
-Negocios/Usuarios/Clientes/Servicios/Disponibilidad/Reservas). Lo que
-sigue según el orden del punto 17 es **Frontend**, empezando por
-**"Frontend: Setup Vite + TypeScript + Tailwind + estructura de
-carpetas"**.
+Ninguna — lista para **"Frontend: Set de componentes UI compartidos
+(Button, Input, Toast, Modal, Skeleton, Banner)"**.
 
 ## Seguridad
 ✅ La contraseña de la base de datos de Supabase, compartida en texto
@@ -406,6 +456,12 @@ curl -X POST localhost:3000/auth/login -H "Content-Type: application/json" \
 # -> { usuario: {...}, tokens: { accessToken, refreshToken } }
 curl -X POST localhost:3000/auth/refresh -H "Content-Type: application/json" \
   -d '{"refreshToken":"<el de arriba>"}'
+```
+
+```bash
+cd apps/frontend
+npm install
+npm run dev       # http://localhost:5173
 ```
 
 ## Decisiones técnicas tomadas
