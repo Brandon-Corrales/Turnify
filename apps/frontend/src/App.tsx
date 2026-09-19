@@ -4,6 +4,7 @@ import LoginPage from '@/pages/LoginPage';
 import RegistroPage from '@/pages/RegistroPage';
 import InicioPage from '@/pages/InicioPage';
 import CalendarioPage from '@/pages/CalendarioPage';
+import OnboardingPage from '@/pages/OnboardingPage';
 
 function App() {
   return (
@@ -23,6 +24,14 @@ function App() {
         element={
           <RutaProtegida>
             <CalendarioPage />
+          </RutaProtegida>
+        }
+      />
+      <Route
+        path="/onboarding"
+        element={
+          <RutaProtegida>
+            <OnboardingPage />
           </RutaProtegida>
         }
       />

@@ -1,11 +1,19 @@
 import { forwardRef, useId, type InputHTMLAttributes } from 'react';
 import { cn } from '@/lib/cn';
+import { CLASES_FOCO_VARIANTE, type VarianteCampo } from './campo-variante';
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
   error?: string;
   hint?: string;
   requerido?: boolean;
+  /**
+   * Convención obligatoria del punto 8 del brief: el foco indica por color
+   * si el formulario crea (verde) o edita (azul) un registro. Sin variante,
+   * usa el foco neutro (indigo) — para formularios que no son de
+   * crear/editar un registro, como Login.
+   */
+  variante?: VarianteCampo;
 }
 
 /**
@@ -15,7 +23,7 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
  * en qué formulario esté — nunca reinventado por pantalla.
  */
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, hint, requerido, id, className, ...props }, ref) => {
+  ({ label, error, hint, requerido, variante, id, className, ...props }, ref) => {
     const idGenerado = useId();
     const inputId = id ?? idGenerado;
     const errorId = `${inputId}-error`;
@@ -45,7 +53,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             'dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:disabled:bg-slate-900',
             error
               ? 'border-danger focus:ring-danger'
-              : 'border-slate-300 focus:border-primary-500 focus:ring-primary-500 dark:border-slate-600',
+              : cn(
+                  'border-slate-300 dark:border-slate-600',
+                  CLASES_FOCO_VARIANTE[variante ?? 'neutro'],
+                ),
             className,
           )}
           {...props}

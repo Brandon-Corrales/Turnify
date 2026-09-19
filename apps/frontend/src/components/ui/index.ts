@@ -1,5 +1,7 @@
 export * from './Button';
 export * from './Input';
+export * from './Select';
+export * from './campo-variante';
 export * from './Modal';
 export * from './ConfirmDialog';
 export * from './Skeleton';

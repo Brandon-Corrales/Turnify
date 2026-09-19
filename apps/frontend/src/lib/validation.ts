@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TIPOS_NEGOCIO } from './tipo-negocio';
 
 /**
  * Misma política que EsContrasenaValida() en el backend (apps/backend/src/
@@ -27,7 +28,7 @@ export type LoginFormValues = z.infer<typeof loginSchema>;
 
 export const registroSchema = z.object({
   nombreNegocio: z.string().min(2, 'Mínimo 2 caracteres').max(150),
-  tipoNegocio: z.string().min(2, 'Mínimo 2 caracteres').max(100),
+  tipoNegocio: z.enum(TIPOS_NEGOCIO, 'Selecciona un tipo de negocio'),
   correoNegocio: z.string().min(1, 'El correo es obligatorio').email('Correo inválido'),
   telefonoNegocio: z.string().max(30).optional().or(z.literal('')),
   nombreCompletoAdmin: z.string().min(2, 'Mínimo 2 caracteres').max(150),
