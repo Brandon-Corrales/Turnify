@@ -596,19 +596,135 @@ el primer commit como pide el brief. Ver detalle en el commit
     (el destino de ese cambio) funciona correctamente al seleccionarla
     a mano.
 
-## Tarea en curso
-Ninguna — Seguimiento #2 completo (DB → Auth → guard multi-tenant →
-Negocios/Usuarios/Clientes/Servicios/Disponibilidad/Reservas en backend →
-Setup/UI-kit/Login-Registro/Calendario en frontend). Punto de decisión:
-seguir con las tarjetas de **Seguridad** pendientes (p. ej. rate limiting
-en endpoints públicos) o pasar a las tarjetas marcadas "después del
-Seguimiento #2" (freemium, chatbot, notificaciones, pagos, dark mode,
-i18n, responsive) — pendiente de confirmar con el equipo.
+## Seguridad — categoría cerrada completa
+Las 9 tarjetas de la categoría (ver docs/spec.md punto 18) ya estaban
+implementadas desde el módulo Auth en adelante, salvo 2 que se cerraron
+ahora explícitamente:
 
-## Seguridad
-✅ La contraseña de la base de datos de Supabase, compartida en texto
-plano en un chat, ya fue rotada por el equipo y se confirmó que
-`DATABASE_URL` sigue conectando (cero cambios de código necesarios).
+- **Seguridad: Rate limiting en endpoints públicos (reserva pública,
+  login)** ✅ (nueva) — `@nestjs/throttler` 6.7.0. Límite global de 60
+  req/min por IP (`ThrottlerGuard` como `APP_GUARD` en `AppModule`), y un
+  límite más estricto de 5 req/min en `/auth/registro`, `/auth/login` y
+  `/auth/refresh` (`@Throttle`) por ser los endpoints públicos más
+  expuestos a fuerza bruta/abuso — no hay todavía un endpoint de reserva
+  pública (es tarjeta de después del Seguimiento #2), así que ese caso se
+  cubrirá con el mismo patrón cuando se construya. La respuesta 429 pasa
+  por el mismo filtro global de errores (`errorCode: DEMASIADAS_SOLICITUDES`).
+  Verificado contra el servidor real (Postgres real, sin mocks): 5
+  intentos de login seguidos devuelven 401, el 6to devuelve 429 con el
+  shape estándar; no hay test automatizado de esto porque los tests
+  actuales son unitarios contra servicios (sin un servidor HTTP real
+  escuchando) — automatizarlo es un caso natural para la futura tarjeta
+  de QA "Tests de integración de endpoints principales".
+- **Seguridad: npm audit de dependencias antes de cada entrega/seguimiento**
+  ⚠️ pendiente de re-confirmar — `npm audit` en los 3 workspaces devolvió
+  503 (registry.npmjs.org en mantenimiento) en todos los intentos de esta
+  sesión. La última corrida exitosa (tarjeta de Auth) dio 0
+  vulnerabilidades tras cambiar de `bcrypt` a `bcryptjs`. Correr `npm
+  audit` de nuevo en cuanto el registry vuelva, antes de dar por cerrada
+  esta tarjeta.
+- Las 7 restantes ya estaban cubiertas por trabajo previo, cerradas aquí
+  solo formalmente: hasheo bcryptjs + política de contraseña (Auth), JWT
+  corto + refresh rotativo con detección de reuso (Auth), guard de rol
+  (`RolesGuard`, Auth), guard multi-tenant (`TenantContextInterceptor` +
+  `TenantScopedRepository`), `class-validator` en todos los DTOs, `.env`
+  fuera del repo (`.gitignore` desde el primer commit), y CORS restringido
+  a un solo origen configurable por env (`CORS_ORIGIN`, `credentials:
+  true`) en `main.ts` desde la tarjeta de Setup. La única tarjeta de
+  Seguridad que NO aplica todavía es "Rate limiting en el
+  endpoint/gateway del chatbot" — no tiene sentido cerrarla porque el
+  chatbot (punto 16 del brief) ni siquiera se ha empezado a construir.
+
+También de esta sesión: la contraseña de la base de datos de Supabase,
+que se había compartido en texto plano en un chat, ya fue rotada por el
+equipo y se confirmó que `DATABASE_URL` sigue conectando (cero cambios de
+código necesarios).
+
+## Plantillas de servicio por vertical (punto 2 del brief) — 5 tarjetas nuevas
+Agregadas a docs/spec.md después de haber cerrado DB/Backend/Frontend la
+primera vez — son incrementales sobre módulos ya terminados (Auth,
+Negocios, Servicios), no un rediseño.
+
+- **DB: Seed del catálogo estático de plantillas de servicio por
+  tipo_negocio** ✅ — nueva tabla `plantillas_servicio` (entidad
+  `PlantillaServicio`, migración `PlantillaServicioCatalog`, generada con
+  `migration:generate` contra el Postgres real y revisada a mano: el
+  auto-generador de TypeORM propuso de más un `DROP CONSTRAINT` sobre la
+  exclusion constraint de no-traslape de Reservas —un falso positivo
+  documentado porque esa constraint se creó con SQL crudo, TypeORM no la
+  reconoce como parte de la entidad— se quitó esa línea antes de correr
+  la migración). Sin `id_negocio` (no es dato de un tenant) y sin
+  endpoints de escritura. Sembrada con `npm run seed:plantillas` (dentro
+  de `apps/backend`): 60 filas, 6-9 servicios sugeridos por cada una de
+  las 9 verticales con plantilla (`otro` no tiene, por diseño). El seed
+  hace `TRUNCATE` + reinsertar completo, así que correrlo de nuevo tras
+  ajustar el catálogo en docs/spec.md no duplica filas.
+- **Backend: Validar tipo_negocio (enum de verticales) en el DTO de
+  registro** ✅ — nuevo enum `TipoNegocio` en `database/entities/enums.ts`
+  (10 valores del punto 1 del brief), usado por `PlantillaServicio.tipoNegocio`
+  y ahora por `RegistroNegocioDto.tipoNegocio` vía `@IsEnum`. Antes era
+  `@IsString()` de texto libre. Se mantiene la columna `negocios.tipo_negocio`
+  como `varchar` (sin migrar a un enum de Postgres) porque el brief pide
+  explícitamente validar en el DTO, no rediseñar el módulo Auth ya
+  cerrado. Nuevo módulo de solo lectura `plantillas-servicio`
+  (`GET /plantillas-servicio?tipoNegocio=...`, autenticado, sin guard de
+  tenant porque el dato es global) para que el frontend consuma el
+  catálogo. Con test unitario propio y verificado contra el servidor
+  real: `tipoNegocio` inválido → 400 con el mensaje que lista los valores
+  válidos; `tipoNegocio` válido → 201 y el catálogo correcto por `GET
+  /plantillas-servicio`.
+- **Frontend: Componente Input compartido — variante crear (foco verde)
+  vs editar (foco azul)** ✅ — nuevo `campo-variante.ts` (`CLASES_FOCO_VARIANTE`,
+  compartido) y prop `variante?: 'crear' | 'editar' | 'neutro'` en `Input`;
+  nuevo componente `Select` (misma API que `Input`: label, error, hint,
+  requerido, aria-describedby) para no reinventar un `<select>` suelto la
+  próxima vez que haga falta uno en un formulario — usado ahora en
+  `RegistroPage` para el campo Tipo de negocio (antes era texto libre,
+  ver la tarjeta de abajo). Sin variante, el foco queda neutro (indigo,
+  como antes) — usado así en Login, que no es un formulario de
+  crear/editar un registro. Verificado en un Chrome real: foco verde
+  visible en los campos de Registro.
+- **Frontend: Paso de onboarding tras el registro — selección de tipo de
+  negocio + plantilla de servicios sugeridos** ✅ — `RegistroPage` cambia
+  el campo Tipo de negocio de texto libre a un `Select` con las 10
+  verticales fijas (antes se podía escribir cualquier texto). Tras
+  registrarse, en vez de ir directo a `/`, redirige a la nueva
+  `OnboardingPage` (`/onboarding`, ruta protegida): trae el negocio recién
+  creado (`GET /negocios/mi-negocio`) y su catálogo de plantillas (`GET
+  /plantillas-servicio`), muestra checkboxes ("¿cuáles ofreces?"), y al
+  continuar crea un `POST /servicios` por cada una marcada (precio
+  sugerido de arranque ₡5000 — no hay un precio real de referencia en el
+  catálogo, el admin lo edita después, tal como pide el brief). Si el
+  tipo de negocio es `otro` o no hay plantillas, muestra directo el
+  mensaje de "crea tus servicios desde cero" con un botón para continuar
+  sin crear nada. Nuevos `lib/negocios-api.ts`, `lib/plantillas-servicio-api.ts`,
+  `lib/servicios-api.ts`.
+- **QA: Verificar que el flujo de plantillas por vertical no rompe el
+  registro/onboarding ya existente** ✅ — probado de verdad contra
+  backend + Postgres reales: registro con `tipoNegocio=spa` → onboarding
+  muestra las 7 plantillas de spa → se seleccionan 2 → "Crear 2
+  servicio(s) y continuar" → redirige a `/` → confirmado por API que los
+  2 servicios quedaron creados con nombre/duración correctos y el precio
+  por defecto. Registro con `tipoNegocio=otro` → confirmado que no
+  rompe el registro (sigue devolviendo sesión válida); el camino de
+  "sin plantillas" de `OnboardingPage` se validó por revisión de código
+  y por la respuesta real de `GET /plantillas-servicio?tipoNegocio=otro`
+  (catálogo vacío, como se sembró) — la verificación visual de ESE paso
+  puntual no se completó en navegador porque la sesión de automatización
+  del navegador llegó a su límite de uso a media prueba; el flujo
+  principal (con plantillas) sí se verificó de punta a punta en Chrome
+  real, incluyendo el color de foco verde del Select/Input en modo
+  "crear". Limitación honesta a resolver en otra sesión: repetir la
+  prueba visual del camino `otro`/sin-plantillas en el navegador.
+
+## Tarea en curso
+Ninguna de las priorizadas explícitamente por el usuario está pendiente:
+Seguridad (categoría cerrada salvo el re-chequeo de `npm audit` cuando
+vuelva el registry) y las 5 tarjetas de plantillas por vertical, ambas
+completas. Siguiente en el orden de docs/spec.md (punto 18, sección
+"después del Seguimiento #2"): Notificaciones (Resend + Twilio) →
+Reportes → Suscripciones (Stripe) → i18n backend, y después el resto de
+Frontend.
 
 ## Cómo probar lo que ya existe
 ```bash

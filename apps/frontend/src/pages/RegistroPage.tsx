@@ -1,10 +1,16 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router-dom';
-import { Boton, Input, useToast } from '@/components/ui';
+import { Boton, Input, Select, useToast } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/lib/api';
 import { registroSchema, type RegistroFormValues } from '@/lib/validation';
+import { ETIQUETA_TIPO_NEGOCIO, TIPOS_NEGOCIO } from '@/lib/tipo-negocio';
+
+const OPCIONES_TIPO_NEGOCIO = TIPOS_NEGOCIO.map((valor) => ({
+  value: valor,
+  label: ETIQUETA_TIPO_NEGOCIO[valor],
+}));
 
 export default function RegistroPage() {
   const { registrar } = useAuth();
@@ -26,7 +32,7 @@ export default function RegistroPage() {
         titulo: 'Negocio registrado',
         descripcion: 'Ya puedes empezar a usar Turnify',
       });
-      navigate('/', { replace: true });
+      navigate('/onboarding', { replace: true });
     } catch (error) {
       if (error instanceof ApiError && error.errorCode === 'EMAIL_YA_REGISTRADO') {
         setError('correoAdmin', { message: error.message });
@@ -52,14 +58,17 @@ export default function RegistroPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
               label="Nombre del negocio"
+              variante="crear"
               requerido
               error={errors.nombreNegocio?.message}
               {...register('nombreNegocio')}
             />
-            <Input
+            <Select
               label="Tipo de negocio"
-              placeholder="barbería, clínica, academia..."
+              variante="crear"
+              placeholder="Selecciona uno"
               requerido
+              opciones={OPCIONES_TIPO_NEGOCIO}
               error={errors.tipoNegocio?.message}
               {...register('tipoNegocio')}
             />
@@ -67,6 +76,7 @@ export default function RegistroPage() {
           <Input
             label="Correo del negocio"
             type="email"
+            variante="crear"
             requerido
             error={errors.correoNegocio?.message}
             {...register('correoNegocio')}
@@ -74,6 +84,7 @@ export default function RegistroPage() {
           <Input
             label="Teléfono del negocio"
             type="tel"
+            variante="crear"
             hint="Opcional"
             error={errors.telefonoNegocio?.message}
             {...register('telefonoNegocio')}
@@ -83,6 +94,7 @@ export default function RegistroPage() {
 
           <Input
             label="Nombre completo del administrador"
+            variante="crear"
             requerido
             error={errors.nombreCompletoAdmin?.message}
             {...register('nombreCompletoAdmin')}
@@ -91,6 +103,7 @@ export default function RegistroPage() {
             label="Correo del administrador"
             type="email"
             autoComplete="email"
+            variante="crear"
             requerido
             error={errors.correoAdmin?.message}
             {...register('correoAdmin')}
@@ -99,6 +112,7 @@ export default function RegistroPage() {
             label="Contraseña"
             type="password"
             autoComplete="new-password"
+            variante="crear"
             requerido
             hint="Mínimo 8 caracteres, con al menos una letra y un número"
             error={errors.contrasena?.message}
