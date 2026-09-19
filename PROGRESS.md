@@ -617,12 +617,10 @@ ahora explícitamente:
   escuchando) — automatizarlo es un caso natural para la futura tarjeta
   de QA "Tests de integración de endpoints principales".
 - **Seguridad: npm audit de dependencias antes de cada entrega/seguimiento**
-  ⚠️ pendiente de re-confirmar — `npm audit` en los 3 workspaces devolvió
-  503 (registry.npmjs.org en mantenimiento) en todos los intentos de esta
-  sesión. La última corrida exitosa (tarjeta de Auth) dio 0
-  vulnerabilidades tras cambiar de `bcrypt` a `bcryptjs`. Correr `npm
-  audit` de nuevo en cuanto el registry vuelva, antes de dar por cerrada
-  esta tarjeta.
+  ✅ — re-confirmado en una sesión posterior una vez que
+  registry.npmjs.org salió de mantenimiento (había devuelto 503 en todos
+  los intentos anteriores): `npm audit` en los 3 workspaces (raíz,
+  `apps/backend`, `apps/frontend`) da **0 vulnerabilidades**.
 - Las 7 restantes ya estaban cubiertas por trabajo previo, cerradas aquí
   solo formalmente: hasheo bcryptjs + política de contraseña (Auth), JWT
   corto + refresh rotativo con detección de reuso (Auth), guard de rol
@@ -706,25 +704,26 @@ Negocios, Servicios), no un rediseño.
   servicio(s) y continuar" → redirige a `/` → confirmado por API que los
   2 servicios quedaron creados con nombre/duración correctos y el precio
   por defecto. Registro con `tipoNegocio=otro` → confirmado que no
-  rompe el registro (sigue devolviendo sesión válida); el camino de
-  "sin plantillas" de `OnboardingPage` se validó por revisión de código
-  y por la respuesta real de `GET /plantillas-servicio?tipoNegocio=otro`
-  (catálogo vacío, como se sembró) — la verificación visual de ESE paso
-  puntual no se completó en navegador porque la sesión de automatización
-  del navegador llegó a su límite de uso a media prueba; el flujo
-  principal (con plantillas) sí se verificó de punta a punta en Chrome
-  real, incluyendo el color de foco verde del Select/Input en modo
-  "crear". Limitación honesta a resolver en otra sesión: repetir la
-  prueba visual del camino `otro`/sin-plantillas en el navegador.
+  rompe el registro (sigue devolviendo sesión válida). El camino "sin
+  plantillas" de `OnboardingPage` (antes solo validado por API + revisión
+  de código) se confirmó después con click-through real en Chrome: al
+  registrar con `tipoNegocio=otro`, `/onboarding` muestra "Estas son
+  sugerencias comunes para Otro" + el mensaje "No hay plantillas
+  sugeridas para tu tipo de negocio — puedes crear tus servicios desde
+  cero cuando quieras" con un único botón "Continuar" (sin checkboxes);
+  al hacer click redirige a `/` y se confirmó por API que no se creó
+  ningún `SERVICIO` para ese negocio (`GET /servicios` → `total: 0`).
+  Ambos caminos del onboarding (con y sin plantillas) quedan así
+  verificados de punta a punta en navegador real.
 
 ## Tarea en curso
 Ninguna de las priorizadas explícitamente por el usuario está pendiente:
-Seguridad (categoría cerrada salvo el re-chequeo de `npm audit` cuando
-vuelva el registry) y las 5 tarjetas de plantillas por vertical, ambas
-completas. Siguiente en el orden de docs/spec.md (punto 18, sección
-"después del Seguimiento #2"): Notificaciones (Resend + Twilio) →
-Reportes → Suscripciones (Stripe) → i18n backend, y después el resto de
-Frontend.
+Seguridad (categoría cerrada completa, `npm audit` en 0 vulnerabilidades
+en los 3 workspaces) y las 5 tarjetas de plantillas por vertical, todas
+completas y verificadas en navegador real. Siguiente en el orden de
+docs/spec.md (punto 18, sección "después del Seguimiento #2"):
+Notificaciones (Resend + Twilio) → Reportes → Suscripciones (Stripe) →
+i18n backend, y después el resto de Frontend.
 
 ## Cómo probar lo que ya existe
 ```bash
