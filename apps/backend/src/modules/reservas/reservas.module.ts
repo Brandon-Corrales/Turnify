@@ -1,5 +1,20 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { TenantRepositoryProvider } from '../../common/tenant';
+import { Cliente, Disponibilidad, Reserva, Servicio, Usuario } from '../../database/entities';
+import { ReservasController } from './reservas.controller';
+import { ReservasService } from './reservas.service';
 
-/** Contenido real en la tarjeta "Backend: Módulo Reservas — crear/cancelar/reprogramar + validación de choques de horario". */
-@Module({})
+@Module({
+  imports: [TypeOrmModule.forFeature([Reserva, Cliente, Servicio, Usuario, Disponibilidad])],
+  controllers: [ReservasController],
+  providers: [
+    ReservasService,
+    TenantRepositoryProvider(Reserva),
+    TenantRepositoryProvider(Cliente),
+    TenantRepositoryProvider(Servicio),
+    TenantRepositoryProvider(Usuario),
+    TenantRepositoryProvider(Disponibilidad),
+  ],
+})
 export class ReservasModule {}

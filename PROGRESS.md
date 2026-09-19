@@ -304,11 +304,85 @@ migrar el backend a ESM ni parchear Jest con Babel.
     para el empleado (409) → admin crea uno consecutivo sin traslape
     (201) → rango inválido (400) → listado filtrado por usuario.
 
+- **Backend: Módulo Reservas — crear/cancelar/reprogramar + validación de
+  choques de horario** ✅ — la tarjeta más sensible de todo el Seguimiento
+  #2. Endpoints: `POST /reservas`, `GET /reservas` (paginado, filtros
+  `idUsuario`/`idCliente`/`estado`/`desde`/`hasta` — estos dos últimos
+  pensados para que el futuro Calendario de FullCalendar pida solo el
+  rango visible), `GET /reservas/:id`, `PATCH /reservas/:id/cancelar`,
+  `PATCH /reservas/:id/reprogramar`. Sin `DELETE`: una reserva nunca se
+  borra físicamente, es exactamente el historial que justifica el
+  soft-delete del resto de entidades — "cancelar" es la única baja.
+  - **Defensa en dos capas contra el doble-booking bajo concurrencia**
+    (punto 3 del brief, literal):
+    1. Aplicación: dentro de una transacción, `SELECT
+       pg_advisory_xact_lock(hashtext(idUsuario))` serializa cualquier
+       intento concurrente de reservar al MISMO usuario — la segunda
+       request espera a que la primera termine su transacción antes de
+       poder siquiera consultar traslapes.
+    2. Base de datos: migración `ReservaSinTraslapeExclusionConstraint`
+       agrega `CREATE EXTENSION btree_gist` + un `EXCLUDE USING gist
+       (id_usuario WITH =, tstzrange(fecha_hora_inicio, fecha_hora_fin)
+       WITH &&) WHERE (estado <> 'cancelada')` sobre `reservas` — Postgres
+       rechaza el INSERT/UPDATE aunque el candado de la app fallara por
+       cualquier motivo. El código atrapa el SQLSTATE `23P01`
+       (exclusion_violation, confirmado empíricamente contra el driver
+       `pg`) y lo traduce al mismo `errorCode: RESERVA_TRASLAPADA`.
+    3. **Verificado de verdad, no solo en teoría**: se dispararon dos
+       `POST /reservas` genuinamente simultáneos (mismo usuario, mismo
+       horario) contra el servidor real — exactamente uno devolvió `201`
+       y el otro `409 RESERVA_TRASLAPADA`, y se confirmó con una consulta
+       directa a Postgres que solo quedó una fila para ese horario.
+  - **Choque de horario** = dos reservas del mismo usuario con
+    `[fechaHoraInicio, fechaHoraFin)` solapados, excluyendo canceladas —
+    mismo patrón `LessThan`/`MoreThan` que Disponibilidad, ahora sobre
+    columnas `timestamptz`.
+  - `fechaHoraFin` se calcula en el servidor (`fechaHoraInicio +
+    servicio.duracionMinutos`), nunca la manda el cliente — evita
+    inconsistencias entre lo que cobra el servicio y lo que ocupa la
+    agenda.
+  - **Nueva validación que conecta con la tarjeta anterior**: una reserva
+    también debe caer dentro de una franja activa de `DISPONIBILIDAD` del
+    usuario para ese día/hora (`errorCode: FUERA_DE_DISPONIBILIDAD`) — si
+    no, el módulo de Disponibilidad que acabamos de construir no tendría
+    ningún efecto real sobre las reservas.
+  - **Decisión técnica importante — zona horaria fija Costa Rica
+    (UTC-6)**: el ER no tiene un campo de zona horaria por negocio, y el
+    mercado objetivo es Costa Rica (que no observa horario de verano), así
+    que `common/utils/zona-horaria-negocio.ts` usa un offset fijo de -6h
+    para traducir un `timestamptz` a día-de-semana/hora local antes de
+    compararlo contra `DISPONIBILIDAD`. Si el producto llega a soportar
+    negocios fuera de Costa Rica, esto debe volverse un campo configurable
+    por `NEGOCIO`, no una constante — dejar anotado para no repetir este
+    error de diseño más adelante.
+  - Rechaza reservar/reprogramar a una fecha ya pasada
+    (`FECHA_EN_EL_PASADO`), reprogramar una reserva ya cancelada
+    (`RESERVA_CANCELADA`), cancelar dos veces
+    (`RESERVA_YA_CANCELADA`), y una reserva que cruzaría la medianoche en
+    hora de Costa Rica (`RESERVA_CRUZA_MEDIANOCHE` — una franja de
+    disponibilidad es de un solo día, cruzar medianoche no tiene forma de
+    validarse contra ella).
+  - Alcance explícitamente fuera de esta tarjeta: el endpoint público sin
+    autenticar para el wizard de reserva de 4 pasos es una tarjeta de
+    frontend de después del Seguimiento #2 y necesitará su propio
+    endpoint — este módulo es para el calendario interno autenticado del
+    staff.
+  - Tests: `reservas.service.spec.ts` (11 casos) — cálculo de
+    `fechaHoraFin`, adquisición del advisory lock, validaciones de
+    existencia, fecha pasada, fuera de disponibilidad, traslape proactivo,
+    traducción del `23P01`, y las transiciones de cancelar/reprogramar.
+  - Probado además contra la app real, incluyendo la prueba de
+    concurrencia real descrita arriba, reprogramar hacia un choque (409) y
+    hacia un horario libre (200), y el filtro `desde`/`hasta` para el
+    calendario.
+
 ## Tarea en curso
-Ninguna — lista para **"Backend: Módulo Reservas — crear/cancelar/
-reprogramar + validación de choques de horario"**. Última tarjeta de
-Backend priorizada para el Seguimiento #2 — la más sensible de todas
-(doble-booking bajo concurrencia, transacción de base de datos).
+Con esto, **todas las tarjetas de Backend priorizadas para el Seguimiento
+#2 están cerradas** (Setup, Auth, guard multi-tenant, y los módulos de
+Negocios/Usuarios/Clientes/Servicios/Disponibilidad/Reservas). Lo que
+sigue según el orden del punto 17 es **Frontend**, empezando por
+**"Frontend: Setup Vite + TypeScript + Tailwind + estructura de
+carpetas"**.
 
 ## Seguridad
 ✅ La contraseña de la base de datos de Supabase, compartida en texto
