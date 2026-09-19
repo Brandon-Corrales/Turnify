@@ -239,9 +239,37 @@ migrar el backend a ESM ni parchear Jest con Babel.
     en esta máquina, usar un script Node/Postman en vez de escribir tildes
     directo en el argumento de `curl` en Git Bash.
 
+- **Backend: Módulo Servicios — CRUD (nombre, duración, precio)** ✅
+  - `POST/GET/GET:id/PATCH/DELETE /servicios`, mismo patrón que Clientes
+    (sin `@Roles`, paginado, `DELETE` = desactivar).
+  - `precio` es `numeric(10,2)` en Postgres → TypeORM lo expone como
+    `string` en la entidad. El DTO acepta un `number` (más natural para
+    la API/Swagger) y el servicio lo convierte con `.toFixed(2)` antes de
+    guardar — probado que conserva decimales exactos (`7999.5` →
+    `"7999.50"`, no se trunca ni redondea de más).
+  - `duracionMinutos`: entero, mínimo 1, máximo 1440 (un día) como tope de
+    cordura contra errores de captura — no es un límite pedido
+    literalmente por el brief, es solo para bloquear datos absurdos.
+  - `colorCalendario`: valida formato hex (`#rgb` o `#rrggbb`) con
+    `@Matches`, porque lo va a consumir directo FullCalendar en el
+    frontend — mejor rechazarlo aquí que romper el render del calendario
+    después.
+  - Límite freemium "máximo 3 servicios activos" (punto 4.1) NO se
+    enforce en este módulo — es trabajo del guard de límites de plan,
+    tarjeta de después del Seguimiento #2.
+  - Tests: `servicios.service.spec.ts` (8 casos), incluyendo la
+    conversión numérica de `precio` en ambas direcciones (crear/actualizar)
+    y que actualizar sin `precio` no toca esa columna.
+  - Probado además contra la app real: crear → color hex inválido (400,
+    `field: colorCalendario`) → duración `0` (400) → precio negativo (400)
+    → listar paginado → `PATCH` precio con decimales → `DELETE` (204) →
+    `GET` posterior (404).
+
 ## Tarea en curso
-Ninguna — lista para **"Backend: Módulo Servicios — CRUD (nombre,
-duración, precio)"**.
+Ninguna — lista para **"Backend: Módulo Disponibilidad — CRUD +
+validación de traslapes de horario"**. Esta es la última tarjeta de
+Backend antes de "Módulo Reservas" — ambas son las más sensibles del
+Seguimiento #2 (traslapes de horario y doble-booking bajo concurrencia).
 
 ## Seguridad
 ✅ La contraseña de la base de datos de Supabase, compartida en texto
