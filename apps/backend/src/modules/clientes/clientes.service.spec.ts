@@ -54,7 +54,9 @@ describe('ClientesService', () => {
   it('listar() pagina con skip/take calculados desde page/limit', async () => {
     repoMock.findAndCount.mockResolvedValue([[crearClienteFalso()], 1]);
     const resultado = await service.listar({ page: 3, limit: 5 });
-    expect(repoMock.findAndCount).toHaveBeenCalledWith(expect.objectContaining({ skip: 10, take: 5 }));
+    expect(repoMock.findAndCount).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 10, take: 5 }),
+    );
     expect(resultado).toEqual(expect.objectContaining({ total: 1, page: 3, limit: 5 }));
   });
 
@@ -66,15 +68,18 @@ describe('ClientesService', () => {
   it('actualizar() valida existencia antes de escribir y devuelve el cliente actualizado', async () => {
     repoMock.findOne.mockResolvedValue(crearClienteFalso());
     await service.actualizar('cliente-1', { nombreCompleto: 'Cambiado' });
-    expect(repoMock.update).toHaveBeenCalledWith({ idCliente: 'cliente-1' }, { nombreCompleto: 'Cambiado' });
+    expect(repoMock.update).toHaveBeenCalledWith(
+      { idCliente: 'cliente-1' },
+      { nombreCompleto: 'Cambiado' },
+    );
   });
 
   it('actualizar() traduce una violación de unicidad al cambiar el correo', async () => {
     repoMock.findOne.mockResolvedValue(crearClienteFalso());
     repoMock.update.mockRejectedValue({ code: '23505' });
-    await expect(service.actualizar('cliente-1', { correoElectronico: 'otro@example.com' })).rejects.toThrow(
-      ConflictException,
-    );
+    await expect(
+      service.actualizar('cliente-1', { correoElectronico: 'otro@example.com' }),
+    ).rejects.toThrow(ConflictException);
   });
 
   it('desactivar() marca activo=false y hace soft delete', async () => {

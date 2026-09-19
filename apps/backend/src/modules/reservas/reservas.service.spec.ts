@@ -71,10 +71,18 @@ describe('ReservasService', () => {
   });
 
   function comoAdmin<T>(fn: () => T): T {
-    return tenantContext.run({ idNegocio: NEGOCIO_ID, idUsuario: 'admin-1', rol: RolUsuario.ADMIN }, fn);
+    return tenantContext.run(
+      { idNegocio: NEGOCIO_ID, idUsuario: 'admin-1', rol: RolUsuario.ADMIN },
+      fn,
+    );
   }
 
-  const dtoValido = { idCliente: CLIENTE_ID, idServicio: SERVICIO_ID, idUsuario: USUARIO_ID, fechaHoraInicio: LUNES_10AM_UTC };
+  const dtoValido = {
+    idCliente: CLIENTE_ID,
+    idServicio: SERVICIO_ID,
+    idUsuario: USUARIO_ID,
+    fechaHoraInicio: LUNES_10AM_UTC,
+  };
 
   it('crear() calcula fechaHoraFin a partir de la duración del servicio', async () => {
     await comoAdmin(() => service.crear(dtoValido));
@@ -85,7 +93,9 @@ describe('ReservasService', () => {
 
   it('crear() adquiere un advisory lock por usuario antes de chequear traslapes', async () => {
     await comoAdmin(() => service.crear(dtoValido));
-    expect(managerMock.query).toHaveBeenCalledWith('SELECT pg_advisory_xact_lock(hashtext($1))', [USUARIO_ID]);
+    expect(managerMock.query).toHaveBeenCalledWith('SELECT pg_advisory_xact_lock(hashtext($1))', [
+      USUARIO_ID,
+    ]);
   });
 
   it('crear() rechaza si el cliente no existe', async () => {
@@ -118,13 +128,22 @@ describe('ReservasService', () => {
   });
 
   it('cancelar() marca estado=cancelada', async () => {
-    reservaRepo.findOne.mockResolvedValue({ idReserva: 'reserva-1', estado: EstadoReserva.CONFIRMADA });
+    reservaRepo.findOne.mockResolvedValue({
+      idReserva: 'reserva-1',
+      estado: EstadoReserva.CONFIRMADA,
+    });
     await service.cancelar('reserva-1');
-    expect(reservaRepo.update).toHaveBeenCalledWith({ idReserva: 'reserva-1' }, { estado: EstadoReserva.CANCELADA });
+    expect(reservaRepo.update).toHaveBeenCalledWith(
+      { idReserva: 'reserva-1' },
+      { estado: EstadoReserva.CANCELADA },
+    );
   });
 
   it('cancelar() rechaza cancelar una reserva ya cancelada', async () => {
-    reservaRepo.findOne.mockResolvedValue({ idReserva: 'reserva-1', estado: EstadoReserva.CANCELADA });
+    reservaRepo.findOne.mockResolvedValue({
+      idReserva: 'reserva-1',
+      estado: EstadoReserva.CANCELADA,
+    });
     await expect(service.cancelar('reserva-1')).rejects.toThrow(ConflictException);
   });
 

@@ -10,7 +10,8 @@ export class ServiciosService {
   private readonly logger = new Logger(ServiciosService.name);
 
   constructor(
-    @InjectTenantRepository(Servicio) private readonly servicioRepo: TenantScopedRepository<Servicio>,
+    @InjectTenantRepository(Servicio)
+    private readonly servicioRepo: TenantScopedRepository<Servicio>,
   ) {}
 
   async crear(dto: CrearServicioDto): Promise<Servicio> {
@@ -56,7 +57,10 @@ export class ServiciosService {
   private async buscarOFallar(idServicio: string): Promise<Servicio> {
     const servicio = await this.servicioRepo.findOne({ where: { idServicio } as any });
     if (!servicio) {
-      throw new NotFoundException({ errorCode: 'SERVICIO_NO_ENCONTRADO', message: 'Servicio no encontrado' });
+      throw new NotFoundException({
+        errorCode: 'SERVICIO_NO_ENCONTRADO',
+        message: 'Servicio no encontrado',
+      });
     }
     return servicio;
   }

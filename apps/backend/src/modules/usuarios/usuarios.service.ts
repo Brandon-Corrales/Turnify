@@ -72,9 +72,13 @@ export class UsuariosService {
   async actualizar(idUsuario: string, dto: ActualizarUsuarioDto): Promise<UsuarioPublico> {
     const usuario = await this.buscarOFallar(idUsuario);
 
-    const dejaDeSerAdmin = usuario.rol === RolUsuario.ADMIN && dto.rol && dto.rol !== RolUsuario.ADMIN;
+    const dejaDeSerAdmin =
+      usuario.rol === RolUsuario.ADMIN && dto.rol && dto.rol !== RolUsuario.ADMIN;
     if (dejaDeSerAdmin) {
-      await this.asegurarNoEsUltimoAdmin(idUsuario, 'No puedes cambiar el rol del último administrador del negocio');
+      await this.asegurarNoEsUltimoAdmin(
+        idUsuario,
+        'No puedes cambiar el rol del último administrador del negocio',
+      );
     }
 
     await this.usuarioRepo.update({ idUsuario } as any, dto as any);
@@ -86,10 +90,16 @@ export class UsuariosService {
     const usuario = await this.buscarOFallar(idUsuario);
 
     if (usuario.rol === RolUsuario.ADMIN) {
-      await this.asegurarNoEsUltimoAdmin(idUsuario, 'No puedes desactivar al último administrador del negocio');
+      await this.asegurarNoEsUltimoAdmin(
+        idUsuario,
+        'No puedes desactivar al último administrador del negocio',
+      );
     }
 
-    await this.usuarioRepo.update({ idUsuario } as any, { activo: false, refreshTokenHash: null } as any);
+    await this.usuarioRepo.update(
+      { idUsuario } as any,
+      { activo: false, refreshTokenHash: null } as any,
+    );
     await this.usuarioRepo.softDelete({ idUsuario } as any);
     this.logger.log(`Usuario ${idUsuario} desactivado`);
   }
@@ -107,7 +117,10 @@ export class UsuariosService {
   private async buscarOFallar(idUsuario: string): Promise<Usuario> {
     const usuario = await this.usuarioRepo.findOne({ where: { idUsuario } as any });
     if (!usuario) {
-      throw new NotFoundException({ errorCode: 'USUARIO_NO_ENCONTRADO', message: 'Usuario no encontrado' });
+      throw new NotFoundException({
+        errorCode: 'USUARIO_NO_ENCONTRADO',
+        message: 'Usuario no encontrado',
+      });
     }
     return usuario;
   }

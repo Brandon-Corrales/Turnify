@@ -8,11 +8,11 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-turnify}
       POSTGRES_DB: ${DB_NAME:-turnify}
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - '${DB_PORT:-5432}:5432'
     volumes:
       - turnify-postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-turnify} -d ${DB_NAME:-turnify}"]
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME:-turnify} -d ${DB_NAME:-turnify}']
       interval: 5s
       timeout: 5s
       retries: 10

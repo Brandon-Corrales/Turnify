@@ -68,7 +68,9 @@ describe('UsuariosService', () => {
   it('listar() pagina con skip/take calculados desde page/limit', async () => {
     repoMock.findAndCount.mockResolvedValue([[crearUsuarioFalso()], 1]);
     const resultado = await service.listar({ page: 2, limit: 10 });
-    expect(repoMock.findAndCount).toHaveBeenCalledWith(expect.objectContaining({ skip: 10, take: 10 }));
+    expect(repoMock.findAndCount).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 10, take: 10 }),
+    );
     expect(resultado).toEqual(expect.objectContaining({ total: 1, page: 2, limit: 10 }));
   });
 
@@ -80,32 +82,48 @@ describe('UsuariosService', () => {
   it('actualizar() permite cambiar el rol de un empleado sin restricción', async () => {
     repoMock.findOne.mockResolvedValue(crearUsuarioFalso({ rol: RolUsuario.EMPLEADO }));
     await service.actualizar('usuario-1', { rol: RolUsuario.ADMIN });
-    expect(repoMock.update).toHaveBeenCalledWith({ idUsuario: 'usuario-1' }, { rol: RolUsuario.ADMIN });
+    expect(repoMock.update).toHaveBeenCalledWith(
+      { idUsuario: 'usuario-1' },
+      { rol: RolUsuario.ADMIN },
+    );
   });
 
   it('actualizar() bloquea degradar al último admin activo del negocio', async () => {
-    repoMock.findOne.mockResolvedValue(crearUsuarioFalso({ idUsuario: 'admin-1', rol: RolUsuario.ADMIN }));
+    repoMock.findOne.mockResolvedValue(
+      crearUsuarioFalso({ idUsuario: 'admin-1', rol: RolUsuario.ADMIN }),
+    );
     repoMock.count.mockResolvedValue(0); // no hay otros admins activos
-    await expect(service.actualizar('admin-1', { rol: RolUsuario.EMPLEADO })).rejects.toThrow(ConflictException);
+    await expect(service.actualizar('admin-1', { rol: RolUsuario.EMPLEADO })).rejects.toThrow(
+      ConflictException,
+    );
     expect(repoMock.update).not.toHaveBeenCalled();
   });
 
   it('actualizar() permite degradar a un admin si existe otro admin activo', async () => {
-    repoMock.findOne.mockResolvedValue(crearUsuarioFalso({ idUsuario: 'admin-1', rol: RolUsuario.ADMIN }));
+    repoMock.findOne.mockResolvedValue(
+      crearUsuarioFalso({ idUsuario: 'admin-1', rol: RolUsuario.ADMIN }),
+    );
     repoMock.count.mockResolvedValue(1); // hay otro admin activo
     await service.actualizar('admin-1', { rol: RolUsuario.EMPLEADO });
-    expect(repoMock.update).toHaveBeenCalledWith({ idUsuario: 'admin-1' }, { rol: RolUsuario.EMPLEADO });
+    expect(repoMock.update).toHaveBeenCalledWith(
+      { idUsuario: 'admin-1' },
+      { rol: RolUsuario.EMPLEADO },
+    );
   });
 
   it('desactivar() bloquea desactivar al último admin activo', async () => {
-    repoMock.findOne.mockResolvedValue(crearUsuarioFalso({ idUsuario: 'admin-1', rol: RolUsuario.ADMIN }));
+    repoMock.findOne.mockResolvedValue(
+      crearUsuarioFalso({ idUsuario: 'admin-1', rol: RolUsuario.ADMIN }),
+    );
     repoMock.count.mockResolvedValue(0);
     await expect(service.desactivar('admin-1')).rejects.toThrow(ConflictException);
     expect(repoMock.softDelete).not.toHaveBeenCalled();
   });
 
   it('desactivar() de un empleado normal actualiza activo=false, limpia el refresh token y hace soft delete', async () => {
-    repoMock.findOne.mockResolvedValue(crearUsuarioFalso({ idUsuario: 'emp-1', rol: RolUsuario.EMPLEADO }));
+    repoMock.findOne.mockResolvedValue(
+      crearUsuarioFalso({ idUsuario: 'emp-1', rol: RolUsuario.EMPLEADO }),
+    );
     await service.desactivar('emp-1');
     expect(repoMock.update).toHaveBeenCalledWith(
       { idUsuario: 'emp-1' },

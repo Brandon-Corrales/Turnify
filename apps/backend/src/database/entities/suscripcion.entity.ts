@@ -1,11 +1,4 @@
-import {
-  Column,
-  Entity,
-  Index,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { AuditableEntity } from './base.entity';
 import { EstadoSuscripcion, PlanSuscripcion } from './enums';
 import { Negocio } from './negocio.entity';

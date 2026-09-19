@@ -3,7 +3,7 @@ import * as path from 'path';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { validateEnv, Env } from './config/env.schema';
-import * as entities from './database/entities';
+import { listaEntidades } from './database/entity-list';
 import { HealthModule } from './health/health.module';
 import { TenantModule } from './common/tenant';
 import { AuthModule } from './modules/auth/auth.module';
@@ -38,7 +38,7 @@ import { ReservasModule } from './modules/reservas/reservas.module';
                 password: config.get('DB_PASSWORD', { infer: true }),
                 database: config.get('DB_NAME', { infer: true }),
               }),
-          entities: Object.values(entities).filter((value) => typeof value === 'function'),
+          entities: listaEntidades,
           synchronize: false,
           logging: config.get('NODE_ENV', { infer: true }) === 'development',
         };
