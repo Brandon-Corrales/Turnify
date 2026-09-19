@@ -2,6 +2,7 @@ import {
   Column,
   DeleteDateColumn,
   Entity,
+  Index,
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
@@ -14,7 +15,15 @@ import { Reserva } from './reserva.entity';
 import { Disponibilidad } from './disponibilidad.entity';
 import { Suscripcion } from './suscripcion.entity';
 
+/**
+ * Índice único parcial (solo `eliminado_en IS NULL`): un negocio
+ * soft-deleted libera su correo para que un negocio nuevo lo reuse.
+ */
 @Entity('negocios')
+@Index('uq_negocio_correo_activo', ['correoElectronico'], {
+  unique: true,
+  where: '"eliminado_en" IS NULL',
+})
 export class Negocio extends AuditableEntity {
   @PrimaryGeneratedColumn('uuid', { name: 'id_negocio' })
   idNegocio!: string;
@@ -25,7 +34,7 @@ export class Negocio extends AuditableEntity {
   @Column({ name: 'tipo_negocio', type: 'varchar', length: 100 })
   tipoNegocio!: string;
 
-  @Column({ name: 'correo_electronico', type: 'varchar', length: 255, unique: true })
+  @Column({ name: 'correo_electronico', type: 'varchar', length: 255 })
   correoElectronico!: string;
 
   @Column({ name: 'telefono', type: 'varchar', length: 30, nullable: true })

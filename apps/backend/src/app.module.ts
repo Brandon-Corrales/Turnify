@@ -29,7 +29,7 @@ import { ReservasModule } from './modules/reservas/reservas.module';
         return {
           type: 'postgres' as const,
           ...(databaseUrl
-            ? { url: databaseUrl }
+            ? { url: databaseUrl, ssl: { rejectUnauthorized: false } }
             : {
                 host: config.get('DB_HOST', { infer: true }),
                 port: config.get('DB_PORT', { infer: true }),

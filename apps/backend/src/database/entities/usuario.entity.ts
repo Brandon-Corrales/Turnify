@@ -15,7 +15,15 @@ import { Reserva } from './reserva.entity';
 import { Disponibilidad } from './disponibilidad.entity';
 import { ExcepcionDisponibilidad } from './excepcion-disponibilidad.entity';
 
+/**
+ * Índice único parcial (solo `eliminado_en IS NULL`): un usuario
+ * soft-deleted libera su correo para que uno nuevo lo reuse.
+ */
 @Entity('usuarios')
+@Index('uq_usuario_correo_activo', ['correoElectronico'], {
+  unique: true,
+  where: '"eliminado_en" IS NULL',
+})
 export class Usuario extends AuditableEntity {
   @PrimaryGeneratedColumn('uuid', { name: 'id_usuario' })
   idUsuario!: string;
@@ -31,7 +39,7 @@ export class Usuario extends AuditableEntity {
   @Column({ name: 'nombre_completo', type: 'varchar', length: 150 })
   nombreCompleto!: string;
 
-  @Column({ name: 'correo_electronico', type: 'varchar', length: 255, unique: true })
+  @Column({ name: 'correo_electronico', type: 'varchar', length: 255 })
   correoElectronico!: string;
 
   @Column({ name: 'contrasena_hash', type: 'varchar', length: 255, select: false })
