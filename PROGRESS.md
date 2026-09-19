@@ -75,16 +75,85 @@ se roté la contraseña de Supabase y se confirmó que todo sigue conectando
     respuesta a un reuso detectado) → logout con token válido (204) →
     ruta protegida sin token (401).
 
-## Tarea en curso
-Ninguna — lista para **"Backend: Guard/interceptor multi-tenant (filtrar
-automáticamente por id_negocio)"**.
+- **Backend: Guard/interceptor multi-tenant (filtrar automáticamente por
+  id_negocio)** ✅ (`src/common/tenant/`)
+  - `TenantContextService`: contexto por request basado en
+    `AsyncLocalStorage` (no en un provider request-scoped, para no pagar
+    el costo de reconstruir el grafo de DI en cada request). Falla
+    cerrado: pedir `idNegocio` fuera de una request autenticada lanza, en
+    vez de devolver `undefined`.
+  - `TenantContextInterceptor`: puebla ese contexto con
+    `{idNegocio, idUsuario, rol}` desde `request.user` (ya puesto por
+    `JwtAuthGuard`). Es interceptor y no guard a propósito — necesita
+    envolver `next.handle()` completo dentro de `als.run()`, algo que un
+    guard no puede hacer. Registrado como `APP_INTERCEPTOR` global en
+    `TenantModule` (`@Global()`, igual que los guards de `AuthModule`).
+  - `TenantScopedRepository<T>`: envuelve un `Repository<T>` de TypeORM
+    inyectando `idNegocio` del tenant actual en `find/findOne/count/
+    create/save/update/softDelete` — el caller NO puede omitirlo ni
+    sobreescribirlo (el `idNegocio` del contexto siempre gana sobre
+    cualquiera que venga en el `where`/entity). Solo cubre entidades con
+    columna `idNegocio` propia (Usuario, Cliente, Servicio, Reserva,
+    Disponibilidad, Suscripcion); `Notificacion` y
+    `ExcepcionDisponibilidad` no tienen `idNegocio` directo y se filtran
+    por join dentro del servicio de su propio módulo — fuera del alcance
+    de este wrapper genérico.
+  - `TenantRepositoryProvider(Entity)` + `@InjectTenantRepository(Entity)`:
+    forma de inyectar el repositorio tenant-scoped en un futuro servicio,
+    igual de simple que `@InjectRepository`. Ningún módulo de negocio lo
+    usa todavía (siguen vacíos) — lo consumirán las tarjetas de CRUD que
+    vienen después (Negocios, Usuarios, Clientes, Servicios,
+    Disponibilidad, Reservas).
+  - Verificado con un script `ts-node` desechable (no con Jest, ver nota
+    de ESM abajo): inyecta `idNegocio` con y sin `where` explícito, un
+    `idNegocio` ajeno que el caller intente colar SIEMPRE es sobreescrito,
+    `create`/`save`/`update`/`softDelete` quedan filtrados, dos contextos
+    concurrentes de negocios distintos no se mezclan (aislamiento real
+    vía `AsyncLocalStorage`), y usar el repositorio fuera de contexto
+    rechaza la promesa en vez de correr sin filtrar.
+  - Probado además contra la app real: `GET /health` (pública, sin
+    `request.user`) y `POST /auth/logout` (protegida, dispara el
+    interceptor) ambas siguen respondiendo correctamente con
+    `TenantModule` cargado.
 
-## Pendiente de seguridad — acción del equipo
-La contraseña de la base de datos de Supabase se compartió en texto plano
-en un chat. Funciona bien para desarrollo, pero como buena práctica
-alguien del equipo debería rotarla desde el dashboard de Supabase
-(Project Settings → Database → Reset database password) cuando sea
-conveniente, y actualizar el `.env` local de cada quien con la nueva.
+## Decisión pendiente para el equipo — Jest no corre todavía (NestJS 12 es ESM-only)
+Al intentar montar Jest para probar `TenantScopedRepository` como test
+formal, se encontró que `@nestjs/common@12` (y el resto de paquetes
+`@nestjs/*`) se publican como **ESM puro** (`"type": "module"` en su
+`package.json`, sin build CommonJS). La app real corre perfecto igual
+(`node dist/main.js` funciona) porque Node 22.12+ ya sabe hacer
+`require()` de un módulo ESM síncrono de forma nativa — pero el motor de
+módulos propio de Jest todavía no soporta ese puente (su propio mensaje
+de error dice literalmente "Use Node v24.9+ where Jest supports
+require(esm) natively"). Por eso se revirtió el intento de agregar
+`jest`/`ts-jest` como dependencias — habría quedado un `npm test` roto en
+el repo. La verificación de esta tarjeta se hizo con un script `ts-node`
+temporal (borrado al terminar), documentado arriba.
+
+Esto bloquea específicamente la tarjeta **"QA: Tests unitarios de reglas
+de negocio críticas"** y hay que decidir un camino antes de esa tarjeta:
+1. Migrar el backend completo a ESM (`"type": "module"`, tsconfig
+   `NodeNext`, extensiones `.js` en todos los imports relativos, ajustar
+   el CLI de TypeORM) — la ruta "correcta" a largo plazo, pero es un
+   cambio transversal grande.
+2. Agregar un transform de Babel (`babel-jest` + `@babel/preset-env`)
+   limitado a `node_modules/@nestjs/**` para convertir su ESM a CommonJS
+   solo dentro de Jest, sin tocar el resto del proyecto — más rápido, más
+   parche.
+3. Esperar/objetivo Node 24.9+ en el entorno de CI/dev del equipo, donde
+   Jest ya soporta `require(esm)` nativo sin configuración especial.
+
+No se tomó esta decisión unilateralmente porque cambia cómo se escribe
+TODO el código del backend (opción 1) o añade una pieza de tooling nueva
+(opción 2) — se necesita alineación del equipo antes del Seguimiento #2.
+
+## Tarea en curso
+Ninguna — lista para **"Backend: Módulo Negocios — CRUD + onboarding"**.
+
+## Seguridad
+✅ La contraseña de la base de datos de Supabase, compartida en texto
+plano en un chat, ya fue rotada por el equipo y se confirmó que
+`DATABASE_URL` sigue conectando (cero cambios de código necesarios).
 
 ## Cómo probar lo que ya existe
 ```bash
