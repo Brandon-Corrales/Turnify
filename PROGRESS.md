@@ -144,8 +144,36 @@ migrar el backend a ESM ni parchear Jest con Babel.
   sin decisiones pendientes: cualquier módulo nuevo ya puede traer sus
   `*.spec.ts` desde el primer commit.
 
+- **Backend: Módulo Negocios — CRUD + onboarding** ✅
+  - El "onboarding" (crear Negocio + Usuario admin + Suscripción gratis)
+    ya vive en `POST /auth/registro` — este módulo es la gestión del
+    perfil propio después de ese alta: `GET /negocios/mi-negocio`
+    (cualquier rol), `PATCH /negocios/mi-negocio` y
+    `DELETE /negocios/mi-negocio` (ambas solo ADMIN vía `@Roles`).
+  - No hay `GET /negocios` (listar todos): el sistema no tiene un rol
+    superadmin de plataforma en el ER, cada usuario solo puede ver/editar
+    su propio negocio — un "listado" no tendría sentido aquí.
+  - `DELETE` = desactivación (soft delete + `estado: 'inactivo'`), nunca
+    borrado físico, según punto 1 del brief. Tras desactivar, el propio
+    negocio devuelve `404 NEGOCIO_NO_ENCONTRADO` en vez de sus datos (el
+    JWT sigue siendo válido porque es stateless — bloquear el acceso de
+    verdad por negocio desactivado/suspendido es trabajo del futuro guard
+    de límites de plan freemium, no de este módulo).
+  - **Excepción documentada al `TenantScopedRepository`**: `Negocio` es la
+    raíz del tenant (su propia PK es el id de tenant), no una entidad hija
+    con columna `idNegocio` — así que este servicio filtra manualmente por
+    `{ idNegocio: tenantContext.idNegocio }` en vez de usar el wrapper
+    genérico (que exige esa columna por diseño).
+  - Tests: `negocios.service.spec.ts` (5 casos) — cada operación queda
+    scoped al tenant actual, `NEGOCIO_NO_ENCONTRADO` si no existe, y falla
+    cerrado sin contexto de tenant.
+  - Probado además contra la app real: registro → `GET`/`PATCH` con token
+    (200, cambio persistido) → sin token (401) → `DELETE` (204) → `GET`
+    posterior (404, confirma la desactivación).
+
 ## Tarea en curso
-Ninguna — lista para **"Backend: Módulo Negocios — CRUD + onboarding"**.
+Ninguna — lista para **"Backend: Módulo Usuarios — CRUD + roles
+admin/empleado"**.
 
 ## Seguridad
 ✅ La contraseña de la base de datos de Supabase, compartida en texto
