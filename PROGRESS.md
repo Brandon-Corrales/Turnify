@@ -888,18 +888,56 @@ plataforma, documentado también en `stripe.service.ts` y `.env.example`.
   `limites-plan.service.spec.ts`, `limite-plan-gratis.guard.spec.ts`,
   `stripe.service.spec.ts` con el SDK de Stripe mockeado vía `vi.mock`).
 
+## Reportes — agregaciones (reservas por período, ingresos estimados)
+**Backend: Módulo Reportes — agregaciones (reservas por período, ingresos
+estimados)** ✅
+
+- `GET /reportes/resumen?desde=&hasta=` (ISO 8601, `@IsDateString`,
+  `desde > hasta` → 400 `RANGO_DE_FECHAS_INVALIDO`) devuelve:
+  - `reservasPorEstado`: conteo por cada valor de `EstadoReserva`
+    (siempre las 4 claves presentes, en 0 si no hay filas — para que el
+    frontend no tenga que manejar `undefined`).
+  - `reservasPorDia`: conteo agrupado por día calendario (`DATE_TRUNC`),
+    todas las reservas del rango sin importar estado (para una gráfica
+    de volumen, no de ingresos).
+  - `ingresosEstimados`: suma de `Servicio.precio` de las reservas NO
+    canceladas en el rango. Se llama "estimados" a propósito, no
+    "ingresos": Turnify no cobra por reserva individual (el único cobro
+    real es la SUSCRIPCION del negocio a la plataforma vía Stripe), así
+    que esto es una proyección desde el catálogo de precios, no dinero
+    efectivamente cobrado — el nombre del campo lo deja explícito.
+- **Nuevo `TenantScopedRepository.createQueryBuilder(alias)`**: los
+  métodos existentes del wrapper (find/save/update/etc.) no cubrían
+  agregaciones (`COUNT`/`SUM`/`GROUP BY`) — se agregó este método al
+  wrapper transversal en vez de que `ReportesService` filtrara
+  `idNegocio` a mano, mismo principio del guard multi-tenant ("nunca
+  repetido manualmente en cada servicio"). Reutilizable por cualquier
+  módulo futuro que necesite agregaciones.
+- **Probado de verdad contra Postgres real**: negocio de prueba con 3
+  reservas (2 el mismo día, 1 al día siguiente), una de las 3 cancelada
+  después de creada. `GET /reportes/resumen` devolvió exactamente
+  `reservasPorEstado: {confirmada: 2, cancelada: 1}`,
+  `reservasPorDia: [{fecha, cantidad:2}, {fecha, cantidad:1}]`, e
+  `ingresosEstimados` igual a 2× el precio del servicio (la cancelada
+  quedó correctamente excluida) — confirmado que el filtro de
+  `estado != cancelada` sí se aplica en la query, no solo en el conteo
+  por estado.
+- 4 tests unitarios nuevos (`reportes.service.spec.ts`) + 1 test nuevo
+  para `createQueryBuilder()` en `tenant-scoped.repository.spec.ts`.
+
 ## Tarea en curso
 Ninguna de las priorizadas explícitamente por el usuario está pendiente.
 Cerrado en esta sesión: Seguridad (categoría completa), las 5 tarjetas de
 plantillas por vertical, las 2 tarjetas de Worker de Notificaciones
-(Resend + Meta WhatsApp Cloud API, reemplazando Twilio), y Suscripciones
+(Resend + Meta WhatsApp Cloud API, reemplazando Twilio), Suscripciones
 (Stripe Test Mode — verificado solo con mocks por la restricción
-geográfica de Stripe en Costa Rica, ver arriba). Pendiente sin resolver,
-no bloqueante: el onboarding puede chocar con el límite de 3 servicios
-del plan gratis (ver nota arriba) — ajustarlo es trabajo de frontend, no
-de esta tarjeta de backend. Siguiente en el orden de docs/spec.md (punto
-18, sección "después del Seguimiento #2"): Reportes → Documentación
-Swagger → i18n backend, y después el resto de Frontend.
+geográfica de Stripe en Costa Rica, ver arriba), y Reportes. Pendiente
+sin resolver, no bloqueante: el onboarding puede chocar con el límite de
+3 servicios del plan gratis (ver nota de Suscripciones arriba) —
+ajustarlo es trabajo de frontend, no de una tarjeta de backend. Siguiente
+en el orden de docs/spec.md (punto 18, sección "después del Seguimiento
+#2"): Documentación Swagger → i18n backend, y después el resto de
+Frontend.
 
 ## Cómo probar lo que ya existe
 ```bash

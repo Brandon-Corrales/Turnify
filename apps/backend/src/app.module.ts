@@ -19,6 +19,7 @@ import { ReservasModule } from './modules/reservas/reservas.module';
 import { PlantillasServicioModule } from './modules/plantillas-servicio/plantillas-servicio.module';
 import { NotificacionesModule } from './modules/notificaciones/notificaciones.module';
 import { SuscripcionesModule } from './modules/suscripciones/suscripciones.module';
+import { ReportesModule } from './modules/reportes/reportes.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { SuscripcionesModule } from './modules/suscripciones/suscripciones.modul
     PlantillasServicioModule,
     NotificacionesModule,
     SuscripcionesModule,
+    ReportesModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
