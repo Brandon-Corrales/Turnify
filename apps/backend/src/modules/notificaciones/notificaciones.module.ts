@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Notificacion } from '../../database/entities';
+import { NotificacionesController } from './notificaciones.controller';
 import { NotificacionesService } from './notificaciones.service';
 import { ResendService } from './providers/resend.service';
 import { WhatsappCloudApiService } from './providers/whatsapp-cloud-api.service';
@@ -13,6 +14,7 @@ import { WhatsappCloudApiService } from './providers/whatsapp-cloud-api.service'
  */
 @Module({
   imports: [TypeOrmModule.forFeature([Notificacion])],
+  controllers: [NotificacionesController],
   providers: [NotificacionesService, ResendService, WhatsappCloudApiService],
   exports: [NotificacionesService],
 })

@@ -1426,21 +1426,60 @@ orden desde la tarjeta que NO tenga su propio "✅" y su propia sección
 en este archivo — cada tarjeta cerrada de verdad deja su commit +
 sección aquí, igual que todas las anteriores.
 
+## Frontend: Pantalla de Notificaciones (historial + configuración de recordatorios) ✅
+Backend nuevo (no existía ningún endpoint HTTP para Notificacion — el
+módulo era 100% interno, solo el worker/cron la usaba) + frontend,
+cerrados juntos.
+
+- **Backend**: `GET /notificaciones` (nuevo `NotificacionesController`),
+  paginado, historial del negocio actual. `Notificacion` no tiene
+  `idNegocio` propio (se deriva de `id_cliente`/`id_reserva`, ya
+  documentado así desde el Worker) — el nuevo `NotificacionesService.listar()`
+  filtra con un join contra `Cliente` (que sí lo tiene), mismo criterio
+  que el resto del servicio para esta entidad. 1 test unitario nuevo.
+- **"Configuración de recordatorios"**: la ER (punto 1 del brief, "ya
+  validado, implementar tal cual") no tiene ningún campo para configurar
+  horas de anticipación de un recordatorio, y el propio cron que
+  dispararía un `RECORDATORIO` real nunca se construyó (anotado como
+  mejora futura desde la tarjeta del Worker de Notificaciones) — inventar
+  una columna nueva o un cron nuevo en medio de esta tarjeta de frontend
+  se sintió como alcance no pedido. Se interpretó "configuración" de
+  forma honesta con lo que SÍ es real hoy: un panel que muestra qué
+  canales están disponibles para recordar — Email (siempre) y WhatsApp
+  (leído de `negocio.planSuscripcion`, el MISMO campo y la MISMA regla
+  que ya aplica `PrivilegioClienteGuard` en el backend) — en vez de un
+  toggle decorativo que no hiciera nada de verdad.
+- **Frontend — `NotificacionesPage`** (`/notificaciones`, protegida,
+  nuevo link en `AppLayout`): tabla con cliente/tipo/canal/estado/fecha,
+  badges de estado con color real (verde enviada, ámbar pendiente, rojo
+  fallida), paginación, `SkeletonTable` mientras carga, empty state
+  diseñado.
+- **Verificado en un Chrome real con datos reales** (no seed, historial
+  real de las reservas de prueba creadas/canceladas esta misma noche
+  durante la verificación del Wizard): 4 notificaciones reales
+  (Confirmación/Cancelación, canal email, estado "fallida" — Resend en
+  este entorno de desarrollo no tiene un dominio verificado, documentado
+  desde la tarjeta original del Worker, no es un bug de esta pantalla),
+  con nombres de cliente y fechas reales correctamente formateadas en
+  hora de Costa Rica. Panel de canales mostró correctamente WhatsApp
+  bloqueado (negocio demo en Plan Gratis) — apagado visualmente y con el
+  mensaje real de por qué. Sin errores de consola.
+
 ## Tarea en curso
-**Backend 100% cerrado** (ver arriba) — Seguridad, Notificaciones,
-Suscripciones, Reportes, Swagger, i18n backend, guard de límites del
-plan gratis, guard de privilegios por nivel_cliente, Módulo Chatbot y
-ahora también el endpoint público de reservas, todos verificados contra
-Postgres/Supabase real.
+**Backend 100% cerrado** (ver arriba) — Seguridad, Notificaciones (ahora
+con historial HTTP además del worker), Suscripciones, Reportes, Swagger,
+i18n backend, guard de límites del plan gratis, guard de privilegios por
+nivel_cliente, Módulo Chatbot y el endpoint público de reservas, todos
+verificados contra Postgres/Supabase real.
 
 **Frontend, en el orden de docs/spec.md**: Setup, componentes UI,
 Login/Registro, Calendario (prioridad del Seguimiento #2) cerrados de
 sesiones anteriores; de las tarjetas "después del Seguimiento #2", ya
 están cerradas Paso de onboarding + Input variante crear/editar (fuera
-de orden), Landing pública, Dashboard con KPIs, y ahora **Wizard de
-reserva pública** (esta tarjeta). Siguiente en el orden acordado con el
-equipo (ver "Modo autónomo nocturno" arriba): **Pantalla de
-Notificaciones (historial + configuración de recordatorios)**.
+de orden), Landing pública, Dashboard con KPIs, Wizard de reserva
+pública, y ahora **Pantalla de Notificaciones** (esta tarjeta). Siguiente
+en el orden acordado con el equipo (ver "Modo autónomo nocturno" arriba):
+**Pantalla de Reportes con gráficos de datos reales**.
 
 Pendientes menores sin resolver, ninguno bloqueante: (1) el onboarding
 del frontend puede chocar con el límite de 3 servicios del plan gratis
@@ -1448,15 +1487,15 @@ si una plantilla de vertical sugiere más de 3 (ver nota de Suscripciones
 arriba); (2) la mayoría de los mensajes de validación de los DTOs (fuera
 de la contraseña) todavía no usan claves de i18n (ver nota de i18n
 backend arriba); (3) verificación visual responsive/mobile de la Landing,
-el Dashboard y el Wizard pendiente por una limitación de la herramienta
-de automatización del navegador usada esta sesión (`resize_window` no
-afectaba el viewport real) — no bloquea, las clases responsive ya están
-escritas con las mismas convenciones verificadas en otras pantallas; (4)
-el link real del wizard (`/reservar/:idNegocio`) todavía no está
-enlazado desde ninguna pantalla del admin (Dashboard, Ajustes) — el
-admin hoy tendría que copiar la URL a mano con el UUID de su negocio;
-anotado para no olvidarlo, no bloqueante para cerrar esta tarjeta tal
-como está descrita en el backlog.
+el Dashboard, el Wizard y Notificaciones pendiente por una limitación de
+la herramienta de automatización del navegador usada esta sesión
+(`resize_window` no afectaba el viewport real) — no bloquea, las clases
+responsive ya están escritas con las mismas convenciones verificadas en
+otras pantallas; (4) el link real del wizard (`/reservar/:idNegocio`)
+todavía no está enlazado desde ninguna pantalla del admin — anotado, no
+bloqueante; (5) un cron real de `RECORDATORIO` (aviso antes de la cita,
+no solo confirmación/cancelación) sigue sin construirse — mejora futura
+documentada desde la tarjeta original del Worker, no de esta pantalla.
 
 ## Cómo probar lo que ya existe
 ```bash

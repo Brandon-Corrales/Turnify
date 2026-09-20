@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { I18nService } from 'nestjs-i18n';
 import { LessThanOrEqual, Repository } from 'typeorm';
+import { PaginatedResult, PaginationQueryDto } from '../../common/pagination';
 import {
   CanalNotificacion,
   CanalPreferido,
@@ -88,6 +89,30 @@ export class NotificacionesService {
     });
     await this.notificacionRepo.save(notificacion);
     this.logger.log(`Notificación ${tipo} programada para cliente ${cliente.idCliente}`);
+  }
+
+  /**
+   * Historial paginado del negocio actual (pantalla de Notificaciones,
+   * punto 6 del brief). Notificacion no tiene idNegocio propio — se
+   * filtra por join contra Cliente (que sí lo tiene), igual criterio que
+   * el resto del servicio para esta entidad.
+   */
+  async listar(
+    idNegocio: string,
+    { page, limit }: PaginationQueryDto,
+  ): Promise<PaginatedResult<Notificacion>> {
+    const [data, total] = await this.notificacionRepo
+      .createQueryBuilder('notificacion')
+      .innerJoin('notificacion.cliente', 'cliente')
+      .addSelect(['cliente.idCliente', 'cliente.nombreCompleto'])
+      .leftJoinAndSelect('notificacion.reserva', 'reserva')
+      .leftJoinAndSelect('reserva.servicio', 'servicio')
+      .where('cliente.idNegocio = :idNegocio', { idNegocio })
+      .orderBy('notificacion.creadoEn', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+    return { data, total, page, limit };
   }
 
   @Cron(CronExpression.EVERY_MINUTE)

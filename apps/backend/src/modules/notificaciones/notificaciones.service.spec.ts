@@ -9,11 +9,23 @@ import {
 } from '../../database/entities';
 
 function crearNotificacionRepoMock() {
+  const queryBuilder: any = {
+    innerJoin: vi.fn().mockReturnThis(),
+    addSelect: vi.fn().mockReturnThis(),
+    leftJoinAndSelect: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    orderBy: vi.fn().mockReturnThis(),
+    skip: vi.fn().mockReturnThis(),
+    take: vi.fn().mockReturnThis(),
+    getManyAndCount: vi.fn().mockResolvedValue([[], 0]),
+  };
   return {
     create: vi.fn((data) => data),
     save: vi.fn((data) => Promise.resolve({ idNotificacion: 'notif-nueva', ...data })),
     find: vi.fn().mockResolvedValue([]),
     update: vi.fn().mockResolvedValue(undefined),
+    createQueryBuilder: vi.fn(() => queryBuilder),
+    _queryBuilder: queryBuilder,
   };
 }
 
@@ -185,5 +197,18 @@ describe('NotificacionesService', () => {
       { idNotificacion: 'notif-4' },
       { reintentos: 3, estado: EstadoNotificacion.FALLIDA },
     );
+  });
+
+  it('listar() filtra por el negocio actual vía join con Cliente y pagina el resultado', async () => {
+    const filas = [{ idNotificacion: 'notif-1' }];
+    notificacionRepo._queryBuilder.getManyAndCount.mockResolvedValue([filas, 1]);
+
+    const resultado = await service.listar('negocio-1', { page: 1, limit: 20 });
+
+    expect(notificacionRepo._queryBuilder.where).toHaveBeenCalledWith(
+      'cliente.idNegocio = :idNegocio',
+      { idNegocio: 'negocio-1' },
+    );
+    expect(resultado).toEqual({ data: filas, total: 1, page: 1, limit: 20 });
   });
 });
