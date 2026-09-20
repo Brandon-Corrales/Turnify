@@ -14,7 +14,10 @@
     "registrarse": "Sign up",
     "idioma": "Language",
     "cambiarATemaClaro": "Switch to light theme",
-    "cambiarATemaOscuro": "Switch to dark theme"
+    "cambiarATemaOscuro": "Switch to dark theme",
+    "anterior": "Previous",
+    "siguiente": "Next",
+    "paginaDe": "Page {{actual}} of {{total}}"
   },
   "landing": {
     "badge": "Bookings and appointments, no spreadsheets",
@@ -102,5 +105,30 @@
     "conectando": "Connecting to the assistant…",
     "errorConexion": "Couldn't connect to the assistant. Check your connection and try again.",
     "pensando": "Typing…"
+  },
+  "notificaciones": {
+    "titulo": "Notifications",
+    "subtitulo": "History of confirmations, cancellations, and reminders sent to your clients.",
+    "canalesTitulo": "Reminder channels",
+    "canalCorreo": "Email — always available",
+    "canalWhatsapp": "WhatsApp —",
+    "whatsappDisponible": "available on your current plan",
+    "whatsappNoDisponible": "available on the Paid Plan only",
+    "error": "Couldn't load the notification history.",
+    "vacio": "No notifications have been sent yet.",
+    "columnaCliente": "Client",
+    "columnaTipo": "Type",
+    "columnaCanal": "Channel",
+    "columnaEstado": "Status",
+    "columnaFecha": "Date",
+    "tipoConfirmacion": "Confirmation",
+    "tipoCancelacion": "Cancellation",
+    "tipoRecordatorio": "Reminder",
+    "canalEmail": "email",
+    "canalWhatsappCorto": "WhatsApp",
+    "canalSms": "SMS",
+    "estadoEnviada": "sent",
+    "estadoPendiente": "pending",
+    "estadoFallida": "failed"
   }
 }
