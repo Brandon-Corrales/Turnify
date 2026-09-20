@@ -2205,6 +2205,77 @@ mensaje real del sistema — la misma ruta HTTP, el mismo guard, la misma
 consulta a la base de datos que usaría un negocio real llegando a su
 cuota mensual.
 
+### 3. QA: responsive en dispositivos reales — resuelto con una técnica nueva ✅
+Esta era la única tarjeta genuinamente pendiente de toda la sesión: las
+verificaciones "responsive" anteriores fueron auditoría de código +
+verificación de escritorio, nunca una captura real en un viewport
+angosto — `resize_window` (la herramienta de automatización del
+navegador para esto) reportaba éxito pero **nunca cambiaba
+`window.innerWidth` de verdad** (confirmado de nuevo esta sesión, con
+dos tamaños distintos — 390×844 y 768×1024 — ambos se quedaron en
+1536×730 real). Documentado ya varias veces como limitación de la
+herramienta, no del código.
+
+**Técnica nueva que sí funciona**: en vez de redimensionar la ventana
+del navegador (lo que la herramienta no logra), se inyecta un
+`<iframe>` con `width`/`height` CSS explícitos apuntando a
+`http://localhost:5173` dentro de una pestaña en blanco. Un iframe
+crea su propio viewport real e independiente — `iframe.contentWindow.
+innerWidth` refleja de verdad el ancho pedido (390px → `innerWidth`
+382; 768px → 765), las media queries de Tailwind se evalúan de verdad
+adentro, y una captura de pantalla del iframe muestra el render REAL a
+ese tamaño — no una simulación ni una inferencia de código. LocalStorage
+se comparte con la pestaña (mismo origen), así que sesiones
+autenticadas funcionan igual adentro del iframe.
+
+**Verificado con capturas reales en 2 tamaños (mobile 390×844, tablet
+768×600) sobre las 4 pantallas pedidas**:
+- **Landing**: tablet limpio. **Mobile: bug real encontrado** — el
+  `<div>` de controles del header (`ControlesGlobales` + "Iniciar
+  sesión" + botón registrarse) desbordaba el `<body>` (scrollWidth 399
+  vs clientWidth 364, con scrollbar horizontal real visible en la
+  captura). Causa: el toggle de tema (tarjeta de Dark mode, posterior
+  al ajuste responsive original de este header) hizo crecer
+  `ControlesGlobales` lo suficiente para que el grupo ya no cupiera en
+  una fila junto a "Turnify" a 390px — una regresión real que ningún
+  ajuste posterior había vuelto a verificar en mobile. **Arreglado**:
+  `flex-wrap` en el contenedor del header — el grupo de controles cae a
+  una segunda línea en vez de desbordar el body. Reverificado tras el
+  fix: `bodyScrollWidth === bodyClientWidth` exacto, y la captura
+  muestra "Turnify" arriba y los controles en una fila propia debajo,
+  todo legible y con buen espaciado táctil.
+- **Dashboard**: limpio en mobile y tablet — el grid de KPIs pasa
+  correctamente de 1 columna (mobile) a 2 (tablet), el banner de
+  upgrade y el botón flotante del chatbot se ven bien, sin desborde.
+- **Calendario**: limpio en mobile — confirma en un render real (no
+  solo en el código) que el toolbar móvil ya construido funciona: a
+  390px cambia sola a la vista de agenda (`listWeek`) con la lista de
+  citas reales del día, sin los botones de cambio de vista que se
+  quitan a propósito en mobile.
+- **Wizard de reserva pública**: limpio en mobile, verificado en los
+  pasos 1 y 2 (selección de servicio y horario) con datos reales del
+  negocio demo — tarjetas de servicio y selector de fecha legibles y
+  sin desborde.
+
+**Nota metodológica honesta**: al medir el wizard y el Dashboard con
+`getBoundingClientRect()`/estilos computados dentro del iframe, varias
+veces aparecieron transformaciones de Framer Motion "atascadas" en su
+estado inicial (`opacity:0`, `translateX(24px)`) que sugerían desborde
+— pero las CAPTURAS DE PANTALLA reales del mismo momento mostraban el
+contenido perfectamente renderizado, opaco y bien posicionado.
+Investigado a fondo (comparando con una pestaña real de nivel superior,
+donde la misma animación sí progresaba con el tiempo): es un artefacto
+de que Chrome limita `requestAnimationFrame` dentro de iframes de forma
+menos prioritaria que en la pestaña principal, no una desincronización
+real entre estilo y píxel — el motor de composición pinta el estado
+final correcto aunque el atributo `style` inline inspeccionado por JS
+no siempre lo refleje. Se confirmó tratando la CAPTURA (lo que un
+usuario real vería) como la señal confiable, nunca la medición de
+estilo computado por sí sola — así se evitó reportar un falso positivo
+como bug real. El único bug reportado en esta tarjeta (el header de
+Landing) se confirmó con una barra de scroll horizontal visible en la
+captura misma, no solo con una medición de JS.
+
 Pendientes menores sin resolver, ninguno bloqueante (heredados de la
 tarjeta de responsive, siguen igual): (1) el onboarding del frontend
 puede chocar con el límite de 3 servicios del plan gratis si una
