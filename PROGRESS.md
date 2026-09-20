@@ -1913,6 +1913,58 @@ consolidado se entrega en el mensaje de chat de esta sesión, no aquí —
 por instrucción del equipo, un solo reporte al final y no uno por
 tarjeta.
 
+## Ronda final: Seguridad + QA (instrucción del equipo tras cerrar Frontend)
+Con Backend y Frontend 100% cerrados, el equipo pidió 5 tareas más de
+docs/spec.md, una por una, cada una con su propio commit:
+1. Rate limiting real del WebSocket del chatbot.
+2. QA: test E2E del wizard de reserva pública.
+3. QA: prueba de aislamiento multi-tenant específica del chatbot.
+4. QA: revisar cobertura de Auth y Reservas de punta a punta.
+5. QA: verificar i18n de punta a punta en una pantalla más.
+
+### 1. Rate limiting del WebSocket del chatbot ✅
+Gap real: `AppThrottlerGuard` (el throttler HTTP global) salta por
+completo cualquier contexto `'ws'` porque `ThrottlerGuard` de
+`@nestjs/throttler` asume request/response de Express y revienta con
+"res.header is not a function" sobre un socket (bug real ya documentado
+de una tarjeta anterior) — eso dejaba el chatbot con un solo control de
+abuso real: el tope DIARIO de `mensajesChatbot` (`LimitePlanGratisGuard`),
+que no evita una ráfaga de decenas de mensajes en segundos (agotando ese
+cupo de un golpe, o saturando la API de Groq sin necesidad).
+
+- **`ChatbotWsThrottlerGuard`** (nuevo, `modules/chatbot/guards/`):
+  ventana fija en memoria por socket (5 mensajes / 10 segundos) — más
+  simple y explícito que forzar `@nestjs/throttler` a entender
+  WebSockets, mismo criterio que los demás guards transversales del
+  proyecto (estado propio, sin pelear con una librería pensada para
+  HTTP). Excede el límite → `ErrorCodeException('DEMASIADAS_SOLICITUDES',
+  ..., 429)`, reutilizando el mismo errorCode/traducción ES/EN que ya
+  usa el throttler HTTP (cero i18n nuevo). `limpiar(idSocket)` se llama
+  desde `ChatbotGateway.handleDisconnect` para no dejar crecer el mapa
+  sin límite con sockets ya cerrados — mismo patrón que
+  `historiales.delete()` en esa misma función.
+- Aplicado vía `@UseGuards(ChatbotWsThrottlerGuard, WsJwtGuard,
+  LimitePlanGratisGuard)` en `manejarMensaje` (primero, antes de tocar
+  JWT/plan — rechazar una ráfaga no debería requerir verificar el token).
+- Comentario de `ws-aware-throttler.guard.ts` actualizado — ya no dice
+  "no hace falta un throttler consciente de sockets", ahora documenta
+  dónde vive el real.
+- 5 tests nuevos (`ws-throttler.guard.spec.ts`, con fake timers):
+  permite hasta el máximo en la ventana, rechaza el que la excede con el
+  errorCode/statusCode correctos, vuelve a permitir tras pasar la
+  ventana, cuenta cada socket por separado, y `limpiar()` resetea el
+  contador. Suite completa del backend: **150/150 tests pasan**.
+
+**Verificado en Chrome real contra el backend y Groq reales (no
+mocks)**: conexión de prueba aparte (socket.io-client cargado desde CDN
+en la misma pestaña autenticada, para poder disparar mensajes en
+paralelo sin que la UI del widget serialice el envío esperando cada
+respuesta) mandó 6 mensajes reales en ráfaga → **5 completaron con
+`respuesta-fin` real (5 llamadas reales a Groq) y exactamente el 6to fue
+rechazado con `error-chatbot` real, `errorCode: "DEMASIADAS_SOLICITUDES"`,
+`statusCode: 429`** — el límite funciona de punta a punta, no solo en
+el test unitario con timers falsos.
+
 Pendientes menores sin resolver, ninguno bloqueante (heredados de la
 tarjeta de responsive, siguen igual): (1) el onboarding del frontend
 puede chocar con el límite de 3 servicios del plan gratis si una

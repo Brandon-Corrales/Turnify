@@ -14,6 +14,7 @@ import { ChatbotService } from './chatbot.service';
 import { MensajeChatbotDto } from './dto/mensaje-chatbot.dto';
 import { WsExceptionsFilter } from './filters/ws-exceptions.filter';
 import { WsJwtGuard } from './guards/ws-jwt.guard';
+import { ChatbotWsThrottlerGuard } from './guards/ws-throttler.guard';
 import type { MensajeLlm } from './providers/llm-client.interface';
 
 /** Tope de turnos guardados por conexión: evita que una conversación larga crezca sin límite en memoria (no persiste entre reconexiones, ver ChatbotService.PreguntaChatbot). */
@@ -36,14 +37,18 @@ export class ChatbotGateway implements OnGatewayDisconnect {
   /** Historial de conversación en memoria por socket — se pierde al desconectar, a propósito. */
   private readonly historiales = new Map<string, MensajeLlm[]>();
 
-  constructor(private readonly chatbotService: ChatbotService) {}
+  constructor(
+    private readonly chatbotService: ChatbotService,
+    private readonly wsThrottler: ChatbotWsThrottlerGuard,
+  ) {}
 
   handleDisconnect(client: Socket): void {
     this.historiales.delete(client.id);
+    this.wsThrottler.limpiar(client.id);
   }
 
   @UseFilters(WsExceptionsFilter)
-  @UseGuards(WsJwtGuard, LimitePlanGratisGuard)
+  @UseGuards(ChatbotWsThrottlerGuard, WsJwtGuard, LimitePlanGratisGuard)
   @LimitePlan('mensajesChatbot')
   @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
   @SubscribeMessage('mensaje')
