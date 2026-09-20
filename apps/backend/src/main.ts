@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -9,7 +10,10 @@ import { validationExceptionFactory } from './common/errors/validation-exception
 import { Env } from './config/env.schema';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // rawBody: true — el webhook de Stripe necesita el body sin parsear
+  // para verificar la firma HMAC (`request.rawBody` en el controller);
+  // parsearlo primero invalidaría cualquier verificación de firma.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
   const config = app.get(ConfigService<Env, true>);
 
   app.enableCors({ origin: config.get('CORS_ORIGIN', { infer: true }), credentials: true });

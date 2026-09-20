@@ -808,14 +808,98 @@ worker, solo cambia el proveedor de envío.
       funcionan correctamente; es una restricción de la plataforma de
       WhatsApp, no del código).
 
+## Suscripciones — Stripe Test Mode + webhook + guard de límites del plan gratis
+**Backend: Módulo Suscripciones — Stripe Test Mode + webhook + guard de
+límites del plan gratis** ✅
+
+**Limitación real, NO técnica, confirmada por el equipo — no es una
+credencial pendiente de conseguir**: Costa Rica no está entre los países
+donde Stripe permite abrir cuenta, ni siquiera en modo de pruebas. Por
+esto, a diferencia de Resend/Meta WhatsApp (que sí se verificaron contra
+APIs reales), el módulo de Suscripciones se implementó completo contra la
+API oficial de Stripe pero **nunca pudo probarse contra un checkout o
+webhook real** — su cobertura real es únicamente vía tests unitarios con
+el SDK de Stripe mockeado. No hay ninguna acción futura de "conseguir la
+credencial" que vaya a resolver esto — es un límite geográfico de la
+plataforma, documentado también en `stripe.service.ts` y `.env.example`.
+
+- `StripeService` (`modules/suscripciones/providers/`): envoltorio
+  inyectable sobre el SDK oficial `stripe` (v22.6.2). `crearCheckoutSession`
+  arma un Checkout Session en modo `subscription` con `metadata.idNegocio`
+  y `client_reference_id` (para que el webhook sepa a qué negocio aplicar
+  el cambio de plan); `construirEvento` verifica la firma HMAC del
+  webhook (`stripe.webhooks.constructEvent`). Sin credenciales
+  configuradas, ambos métodos fallan con un error claro en vez de un
+  crash — `crearCheckoutSession` como `ServiceUnavailableException` 503
+  (`PASARELA_PAGOS_NO_DISPONIBLE`), verificado contra el servidor real.
+- `main.ts`: `NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true })`
+  — el webhook necesita el body sin parsear para verificar la firma;
+  parsearlo primero invalida cualquier verificación.
+- Webhook (`POST /suscripciones/webhook`, `@Public()`): idempotente sin
+  tabla nueva de eventos — antes de aplicar `checkout.session.completed`
+  revisa si ya existe una `Suscripcion` con ese `idPagoPasarela`
+  (session/subscription id de Stripe); si ya existe, no duplica. Maneja
+  también `customer.subscription.updated` (past_due/unpaid → SUSPENDIDA)
+  y `customer.subscription.deleted` (→ CANCELADA, negocio vuelve a
+  GRATIS). Firma inválida → 400, verificado contra el servidor real.
+- Guard `LimitePlanGratisGuard` + decorador `@LimitePlan('usuarios' | 'servicios' | 'reservas')`,
+  aplicado en `POST /usuarios`, `POST /servicios` y `POST /reservas`.
+  Límites del punto 5.1 del brief: 1 usuario, 3 servicios activos, 20
+  reservas/mes calendario (UTC, no vale la pena convertir a mes-CR para
+  una cuota tan gruesa). Si el negocio ya está en un plan de pago
+  (`Negocio.planSuscripcion`, el valor denormalizado que el webhook
+  mantiene sincronizado), el guard no hace ninguna consulta de conteo.
+  **Probado de verdad contra el servidor real**: negocio nuevo (plan
+  gratis) → 3 servicios se crean, el 4to responde `403
+  LIMITE_PLAN_ALCANZADO`; crear un 2do usuario responde el mismo error.
+- **Dos gotchas reales de NestJS encontrados y corregidos durante esta
+  prueba** (no bugs de lógica de negocio — de cómo Nest resuelve
+  dependencias):
+  1. Un guard aplicado vía `@UseGuards(Clase)` se instancia con el
+     inyector del **módulo consumidor** (`UsuariosModule`,
+     `ServiciosModule`, `ReservasModule`), no con el del módulo donde
+     está declarado (`SuscripcionesModule`) — si dependiera directo de
+     un `Repository` de TypeORM, fallaba con "is NegocioRepository part
+     of the current Module?" en cualquier módulo sin ese
+     `TypeOrmModule.forFeature(...)` propio. Solución: mover el conteo a
+     `LimitesPlanService`, un provider normal exportado por
+     `SuscripcionesModule` (sí sigue la resolución de DI estándar), y
+     dejar el guard dependiendo solo de eso.
+  2. Los **Guards de Nest corren TODOS antes que los Interceptors**
+     (orden real: Guards → Interceptors → Pipes → Handler). Como
+     `TenantContextService` lo llena el `TenantContextInterceptor`, un
+     Guard que lo use encuentra el contexto vacío ("no hay contexto de
+     negocio activo") — confirmado con el error real del servidor.
+     Solución: el guard lee `idNegocio` directo de `request.user` (lo
+     pone `JwtAuthGuard`, que sí corre antes en la misma fase de
+     Guards), nunca de `TenantContextService`.
+- Nota de producto (no arreglada en esta tarjeta, anotada para no
+  perderla): el `OnboardingPage` del frontend (tarjeta de plantillas por
+  vertical) puede intentar crear más de 3 servicios de una plantilla con
+  muchas sugerencias (ej. salón de belleza, 9 plantillas) para un negocio
+  recién registrado en plan gratis — los primeros 3 `POST /servicios` del
+  `Promise.all` tendrán éxito y el resto fallará con
+  `LIMITE_PLAN_ALCANZADO`, mostrando un toast de error genérico en vez de
+  un mensaje que explique cuáles sí se crearon. Es una interacción real
+  entre dos tarjetas construidas en sesiones distintas, no descubierta
+  hasta ahora porque el guard no existía todavía cuando se construyó el
+  onboarding.
+- 12 tests unitarios nuevos (`suscripciones.service.spec.ts`,
+  `limites-plan.service.spec.ts`, `limite-plan-gratis.guard.spec.ts`,
+  `stripe.service.spec.ts` con el SDK de Stripe mockeado vía `vi.mock`).
+
 ## Tarea en curso
 Ninguna de las priorizadas explícitamente por el usuario está pendiente.
 Cerrado en esta sesión: Seguridad (categoría completa), las 5 tarjetas de
-plantillas por vertical, y las 2 tarjetas de Worker de Notificaciones
-(Resend + Meta WhatsApp Cloud API, reemplazando Twilio). Siguiente en el
-orden de docs/spec.md (punto 18, sección "después del Seguimiento #2"):
-Suscripciones (Stripe) → Reportes → Documentación Swagger → i18n
-backend, y después el resto de Frontend.
+plantillas por vertical, las 2 tarjetas de Worker de Notificaciones
+(Resend + Meta WhatsApp Cloud API, reemplazando Twilio), y Suscripciones
+(Stripe Test Mode — verificado solo con mocks por la restricción
+geográfica de Stripe en Costa Rica, ver arriba). Pendiente sin resolver,
+no bloqueante: el onboarding puede chocar con el límite de 3 servicios
+del plan gratis (ver nota arriba) — ajustarlo es trabajo de frontend, no
+de esta tarjeta de backend. Siguiente en el orden de docs/spec.md (punto
+18, sección "después del Seguimiento #2"): Reportes → Documentación
+Swagger → i18n backend, y después el resto de Frontend.
 
 ## Cómo probar lo que ya existe
 ```bash

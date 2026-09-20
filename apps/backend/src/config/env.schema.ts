@@ -35,6 +35,15 @@ const envSchema = z.object({
   RESEND_FROM_EMAIL: z.string().default('onboarding@resend.dev'),
   WHATSAPP_ACCESS_TOKEN: z.string().optional(),
   WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
+
+  // Igual de opcionales y por la misma razón: sin ellas, StripeService
+  // simplemente no puede iniciar un checkout (mismo patrón que Resend/
+  // WhatsApp). Costa Rica no está entre los países soportados por Stripe
+  // (ni siquiera en modo de pruebas) — ver PROGRESS.md, limitación
+  // geográfica confirmada, no una credencial pendiente de conseguir.
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_PRICE_ID_PLAN_PAGO: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

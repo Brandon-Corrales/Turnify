@@ -10,11 +10,14 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolUsuario } from '../../database/entities';
 import { PaginationQueryDto } from '../../common/pagination';
+import { LimitePlan } from '../suscripciones/decorators/limite-plan.decorator';
+import { LimitePlanGratisGuard } from '../suscripciones/guards/limite-plan-gratis.guard';
 import { UsuariosService } from './usuarios.service';
 import { CrearUsuarioDto } from './dto/crear-usuario.dto';
 import { ActualizarUsuarioDto } from './dto/actualizar-usuario.dto';
@@ -26,6 +29,8 @@ export class UsuariosController {
   constructor(private readonly usuariosService: UsuariosService) {}
 
   @Roles(RolUsuario.ADMIN)
+  @UseGuards(LimitePlanGratisGuard)
+  @LimitePlan('usuarios')
   @Post()
   crear(@Body() dto: CrearUsuarioDto) {
     return this.usuariosService.crear(dto);

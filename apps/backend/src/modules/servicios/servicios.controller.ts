@@ -10,9 +10,12 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { PaginationQueryDto } from '../../common/pagination';
+import { LimitePlan } from '../suscripciones/decorators/limite-plan.decorator';
+import { LimitePlanGratisGuard } from '../suscripciones/guards/limite-plan-gratis.guard';
 import { ServiciosService } from './servicios.service';
 import { CrearServicioDto } from './dto/crear-servicio.dto';
 import { ActualizarServicioDto } from './dto/actualizar-servicio.dto';
@@ -27,6 +30,8 @@ import { ActualizarServicioDto } from './dto/actualizar-servicio.dto';
 export class ServiciosController {
   constructor(private readonly serviciosService: ServiciosService) {}
 
+  @UseGuards(LimitePlanGratisGuard)
+  @LimitePlan('servicios')
   @Post()
   crear(@Body() dto: CrearServicioDto) {
     return this.serviciosService.crear(dto);

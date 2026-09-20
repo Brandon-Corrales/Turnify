@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { TenantRepositoryProvider } from '../../common/tenant';
 import { Cliente, Disponibilidad, Reserva, Servicio, Usuario } from '../../database/entities';
 import { NotificacionesModule } from '../notificaciones/notificaciones.module';
+import { SuscripcionesModule } from '../suscripciones/suscripciones.module';
 import { ReservasController } from './reservas.controller';
 import { ReservasService } from './reservas.service';
 
@@ -10,6 +11,7 @@ import { ReservasService } from './reservas.service';
   imports: [
     TypeOrmModule.forFeature([Reserva, Cliente, Servicio, Usuario, Disponibilidad]),
     NotificacionesModule,
+    SuscripcionesModule,
   ],
   controllers: [ReservasController],
   providers: [

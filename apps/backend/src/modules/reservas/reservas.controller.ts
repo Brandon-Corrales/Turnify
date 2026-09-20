@@ -1,5 +1,17 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { LimitePlan } from '../suscripciones/decorators/limite-plan.decorator';
+import { LimitePlanGratisGuard } from '../suscripciones/guards/limite-plan-gratis.guard';
 import { ReservasService } from './reservas.service';
 import { CrearReservaDto } from './dto/crear-reserva.dto';
 import { ReprogramarReservaDto } from './dto/reprogramar-reserva.dto';
@@ -21,6 +33,8 @@ import { ListarReservasQueryDto } from './dto/listar-reservas-query.dto';
 export class ReservasController {
   constructor(private readonly reservasService: ReservasService) {}
 
+  @UseGuards(LimitePlanGratisGuard)
+  @LimitePlan('reservas')
   @Post()
   crear(@Body() dto: CrearReservaDto) {
     return this.reservasService.crear(dto);
