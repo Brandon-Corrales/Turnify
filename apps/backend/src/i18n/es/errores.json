@@ -35,5 +35,7 @@
   "CONFLICTO": "Conflicto",
   "LIMITE_PLAN_USUARIOS": "El Plan Gratis permite solo 1 usuario (el admin). Actualiza a un plan de pago para invitar empleados.",
   "LIMITE_PLAN_SERVICIOS": "El Plan Gratis permite hasta 3 servicios activos. Actualiza a un plan de pago para agregar más.",
-  "LIMITE_PLAN_RESERVAS": "El Plan Gratis permite hasta 20 reservas por mes. Actualiza a un plan de pago para seguir reservando."
+  "LIMITE_PLAN_RESERVAS": "El Plan Gratis permite hasta 20 reservas por mes. Actualiza a un plan de pago para seguir reservando.",
+  "PRIVILEGIO_CLIENTE_NIVEL": "El canal WhatsApp para recordatorios está disponible solo para clientes de nivel Premium",
+  "PRIVILEGIO_CLIENTE_PLAN_NEGOCIO": "El plan actual del negocio no tiene el canal WhatsApp habilitado"
 }

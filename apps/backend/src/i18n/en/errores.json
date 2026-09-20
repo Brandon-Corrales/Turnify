@@ -35,5 +35,7 @@
   "CONFLICTO": "Conflict",
   "LIMITE_PLAN_USUARIOS": "The Free Plan allows only 1 user (the admin). Upgrade to a paid plan to invite staff.",
   "LIMITE_PLAN_SERVICIOS": "The Free Plan allows up to 3 active services. Upgrade to a paid plan to add more.",
-  "LIMITE_PLAN_RESERVAS": "The Free Plan allows up to 20 bookings per month. Upgrade to a paid plan to keep booking."
+  "LIMITE_PLAN_RESERVAS": "The Free Plan allows up to 20 bookings per month. Upgrade to a paid plan to keep booking.",
+  "PRIVILEGIO_CLIENTE_NIVEL": "WhatsApp reminders are only available for Premium-tier clients",
+  "PRIVILEGIO_CLIENTE_PLAN_NEGOCIO": "The business's current plan does not have WhatsApp enabled"
 }
