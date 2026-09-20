@@ -38,6 +38,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
           >
             Notificaciones
           </Link>
+          <Link
+            to="/reportes"
+            className="text-sm font-medium text-slate-600 hover:text-primary-600 dark:text-slate-300 dark:hover:text-primary-400"
+          >
+            Reportes
+          </Link>
         </div>
         <div className="flex items-center gap-3">
           <span className="hidden text-sm text-slate-500 sm:inline dark:text-slate-400">
