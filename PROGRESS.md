@@ -1213,29 +1213,99 @@ seed) y un script real de `socket.io-client` contra `ws://localhost:3000/chatbot
   `LimitesPlanService`/`LimitePlanGratisGuard` para `mensajesChatbot` +
   contexto WebSocket.
 
+## Frontend: Landing pública conectada a datos reales de planes ✅
+Primera tarjeta de Frontend "después del Seguimiento #2" — Backend ya
+100% cerrado (ver abajo). Landing pública en `/`, con hero, sección de
+características y sección de planes.
+
+- **"/" ahora es dual-purpose según sesión** (punto 6 del brief: "Landing
+  pública → Login/Registro → Dashboard"): nuevo componente `Raiz` en
+  `App.tsx` que muestra `LandingPage` si no hay sesión, `InicioPage`
+  (Dashboard) si la hay — antes `/` siempre exigía sesión vía
+  `RutaProtegida` y redirigía a `/login`, lo que dejaba a Turnify sin
+  ninguna pantalla pública de verdad. `RutaProtegida` sigue igual para
+  `/calendario` y `/onboarding`. Spinner de "restaurando sesión"
+  extraído a `PantallaCargando` (compartido entre `RutaProtegida` y
+  `Raiz`, antes duplicado).
+- **"Datos reales de planes"**: nuevo endpoint público
+  `GET /suscripciones/planes` (`@Public()`, sin JWT) en el backend —
+  `SuscripcionesService.obtenerLimitesPlanes()` lee los números
+  directo de `LimitesPlanService.limite(...)`, la MISMA fuente que usa
+  `LimitePlanGratisGuard` para bloquear en producción. La landing nunca
+  puede mostrar un número de marketing desactualizado respecto a lo que
+  el sistema aplica de verdad — si el equipo cambia un límite en
+  `LimitesPlanService`, la landing lo refleja sin tocarla. El Plan de
+  Pago no tiene techo numérico en el código (la ausencia de límite ES la
+  implementación), así que el frontend lo presenta como "ilimitado" en
+  vez de inventar un número.
+  - Frontend: `lib/suscripciones-api.ts` (`obtenerPlanes()`, llamada sin
+    autenticación) + `useQuery` en `LandingPage`, con `SkeletonText`
+    mientras carga (punto 7: nunca un spinner genérico) y un mensaje de
+    error si la llamada falla — nunca bloquea el resto de la página.
+- **Diseño** (punto 7 del brief): secciones con reveal al hacer scroll
+  vía `framer-motion` (`whileInView` + `viewport={{once:true}}` — logra
+  el mismo efecto que Intersection Observer manual sin código adicional,
+  y hereda `reducedMotion="user"` ya configurado en `main.tsx`, así que
+  respeta `prefers-reduced-motion` sin trabajo extra), tarjetas de
+  características con stagger, y las mismas tokens de diseño
+  (`primary`/`secondary`, radios) que el resto de la app — cero estilos
+  nuevos inventados.
+- **Bug real encontrado y arreglado antes de cerrar la tarjeta**: los
+  botones de la landing eran `<Boton>` (un `motion.button`) anidados
+  DENTRO de un `<Link>` de React Router (que renderiza un `<a>`) —
+  `<button>` dentro de `<a>` es HTML inválido (contenido interactivo
+  anidado) y, verificado en un Chrome real, el click con mouse dejaba de
+  disparar la navegación de forma consistente (un `.click()) programático
+  sí navegaba, confirmando que el anidado inválido era la causa, no un
+  problema de React Router). Fix: los 5 botones de CTA ahora usan
+  `useNavigate()` + `onClick` directo sobre el propio `Boton` — mismo
+  patrón que ya usaba `InicioPage` para su botón "Ver calendario"; el
+  `<Link>` de texto plano del header ("Iniciar sesión") se dejó igual,
+  porque ahí sí es un enlace de texto normal, no un botón.
+- **Verificado en un Chrome real, no solo con el build**: hero, sección
+  de características (con la animación de scroll-reveal disparando) y
+  sección de planes con los NÚMEROS REALES devueltos por el backend (1
+  usuario / 3 servicios / 20 reservas por mes / 10 mensajes de chatbot
+  por día) — confirmado que sin sesión `/` muestra la Landing, con sesión
+  (login real contra el backend) `/` muestra el Dashboard, y al cerrar
+  sesión vuelve a la Landing. Sin errores en consola.
+  - **Limitación de esta verificación**: la herramienta de automatización
+    del navegador de esta sesión tuvo fallos intermitentes propios (no de
+    la app) — timeouts de captura de pantalla, `resize_window` sin
+    efecto real en el viewport, y clicks/tecleo por coordenadas del mouse
+    que no se registraban. Se compensó disparando eventos reales del DOM
+    vía JavaScript (`input`/`click`/`requestSubmit()`) para confirmar el
+    comportamiento, y las capturas de pantalla que sí funcionaron
+    confirman el render visual — pero **la vista mobile/responsive de
+    esta pantalla específica no se pudo capturar visualmente esta
+    sesión** (las clases responsive de Tailwind son las mismas
+    convenciones `sm:`/`lg:` ya usadas y verificadas en Login/Registro/
+    Onboarding, pero eso no es lo mismo que haberlo visto en mobile).
+
 ## Tarea en curso
-**Todo el Backend de docs/spec.md (punto 18) está terminado, sin
-excepciones** — Seguridad, Notificaciones, Suscripciones, Reportes,
-Swagger, i18n backend, el guard de límites del plan gratis, el guard de
-privilegios por nivel_cliente y ahora el Módulo Chatbot están todos
-cerrados y verificados contra Postgres/Supabase real.
+**Backend 100% cerrado** (ver arriba) — Seguridad, Notificaciones,
+Suscripciones, Reportes, Swagger, i18n backend, guard de límites del
+plan gratis, guard de privilegios por nivel_cliente y Módulo Chatbot,
+todos verificados contra Postgres/Supabase real.
+
+**Frontend, en el orden de docs/spec.md**: Setup, componentes UI,
+Login/Registro, Calendario (prioridad del Seguimiento #2) cerrados de
+sesiones anteriores; de las tarjetas "después del Seguimiento #2", ya
+están cerradas Paso de onboarding + Input variante crear/editar (fuera
+de orden, resueltas junto con la tarjeta de plantillas por vertical) y
+ahora **Landing pública** (esta tarjeta). La siguiente en el orden
+exacto del punto 18 es **"Frontend: Dashboard con KPIs desde el módulo
+Reportes"**.
 
 Pendientes menores sin resolver, ninguno bloqueante: (1) el onboarding
 del frontend puede chocar con el límite de 3 servicios del plan gratis
 si una plantilla de vertical sugiere más de 3 (ver nota de Suscripciones
-arriba) — trabajo de frontend, no de backend; (2) la mayoría de los
-mensajes de validación de los DTOs (fuera de la contraseña) todavía no
-usan claves de i18n (ver nota de i18n backend arriba). El pendiente de
-Gemini de una versión anterior de esta nota quedó resuelto al cambiar de
-proveedor a Groq — el chatbot genera texto real de punta a punta, sin
-condiciones pendientes.
-
-Con el Backend 100% cerrado, lo que sigue es el resto de tarjetas de
-Frontend marcadas "después del Seguimiento #2" (Landing pública,
-Dashboard con KPIs, wizard de reserva pública, Notificaciones/Reportes
-en pantalla, selector de idioma, responsive, dark mode, y el widget de
-chatbot flotante — tarjeta de Frontend separada de este módulo de
-Backend — ver punto 18 de docs/spec.md).
+arriba); (2) la mayoría de los mensajes de validación de los DTOs (fuera
+de la contraseña) todavía no usan claves de i18n (ver nota de i18n
+backend arriba); (3) verificación visual responsive/mobile de la Landing
+pendiente por la limitación de herramienta descrita arriba — no bloquea,
+las clases responsive ya están escritas con las mismas convenciones
+verificadas en otras pantallas.
 
 ## Cómo probar lo que ya existe
 ```bash

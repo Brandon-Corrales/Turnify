@@ -24,6 +24,20 @@ export class SuscripcionesController {
     private readonly stripe: StripeService,
   ) {}
 
+  /**
+   * Sin sesión (landing pública) — solo expone los NÚMEROS reales del
+   * Plan Gratis (misma fuente que aplica LimitePlanGratisGuard), nunca
+   * datos de un negocio en particular.
+   */
+  @Public()
+  @Get('planes')
+  @ApiOperation({
+    summary: 'Límites reales del Plan Gratis vs Plan de Pago, para la landing pública',
+  })
+  obtenerPlanes() {
+    return this.suscripcionesService.obtenerLimitesPlanes();
+  }
+
   @ApiBearerAuth()
   @Get('mi-suscripcion')
   @ApiOperation({ summary: 'Suscripción actual del negocio (plan, estado, fechas)' })
