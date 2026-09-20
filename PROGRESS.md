@@ -1607,7 +1607,7 @@ verificando esta misma tarjeta.
   en ningún caso (confirmado limpiando el buffer de consola y navegando
   de nuevo, no solo leyendo mensajes viejos).
 
-## Frontend: Toggle de vista lista/cuadrícula reutilizable (Clientes, Servicios, Reservas) ✅ (parcial — ver "Tarea en curso")
+## Frontend: Toggle de vista lista/cuadrícula reutilizable (Clientes, Servicios, Reservas) ✅
 El punto 9 del brief pedía el toggle en 3 pantallas administrativas que
 **todavía no existían** (`ls src/pages` confirmó que no había
 `ClientesPage`/`ServiciosPage`/`ReservasPage` antes de esta tarjeta) —
@@ -1670,37 +1670,42 @@ Servicios:**
   ("El Plan Gratis permite hasta 3 servicios activos..."). No se forzó
   la creación (habría requerido desactivar un servicio real del seed).
 - Sin errores de consola en ninguna de las dos pantallas.
+- **Reservas** (verificado tras retomar la sesión, límite de tokens de
+  5h restablecido): `/reservas` carga las 5 reservas reales que quedaron
+  de pruebas de sesiones anteriores (todas `Cancelada`, del Wizard/
+  reserva pública), en vista cuadrícula con cliente/servicio/fecha/
+  estado/usuario correctos; toggle a lista funciona y persiste
+  (`turnify_vista_reservas === 'lista'`); filtro por `estado`
+  confirmado en ambos sentidos — "Pendiente" muestra el estado vacío
+  correcto ("No hay reservas para este filtro"), "Cancelada" vuelve a
+  traer las 5 reales — o sea el query param `estado` sí llega al
+  backend y `ListarReservasQueryDto` lo filtra de verdad. Sin errores de
+  consola. **Nota de proceso, no de código**: varios clics con
+  coordenadas de pantalla fallaron en silencio por un desfase real entre
+  el frame de la captura de pantalla (1568px) y el viewport real
+  (2048px, con `devicePixelRatio` 0.9375) — una vez detectado, clicar por
+  referencia de elemento (`find`/`read_page` + click por `ref`) funcionó
+  siempre a la primera; no se tocó nada de la app para "arreglar" esto
+  porque no era un bug de la app. No se forzó cancelar una reserva real
+  para no generar más ruido en los datos de seed — `reservasApi.cancelar`
+  ya estaba verificado en el Calendario en una sesión anterior y es la
+  misma función, sin cambios.
 
 ## Tarea en curso
-**Pausa de seguridad por límite de tokens de la sesión** (99% del cupo
-de 5 horas alcanzado a mitad de la verificación en Chrome, justo después
-de cerrar Clientes/Servicios y antes de poder abrir el modal de
-Servicios en `/reservas`) — seguido el punto 2 de "Modo autónomo
-nocturno": se paró en el límite entre pantallas, nunca a mitad de una,
-todo lo de arriba ya está compilado/lintado/commiteado.
+Con el Toggle de vista lista/cuadrícula (Clientes/Servicios/Reservas)
+100% cerrado y verificado (incluida Reservas, retomada automáticamente
+tras el reset de tokens de 5h por hora CR ~01:10, leyendo primero este
+archivo y `git log` como indica el punto 3 del modo autónomo, sin
+esperar confirmación), la siguiente tarjeta en el orden acordado (ver
+"Modo autónomo nocturno" arriba) es **Dark mode (modo oscuro/claro
+persistente)**, seguida de: Pantalla/banner de upgrade de plan → Marcar/
+mostrar `nivel_cliente` en Clientes (ya hay badge Gratis/Premium desde
+la tarjeta anterior — revisar si el brief pide algo más ahí) → Widget de
+chatbot flotante.
 
-**Pendiente exacto para retomar** (leer esto primero al reanudar):
-1. `ReservasPage` está escrita, tipada, lintada y buildeada, pero
-   **todavía no verificada en navegador real** — falta: cargar
-   `/reservas` con la cuenta demo, confirmar que lista las reservas
-   reales, probar el filtro por `estado`, alternar cuadrícula/lista, y
-   cancelar una reserva de prueba (verificar que dispara la notificación
-   de cancelación ya existente). Si aparece algún bug real al verificar,
-   arreglarlo antes de dar la tarjeta por cerrada.
-2. Una vez verificada Reservas, cerrar esta tarjeta en el índice de
-   arriba (quitar el "parcial") y seguir el orden de "Modo autónomo
-   nocturno" sin pedir confirmación: **Dark mode (modo oscuro/claro
-   persistente)** → Pantalla/banner de upgrade de plan → Marcar/mostrar
-   `nivel_cliente` en Clientes (ya hay badge Gratis/Premium desde esta
-   tarjeta — revisar si el brief pide algo más ahí) → Widget de chatbot
-   flotante.
-3. Los tokens de la sesión se restablecen ~01:10 hora CR
-   (`2026-09-20T07:10:00Z`). Si esta sesión se reanuda automáticamente
-   tras el reset, leer este archivo y `git log` primero (ya lo dice el
-   punto 3 del modo autónomo), no reiniciar nada ya commiteado.
-4. El reporte final consolidado (un solo mensaje, no uno por tarjeta)
-   sigue pendiente hasta cerrar TODO el frontend — no se ha escrito
-   ningún reporte parcial todavía, por diseño (instrucción del equipo).
+El reporte final consolidado (un solo mensaje, no uno por tarjeta) sigue
+pendiente hasta cerrar TODO el frontend — no se ha escrito ningún
+reporte parcial todavía, por diseño (instrucción del equipo).
 
 Pendientes menores sin resolver, ninguno bloqueante (heredados de la
 tarjeta de responsive, siguen igual): (1) el onboarding del frontend
