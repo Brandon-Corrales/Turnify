@@ -18,6 +18,7 @@ import { DisponibilidadModule } from './modules/disponibilidad/disponibilidad.mo
 import { ReservasModule } from './modules/reservas/reservas.module';
 import { PlantillasServicioModule } from './modules/plantillas-servicio/plantillas-servicio.module';
 import { NotificacionesModule } from './modules/notificaciones/notificaciones.module';
+import { SuscripcionesModule } from './modules/suscripciones/suscripciones.module';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { NotificacionesModule } from './modules/notificaciones/notificaciones.mo
     ReservasModule,
     PlantillasServicioModule,
     NotificacionesModule,
+    SuscripcionesModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
