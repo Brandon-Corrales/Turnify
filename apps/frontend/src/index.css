@@ -72,3 +72,45 @@
     }
   }
 }
+
+/*
+ * Tema oscuro para FullCalendar (Calendario, punto 6/9 del brief: "sin
+ * excepciones"). FullCalendar no usa las utilidades dark: de Tailwind —
+ * pinta con sus propias variables CSS (--fc-*), así que se redefinen acá
+ * en vez de pelear con !important contra sus clases .fc-*. Colores
+ * calcados de los mismos tokens slate/primary que usa el resto de la app.
+ */
+.dark .fc {
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: #1e293b; /* slate-800 */
+  --fc-neutral-text-color: #cbd5e1; /* slate-300 */
+  --fc-border-color: #334155; /* slate-700 */
+  --fc-button-text-color: #e2e8f0; /* slate-200 */
+  --fc-button-bg-color: #1e293b; /* slate-800 */
+  --fc-button-border-color: #475569; /* slate-600 */
+  --fc-button-hover-bg-color: #334155; /* slate-700 */
+  --fc-button-hover-border-color: #475569;
+  --fc-button-active-bg-color: #4f46e5; /* primary-600 */
+  --fc-button-active-border-color: #4f46e5;
+  --fc-today-bg-color: rgb(79 70 229 / 0.15); /* primary-600 @ 15% */
+  --fc-highlight-color: rgb(79 70 229 / 0.2);
+  --fc-now-indicator-color: #ef4444;
+  --fc-list-event-hover-bg-color: #334155;
+  color: #e2e8f0;
+}
+
+.dark .fc .fc-daygrid-day-number,
+.dark .fc .fc-col-header-cell-cushion,
+.dark .fc .fc-list-day-text,
+.dark .fc .fc-list-day-side-text {
+  color: #e2e8f0;
+}
+
+.dark .fc .fc-daygrid-day.fc-day-other .fc-daygrid-day-number {
+  color: #64748b; /* slate-500, días fuera del mes */
+}
+
+.dark .fc .fc-list-empty {
+  background-color: transparent;
+  color: #94a3b8;
+}

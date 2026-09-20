@@ -11,7 +11,9 @@
     "reportes": "Reports",
     "registrarNegocio": "Register my business",
     "registrarse": "Sign up",
-    "idioma": "Language"
+    "idioma": "Language",
+    "cambiarATemaClaro": "Switch to light theme",
+    "cambiarATemaOscuro": "Switch to dark theme"
   },
   "landing": {
     "badge": "Bookings and appointments, no spreadsheets",

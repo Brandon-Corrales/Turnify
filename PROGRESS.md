@@ -1691,17 +1691,71 @@ Servicios:**
   ya estaba verificado en el Calendario en una sesión anterior y es la
   misma función, sin cambios.
 
+## Frontend: Modo oscuro/claro persistente ✅
+El punto 9 del brief pedía que el tema aplicara "a TODA la interfaz sin
+excepciones", usando siempre los design tokens ya definidos — y la base
+ya estaba preparada desde antes (`@custom-variant dark` en `index.css`,
+comentario explícito de que esta tarjeta lo activaría) y casi todos los
+componentes ya traían su clase `dark:` desde que se construyeron. La
+tarjeta terminó siendo sobre todo construir el MECANISMO del toggle, más
+un gap real que sí faltaba: FullCalendar.
+
+- **`useTema()`** (`lib/tema.ts`): hook que lee `localStorage
+  ('turnify_tema')`, cae a `prefers-color-scheme` la primera vez (nunca
+  fuerza claro/oscuro sin que el usuario haya elegido), aplica/quita
+  `.dark` en `<html>` y persiste el valor solo cuando el usuario alterna
+  el toggle — igual al patrón ya usado para `useVistaPreferida`.
+- **Script inline en `index.html`** que aplica `.dark` de forma síncrona
+  ANTES de que React monte, leyendo el mismo `localStorage`/
+  `prefers-color-scheme` que el hook — evita el parpadeo claro→oscuro en
+  la primera pintura (un problema real de cualquier SPA sin SSR, no
+  específico de este proyecto).
+- **Toggle en `ControlesGlobales`** (sol/luna, mismo estilo de píldora
+  que el selector de idioma) — vive en el mismo grupo que idioma,
+  visible en Landing y en todas las pantallas autenticadas (vía
+  `AppLayout`), igual alcance que el selector de idioma ya tenía. Claves
+  i18n nuevas (`comun.cambiarATemaClaro/Oscuro`).
+- **Bug/gap real encontrado sin que nadie lo pidiera explícitamente**:
+  FullCalendar (Calendario) NO usa las utilidades `dark:` de Tailwind —
+  pinta con sus propias variables CSS (`--fc-*`) y se habría quedado con
+  fondo blanco/texto oscuro fijo en modo oscuro, la única pantalla que sí
+  habría roto el "sin excepciones" del punto 9. Fix: bloque
+  `.dark .fc { --fc-border-color: ...; --fc-today-bg-color: ...; ... }`
+  en `index.css` redefiniendo las variables de tema de FullCalendar con
+  los mismos tokens slate/primary del resto de la app, en vez de pelear
+  con `!important` contra sus clases `.fc-*`.
+- Auditoría de código para confirmar que no había colores sueltos fuera
+  de la paleta slate/primary/secondary (`grep` de `bg-gray-`/`text-gray-`/
+  `bg-black` etc. en todo `src` → cero resultados) ni estilos inline con
+  colores hardcodeados (cero resultados fuera de `colorCalendario` de
+  servicios/reservas, que es un dato de negocio, no un color de tema).
+
+**Verificado en Chrome real, con la cuenta demo:**
+- El toggle cambia `<html class="dark">` y `localStorage` de verdad
+  (confirmado leyendo el DOM, no asumido); Dashboard, Landing y
+  Calendario re-renderizan correctamente en oscuro con buen contraste;
+  el highlight de "hoy" y los botones de FullCalendar (mes/semana/
+  agenda, prev/next) se ven bien en oscuro gracias al fix de variables.
+  Recargar la página con el tema ya guardado en oscuro lo mantiene sin
+  parpadeo (confirmado leyendo `document.documentElement.className`
+  inmediatamente después de navegar). Volver a claro también funciona.
+  Sin errores de consola.
+- **Nota de proceso, no de código**: el `computer` tool (clic por
+  coordenadas de pantalla) volvió a fallar en silencio contra el botón
+  de 28×28px del toggle de tema, un par de veces seguidas, por el mismo
+  desfase de escala ya documentado en la verificación de Reservas
+  (viewport 2048px vs. captura de pantalla 1568px). Se confirmó que el
+  botón y su `onClick` de React eran correctos disparando un click real
+  vía `el.click()` en la página (equivalente a un clic de usuario real,
+  no un mock) — mismo resultado que clicar por referencia de elemento.
+
 ## Tarea en curso
-Con el Toggle de vista lista/cuadrícula (Clientes/Servicios/Reservas)
-100% cerrado y verificado (incluida Reservas, retomada automáticamente
-tras el reset de tokens de 5h por hora CR ~01:10, leyendo primero este
-archivo y `git log` como indica el punto 3 del modo autónomo, sin
-esperar confirmación), la siguiente tarjeta en el orden acordado (ver
-"Modo autónomo nocturno" arriba) es **Dark mode (modo oscuro/claro
-persistente)**, seguida de: Pantalla/banner de upgrade de plan → Marcar/
-mostrar `nivel_cliente` en Clientes (ya hay badge Gratis/Premium desde
-la tarjeta anterior — revisar si el brief pide algo más ahí) → Widget de
-chatbot flotante.
+Con Toggle de vista y Dark mode cerrados y verificados, la siguiente
+tarjeta en el orden acordado (ver "Modo autónomo nocturno" arriba) es
+**Pantalla/banner de upgrade de plan (Plan Gratis → Plan de Pago)**,
+seguida de: Marcar/mostrar `nivel_cliente` en Clientes (ya hay badge
+Gratis/Premium desde la tarjeta del Toggle — revisar si el brief pide
+algo más ahí) → Widget de chatbot flotante.
 
 El reporte final consolidado (un solo mensaje, no uno por tarjeta) sigue
 pendiente hasta cerrar TODO el frontend — no se ha escrito ningún

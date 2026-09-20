@@ -5,6 +5,20 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Turnify</title>
+    <script>
+      // Aplica el tema ANTES de que React monte (punto 9 del brief: tema
+      // persistente, sistema operativo como default la primera vez) para
+      // que no haya parpadeo de claro→oscuro en la primera pintura.
+      (function () {
+        try {
+          var guardado = localStorage.getItem('turnify_tema');
+          var oscuro = guardado
+            ? guardado === 'oscuro'
+            : window.matchMedia('(prefers-color-scheme: dark)').matches;
+          document.documentElement.classList.toggle('dark', oscuro);
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
