@@ -37,3 +37,11 @@ export const registroSchema = z.object({
 });
 
 export type RegistroFormValues = z.infer<typeof registroSchema>;
+
+export const datosClientePublicoSchema = z.object({
+  nombreCompleto: z.string().min(2, 'Mínimo 2 caracteres').max(150),
+  correoElectronico: z.string().min(1, 'El correo es obligatorio').email('Correo inválido'),
+  telefono: z.string().max(30).optional().or(z.literal('')),
+});
+
+export type DatosClientePublicoFormValues = z.infer<typeof datosClientePublicoSchema>;

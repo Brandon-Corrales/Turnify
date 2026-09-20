@@ -22,6 +22,7 @@ import { NotificacionesModule } from './modules/notificaciones/notificaciones.mo
 import { SuscripcionesModule } from './modules/suscripciones/suscripciones.module';
 import { ReportesModule } from './modules/reportes/reportes.module';
 import { ChatbotModule } from './modules/chatbot/chatbot.module';
+import { ReservaPublicaModule } from './modules/reserva-publica/reserva-publica.module';
 import { AppThrottlerGuard } from './common/throttler/ws-aware-throttler.guard';
 
 @Module({
@@ -92,6 +93,7 @@ import { AppThrottlerGuard } from './common/throttler/ws-aware-throttler.guard';
     SuscripcionesModule,
     ReportesModule,
     ChatbotModule,
+    ReservaPublicaModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: AppThrottlerGuard }],
 })

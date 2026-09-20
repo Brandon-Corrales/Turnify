@@ -21,6 +21,18 @@ export function aMomentoLocalCR(fecha: Date): MomentoLocalCR {
   return { diaSemana: local.getUTCDay(), horaMinuto: `${hora}:${minuto}` };
 }
 
+/** Inversa de aMomentoLocalCR: medianoche (00:00 hora CR) de un día calendario "YYYY-MM-DD", como instante UTC real. Usado por el wizard de reserva pública para generar horarios candidatos de ese día. */
+export function inicioDeDiaLocalCR(fechaYYYYMMDD: string): Date {
+  const medianocheUtcIngenua = new Date(`${fechaYYYYMMDD}T00:00:00.000Z`);
+  return new Date(medianocheUtcIngenua.getTime() + OFFSET_CR_MS);
+}
+
+/** Instante UTC de un "HH:mm" hora local CR dentro del día que empieza en inicioDeDia (ver inicioDeDiaLocalCR). */
+export function horaMinutoADate(inicioDeDia: Date, horaMinuto: string): Date {
+  const [horas, minutos] = horaMinuto.split(':').map(Number);
+  return new Date(inicioDeDia.getTime() + (horas * 60 + minutos) * 60_000);
+}
+
 /** Fecha/hora legible en el idioma del cliente, para el texto de las notificaciones (punto 10 del brief). */
 export function formatearFechaHoraLocalCR(fecha: Date, idioma: 'es' | 'en'): string {
   return new Intl.DateTimeFormat(idioma === 'en' ? 'en-US' : 'es-CR', {

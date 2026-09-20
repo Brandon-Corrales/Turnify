@@ -8,6 +8,7 @@ import LandingPage from '@/pages/LandingPage';
 import InicioPage from '@/pages/InicioPage';
 import CalendarioPage from '@/pages/CalendarioPage';
 import OnboardingPage from '@/pages/OnboardingPage';
+import ReservaPublicaPage from '@/pages/ReservaPublicaPage';
 
 /**
  * "/" es pública (Landing, punto 6 del brief) para quien no tiene sesión,
@@ -27,6 +28,7 @@ function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/registro" element={<RegistroPage />} />
       <Route path="/" element={<Raiz />} />
+      <Route path="/reservar/:idNegocio" element={<ReservaPublicaPage />} />
       <Route
         path="/calendario"
         element={
