@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { Bell, Check, Clock, Mail, MessageCircle, X } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Boton } from '@/components/ui';
@@ -12,10 +13,22 @@ import {
   type TipoNotificacion,
 } from '@/lib/notificaciones-api';
 
-const ETIQUETA_TIPO: Record<TipoNotificacion, string> = {
-  confirmacion: 'Confirmación',
-  cancelacion: 'Cancelación',
-  recordatorio: 'Recordatorio',
+const CLAVE_I18N_TIPO: Record<TipoNotificacion, string> = {
+  confirmacion: 'notificaciones.tipoConfirmacion',
+  cancelacion: 'notificaciones.tipoCancelacion',
+  recordatorio: 'notificaciones.tipoRecordatorio',
+};
+
+const CLAVE_I18N_CANAL: Record<CanalNotificacion, string> = {
+  email: 'notificaciones.canalEmail',
+  whatsapp: 'notificaciones.canalWhatsappCorto',
+  sms: 'notificaciones.canalSms',
+};
+
+const CLAVE_I18N_ESTADO: Record<EstadoNotificacion, string> = {
+  enviada: 'notificaciones.estadoEnviada',
+  pendiente: 'notificaciones.estadoPendiente',
+  fallida: 'notificaciones.estadoFallida',
 };
 
 const ICONO_CANAL: Record<CanalNotificacion, typeof Mail> = {
@@ -36,8 +49,8 @@ const ICONO_ESTADO: Record<EstadoNotificacion, typeof Check> = {
   fallida: X,
 };
 
-function formatearFechaHora(iso: string): string {
-  return new Date(iso).toLocaleString('es-CR', {
+function formatearFechaHora(iso: string, idioma: string): string {
+  return new Date(iso).toLocaleString(idioma.startsWith('en') ? 'en-US' : 'es-CR', {
     timeZone: 'America/Costa_Rica',
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -45,6 +58,7 @@ function formatearFechaHora(iso: string): string {
 }
 
 export default function NotificacionesPage() {
+  const { t, i18n } = useTranslation();
   const [pagina, setPagina] = useState(1);
   const LIMITE = 15;
 
@@ -66,15 +80,17 @@ export default function NotificacionesPage() {
   return (
     <AppLayout>
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Notificaciones</h1>
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">
+          {t('notificaciones.titulo')}
+        </h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Historial de confirmaciones, cancelaciones y recordatorios enviados a tus clientes.
+          {t('notificaciones.subtitulo')}
         </p>
 
         {/* Configuración de canales — reales, mismo criterio que aplica el backend */}
         <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
           <h2 className="text-sm font-medium text-slate-700 dark:text-slate-200">
-            Canales de recordatorios
+            {t('notificaciones.canalesTitulo')}
           </h2>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:gap-4">
             <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
@@ -82,7 +98,7 @@ export default function NotificacionesPage() {
                 className="h-4 w-4 text-secondary-600 dark:text-secondary-400"
                 aria-hidden="true"
               />
-              Correo electrónico — siempre disponible
+              {t('notificaciones.canalCorreo')}
             </div>
             <div className="flex items-center gap-2 text-sm">
               <MessageCircle
@@ -100,10 +116,10 @@ export default function NotificacionesPage() {
                     : 'text-slate-400 dark:text-slate-600'
                 }
               >
-                WhatsApp —{' '}
+                {t('notificaciones.canalWhatsapp')}{' '}
                 {whatsappHabilitado
-                  ? 'disponible en tu plan actual'
-                  : 'disponible solo en el Plan de Pago'}
+                  ? t('notificaciones.whatsappDisponible')
+                  : t('notificaciones.whatsappNoDisponible')}
               </span>
             </div>
           </div>
@@ -114,14 +130,14 @@ export default function NotificacionesPage() {
           {notificacionesQuery.isPending && <SkeletonTable filas={6} columnas={5} />}
 
           {notificacionesQuery.isError && (
-            <p className="text-sm text-danger">No se pudo cargar el historial de notificaciones.</p>
+            <p className="text-sm text-danger">{t('notificaciones.error')}</p>
           )}
 
           {notificacionesQuery.data?.data.length === 0 && (
             <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-300 py-12 text-center dark:border-slate-700">
               <Bell className="h-8 w-8 text-slate-300 dark:text-slate-600" aria-hidden="true" />
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Todavía no se ha enviado ninguna notificación.
+                {t('notificaciones.vacio')}
               </p>
             </div>
           )}
@@ -131,11 +147,11 @@ export default function NotificacionesPage() {
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400">
                   <tr>
-                    <th className="px-4 py-2 font-medium">Cliente</th>
-                    <th className="px-4 py-2 font-medium">Tipo</th>
-                    <th className="px-4 py-2 font-medium">Canal</th>
-                    <th className="px-4 py-2 font-medium">Estado</th>
-                    <th className="px-4 py-2 font-medium">Fecha</th>
+                    <th className="px-4 py-2 font-medium">{t('notificaciones.columnaCliente')}</th>
+                    <th className="px-4 py-2 font-medium">{t('notificaciones.columnaTipo')}</th>
+                    <th className="px-4 py-2 font-medium">{t('notificaciones.columnaCanal')}</th>
+                    <th className="px-4 py-2 font-medium">{t('notificaciones.columnaEstado')}</th>
+                    <th className="px-4 py-2 font-medium">{t('notificaciones.columnaFecha')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -148,12 +164,12 @@ export default function NotificacionesPage() {
                           {n.cliente.nombreCompleto}
                         </td>
                         <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
-                          {ETIQUETA_TIPO[n.tipo]}
+                          {t(CLAVE_I18N_TIPO[n.tipo])}
                         </td>
                         <td className="px-4 py-3">
                           <span className="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
                             <IconoCanal className="h-3.5 w-3.5" aria-hidden="true" />
-                            {n.canal}
+                            {t(CLAVE_I18N_CANAL[n.canal])}
                           </span>
                         </td>
                         <td className="px-4 py-3">
@@ -161,11 +177,11 @@ export default function NotificacionesPage() {
                             className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${ESTILO_ESTADO[n.estado]}`}
                           >
                             <IconoEstado className="h-3 w-3" aria-hidden="true" />
-                            {n.estado}
+                            {t(CLAVE_I18N_ESTADO[n.estado])}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                          {formatearFechaHora(n.enviadoEn ?? n.programadoPara)}
+                          {formatearFechaHora(n.enviadoEn ?? n.programadoPara, i18n.language)}
                         </td>
                       </tr>
                     );
@@ -183,10 +199,10 @@ export default function NotificacionesPage() {
                 disabled={pagina === 1}
                 onClick={() => setPagina((p) => p - 1)}
               >
-                Anterior
+                {t('comun.anterior')}
               </Boton>
               <span className="text-sm text-slate-500 dark:text-slate-400">
-                Página {pagina} de {totalPaginas}
+                {t('comun.paginaDe', { actual: pagina, total: totalPaginas })}
               </span>
               <Boton
                 variante="secundario"
@@ -194,7 +210,7 @@ export default function NotificacionesPage() {
                 disabled={pagina === totalPaginas}
                 onClick={() => setPagina((p) => p + 1)}
               >
-                Siguiente
+                {t('comun.siguiente')}
               </Boton>
             </div>
           )}

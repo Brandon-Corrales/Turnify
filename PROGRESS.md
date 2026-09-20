@@ -2098,14 +2098,50 @@ autenticada — nunca tuvieron spec propio (a diferencia de
   14 de `AuthService`, 6 de `JwtAuthGuard`, 4 de `RolesGuard`, 6 de
   `ReservasService`).
 
+### 5. QA: verificación de i18n de punta a punta en una pantalla más ✅
+Landing/Dashboard/navbar ya estaban traducidos de verdad; el resto del
+sistema seguía en español fijo (pendiente ya documentado varias veces
+en este archivo). Se eligió **`NotificacionesPage`** por tener CERO
+llamadas a `t()` — el caso más limpio de "antes/después" para demostrar
+una verificación real, no solo revisar una pantalla que ya funcionaba.
+
+- Claves nuevas bajo `notificaciones.*` (título, subtítulo, canales,
+  columnas de la tabla, tipo/canal/estado de cada notificación) + dos
+  claves compartidas nuevas en `comun.*` (`anterior`/`siguiente`/
+  `paginaDe` con interpolación) para la paginación, ya que ese mismo
+  texto se repite tal cual en Clientes/Servicios/Reservas (no se
+  retocaron esas otras pantallas — fuera del alcance de esta tarea,
+  pero la clave ya queda en el lugar correcto para cuando se traduzcan).
+- Reescrita la pantalla completa: título, subtítulo, panel de canales,
+  mensajes de error/vacío, encabezados de tabla, y también los valores
+  de cada fila (tipo, canal, estado) que antes se mostraban tal cual el
+  valor crudo del backend (`"email"`, `"fallida"`) en vez de un texto
+  traducido.
+- **Bug real encontrado verificando, no solo "faltaba traducir"**:
+  `formatearFechaHora` tenía `'es-CR'` fijo en el `toLocaleString` —
+  aunque el resto de la pantalla cambiara a inglés, la fecha/hora de
+  cada notificación se seguía viendo en formato español. Arreglado
+  igual que ya resolvía este mismo problema `InicioPage` (locale
+  `'en-US'`/`'es-CR'` según `i18n.language`).
+
+**Verificado en Chrome real, con datos reales** (login real, 4
+notificaciones reales del negocio demo): en español se ve "Cancelación
+· email · fallida · 19 sept 2026, 10:22 p. m."; cambiando a inglés con
+el toggle real del navbar, la MISMA fila pasa a "Cancellation · email ·
+failed · Sep 19, 2026, 10:22 PM" — título, subtítulo, panel de canales,
+encabezados de tabla y formato de fecha, todo cambia junto, sin recargar
+la página. Volver a español revierte todo, incluida la fecha. Sin
+errores de consola en ningún idioma.
+
 Pendientes menores sin resolver, ninguno bloqueante (heredados de la
 tarjeta de responsive, siguen igual): (1) el onboarding del frontend
 puede chocar con el límite de 3 servicios del plan gratis si una
 plantilla de vertical sugiere más de 3; (2) la mayoría de los mensajes
 de validación de los DTOs (fuera de la contraseña) todavía no usan
-claves de i18n en el backend; (3) solo Landing/Dashboard/navbar están
-traducidos de verdad, el resto (incluidas las 3 pantallas nuevas de esta
-tarjeta) sigue en español fijo; (4) el link real del wizard
+claves de i18n en el backend; (3) solo Landing/Dashboard/navbar/
+Suscripción/Notificaciones están traducidos de verdad, el resto
+(Calendario, Clientes, Servicios, Reservas, Reportes, wizard público)
+sigue en español fijo; (4) el link real del wizard
 (`/reservar/:idNegocio`) todavía no está enlazado desde ninguna pantalla
 del admin; (5) un cron real de `RECORDATORIO` sigue sin construirse;
 (6) la auditoría responsive es por código + verificación de escritorio,

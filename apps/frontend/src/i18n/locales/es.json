@@ -14,7 +14,10 @@
     "registrarse": "Registrarse",
     "idioma": "Idioma",
     "cambiarATemaClaro": "Cambiar a tema claro",
-    "cambiarATemaOscuro": "Cambiar a tema oscuro"
+    "cambiarATemaOscuro": "Cambiar a tema oscuro",
+    "anterior": "Anterior",
+    "siguiente": "Siguiente",
+    "paginaDe": "Página {{actual}} de {{total}}"
   },
   "landing": {
     "badge": "Reservas y turnos, sin hojas de cálculo",
@@ -102,5 +105,30 @@
     "conectando": "Conectando con el asistente…",
     "errorConexion": "No se pudo conectar con el asistente. Verifica tu conexión e intenta de nuevo.",
     "pensando": "Escribiendo…"
+  },
+  "notificaciones": {
+    "titulo": "Notificaciones",
+    "subtitulo": "Historial de confirmaciones, cancelaciones y recordatorios enviados a tus clientes.",
+    "canalesTitulo": "Canales de recordatorios",
+    "canalCorreo": "Correo electrónico — siempre disponible",
+    "canalWhatsapp": "WhatsApp —",
+    "whatsappDisponible": "disponible en tu plan actual",
+    "whatsappNoDisponible": "disponible solo en el Plan de Pago",
+    "error": "No se pudo cargar el historial de notificaciones.",
+    "vacio": "Todavía no se ha enviado ninguna notificación.",
+    "columnaCliente": "Cliente",
+    "columnaTipo": "Tipo",
+    "columnaCanal": "Canal",
+    "columnaEstado": "Estado",
+    "columnaFecha": "Fecha",
+    "tipoConfirmacion": "Confirmación",
+    "tipoCancelacion": "Cancelación",
+    "tipoRecordatorio": "Recordatorio",
+    "canalEmail": "email",
+    "canalWhatsappCorto": "WhatsApp",
+    "canalSms": "SMS",
+    "estadoEnviada": "enviada",
+    "estadoPendiente": "pendiente",
+    "estadoFallida": "fallida"
   }
 }
