@@ -5,6 +5,7 @@ import {
   FindOptionsWhere,
   ObjectLiteral,
   Repository,
+  SelectQueryBuilder,
 } from 'typeorm';
 import { TenantContextService } from './tenant-context.service';
 
@@ -77,5 +78,17 @@ export class TenantScopedRepository<T extends ConNegocio> {
   async softDelete(criteria: FindOptionsWhere<T>): Promise<void> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await this.repo.softDelete(this.withTenant(criteria) as any);
+  }
+
+  /**
+   * Para agregaciones (COUNT/SUM/GROUP BY) que los métodos de arriba no
+   * cubren — el filtro por tenant se aplica una sola vez aquí, igual que
+   * en el resto de este wrapper, para que quien lo use (ej. Reportes)
+   * nunca tenga que acordarse de agregar `idNegocio` a mano.
+   */
+  createQueryBuilder(alias: string): SelectQueryBuilder<T> {
+    return this.repo
+      .createQueryBuilder(alias)
+      .andWhere(`${alias}.idNegocio = :idNegocio`, { idNegocio: this.tenantContext.idNegocio });
   }
 }

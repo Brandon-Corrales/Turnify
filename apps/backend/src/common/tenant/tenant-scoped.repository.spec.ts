@@ -11,6 +11,7 @@ interface Fake {
 }
 
 function crearRepoMock() {
+  const queryBuilderMock = { andWhere: vi.fn().mockReturnThis() };
   return {
     find: vi.fn().mockResolvedValue([]),
     findOne: vi.fn().mockResolvedValue(null),
@@ -20,6 +21,7 @@ function crearRepoMock() {
     save: vi.fn((entity) => Promise.resolve(entity)),
     update: vi.fn().mockResolvedValue({ affected: 1 }),
     softDelete: vi.fn().mockResolvedValue({ affected: 1 }),
+    createQueryBuilder: vi.fn().mockReturnValue(queryBuilderMock),
   } as unknown as Repository<Fake>;
 }
 
@@ -120,5 +122,14 @@ describe('TenantScopedRepository', () => {
   it('falla cerrado: usar el repositorio fuera de un contexto de tenant lanza en vez de consultar sin filtrar', async () => {
     await expect(tenantRepo.find()).rejects.toThrow(/no hay contexto de negocio activo/i);
     expect(repoMock.find).not.toHaveBeenCalled();
+  });
+
+  it('createQueryBuilder() agrega el filtro de idNegocio del tenant actual (para agregaciones)', () => {
+    runComoNegocio(tenantContext, NEGOCIO_A, () => tenantRepo.createQueryBuilder('fake'));
+    expect(repoMock.createQueryBuilder).toHaveBeenCalledWith('fake');
+    const qb = (repoMock.createQueryBuilder as any).mock.results[0].value;
+    expect(qb.andWhere).toHaveBeenCalledWith('fake.idNegocio = :idNegocio', {
+      idNegocio: NEGOCIO_A,
+    });
   });
 });
