@@ -235,4 +235,73 @@ describe('ReservasService', () => {
       expect.objectContaining({ withDeleted: true }),
     );
   });
+
+  it('obtenerUna() lanza RESERVA_NO_ENCONTRADA si la reserva no existe', async () => {
+    reservaRepo.findOne.mockResolvedValue(null);
+    await expect(service.obtenerUna('no-existe')).rejects.toMatchObject({
+      response: { errorCode: 'RESERVA_NO_ENCONTRADA' },
+    });
+  });
+
+  it('cancelar() lanza RESERVA_NO_ENCONTRADA si la reserva no existe', async () => {
+    reservaRepo.findOne.mockResolvedValue(null);
+    await expect(service.cancelar('no-existe')).rejects.toThrow(NotFoundException);
+  });
+
+  it('reprogramar() rechaza si el servicio de la reserva ya no existe', async () => {
+    reservaRepo.findOne.mockResolvedValue({
+      idReserva: 'reserva-1',
+      estado: EstadoReserva.CONFIRMADA,
+      idUsuario: USUARIO_ID,
+      idServicio: SERVICIO_ID,
+    });
+    servicioRepo.findOne.mockResolvedValue(null);
+
+    await expect(
+      comoAdmin(() => service.reprogramar('reserva-1', { fechaHoraInicio: LUNES_10AM_UTC })),
+    ).rejects.toMatchObject({ response: { errorCode: 'SERVICIO_NO_ENCONTRADO' } });
+  });
+
+  it('reprogramar() rechaza una fecha en el pasado', async () => {
+    reservaRepo.findOne.mockResolvedValue({
+      idReserva: 'reserva-1',
+      estado: EstadoReserva.CONFIRMADA,
+      idUsuario: USUARIO_ID,
+      idServicio: SERVICIO_ID,
+    });
+
+    await expect(
+      comoAdmin(() =>
+        service.reprogramar('reserva-1', { fechaHoraInicio: '2020-01-01T10:00:00.000Z' }),
+      ),
+    ).rejects.toMatchObject({ response: { errorCode: 'FECHA_EN_EL_PASADO' } });
+  });
+
+  it('reprogramar() rechaza si el nuevo horario cae fuera de la disponibilidad registrada', async () => {
+    reservaRepo.findOne.mockResolvedValue({
+      idReserva: 'reserva-1',
+      estado: EstadoReserva.CONFIRMADA,
+      idUsuario: USUARIO_ID,
+      idServicio: SERVICIO_ID,
+    });
+    disponibilidadRepo.find.mockResolvedValue([]);
+
+    await expect(
+      comoAdmin(() => service.reprogramar('reserva-1', { fechaHoraInicio: LUNES_10AM_UTC })),
+    ).rejects.toMatchObject({ response: { errorCode: 'FUERA_DE_DISPONIBILIDAD' } });
+  });
+
+  it('reprogramar() traduce una violación del EXCLUDE constraint (23P01) en RESERVA_TRASLAPADA', async () => {
+    reservaRepo.findOne.mockResolvedValue({
+      idReserva: 'reserva-1',
+      estado: EstadoReserva.CONFIRMADA,
+      idUsuario: USUARIO_ID,
+      idServicio: SERVICIO_ID,
+    });
+    managerMock.update.mockRejectedValue({ code: '23P01' });
+
+    await expect(
+      comoAdmin(() => service.reprogramar('reserva-1', { fechaHoraInicio: LUNES_10AM_UTC })),
+    ).rejects.toMatchObject({ response: { errorCode: 'RESERVA_TRASLAPADA' } });
+  });
 });

@@ -2046,6 +2046,58 @@ pidan explícitamente en el mensaje".
 - Suite completa del backend: **153/153 tests pasan** (150 + estas 3
   nuevas).
 
+### 4. QA: revisión de cobertura Auth/Reservas de punta a punta ✅
+**Reservas** ya estaba muy bien cubierto (16 tests: `crear`/`cancelar`/
+`reprogramar`/`listar`/`obtenerUna`, incluyendo advisory locks, fechas
+en el pasado, traslapes, traducción del EXCLUDE constraint,
+notificaciones, soft-delete). Gaps reales encontrados y cerrados con 6
+tests nuevos: `obtenerUna()`/`cancelar()` lanzando `RESERVA_NO_ENCONTRADA`
+si la reserva no existe (el único camino de `buscarOFallar()` que nunca
+se ejercitaba), y en `reprogramar()`: servicio ya no existe, fecha en el
+pasado, fuera de disponibilidad, y traducción del EXCLUDE constraint en
+el `UPDATE` (el mismo caso que `crear()` ya probaba, pero nunca se había
+probado en la ruta de reprogramar).
+
+**Auth tenía un hueco real y grande**: `auth.service.spec.ts` solo
+cubría `obtenerPerfil()` — el propio comentario del archivo admitía que
+`registrarNegocio`/`login`/`refrescar`/`logout` "se probaron manualmente
+contra la app real... antes de que existiera Vitest en el repo", sin
+ninguna prueba de regresión automatizada para el módulo más crítico de
+seguridad de todo el sistema (punto 15 del brief). Además, `JwtAuthGuard`
+y `RolesGuard` — los guards que protegen TODA la superficie HTTP
+autenticada — nunca tuvieron spec propio (a diferencia de
+`WsJwtGuard`/`LimitePlanGratisGuard`, que sí).
+
+- **14 tests nuevos en `auth.service.spec.ts`**:
+  - `registrarNegocio`: crea negocio+admin+suscripción en una sola
+    transacción, devuelve el usuario público sin `contrasenaHash`,
+    traduce `23505` (correo duplicado) en `EMAIL_YA_REGISTRADO`, y
+    propaga cualquier otro error sin enmascararlo.
+  - `login`: mismo `errorCode` (`CREDENCIALES_INVALIDAS`) tanto si el
+    correo no existe como si la contraseña no coincide (no revela cuál
+    de los dos falló — hash real de bcryptjs, no mockeado, para probar
+    la comparación de verdad); `CUENTA_INACTIVA` si el usuario está
+    desactivado; emite tokens y guarda el HASH del refresh (nunca el
+    token en claro) si todo es correcto.
+  - `refrescar`: token inválido/expirado, usuario sin sesión activa,
+    emisión correcta de tokens nuevos, y — la prueba más importante de
+    todo este bloque — **detección de reuso de un refresh token ya
+    rotado**: un token viejo que no coincide con el hash guardado
+    revoca la sesión entera (`refreshTokenHash: null`), el escenario
+    exacto de un token robado reenviado después de que el usuario ya
+    refrescó su sesión.
+  - `logout`: limpia el `refreshTokenHash`.
+- **`jwt-auth.guard.spec.ts`** (nuevo): salta contextos WebSocket (WsJwtGuard
+  tiene la suya propia), deja pasar rutas `@Public()`, `TOKEN_FALTANTE`
+  sin header o con esquema distinto de Bearer, `TOKEN_INVALIDO` si no
+  verifica, y adjunta `request.user` correctamente si el token es válido.
+- **`roles.guard.spec.ts`** (nuevo): sin `@Roles(...)` no restringe,
+  permite si el rol coincide, `ROL_NO_AUTORIZADO` si no coincide o si no
+  hay usuario en la request (JwtAuthGuard no corrió antes).
+- Suite completa del backend: **183/183 tests pasan** (153 + 30 nuevas:
+  14 de `AuthService`, 6 de `JwtAuthGuard`, 4 de `RolesGuard`, 6 de
+  `ReservasService`).
+
 Pendientes menores sin resolver, ninguno bloqueante (heredados de la
 tarjeta de responsive, siguen igual): (1) el onboarding del frontend
 puede chocar con el límite de 3 servicios del plan gratis si una
