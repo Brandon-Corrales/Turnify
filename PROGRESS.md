@@ -1965,6 +1965,56 @@ rechazado con `error-chatbot` real, `errorCode: "DEMASIADAS_SOLICITUDES"`,
 `statusCode: 429`** — el límite funciona de punta a punta, no solo en
 el test unitario con timers falsos.
 
+### 2. QA: test E2E del wizard de reserva pública ✅
+No existía ningún framework de E2E en el repo — se eligió **Playwright**
+sobre Cypress: soporte nativo de TypeScript sin config aparte (coherente
+con el resto del monorepo, todo TS), corre headless de fábrica sin
+depender de Electron/una GUI (más liviano en este entorno sandboxed y en
+CI), auto-espera en cada acción en vez de reintentos manuales, y su
+opción `webServer` admite arrancar VARIOS procesos a la vez — necesario
+acá porque el test ejercita frontend Y backend reales al mismo tiempo,
+algo que Cypress no orquesta de forma nativa (solo un servidor bajo
+prueba).
+
+- `apps/frontend/playwright.config.ts`: `webServer` con dos entradas
+  (`npm run dev` del frontend contra `:5173`, `npm run start:dev` del
+  backend contra `:3000/health`), `reuseExistingServer: true` — reusa
+  los servidores de desarrollo si ya están arriba (como en esta sesión)
+  o los levanta desde cero en CI.
+- `apps/frontend/e2e/reserva-publica.spec.ts`: el flujo completo del
+  wizard de 4 pasos como un visitante SIN sesión, contra el frontend y
+  el backend REALES (nunca mocks). El negocio/servicio/disponibilidad
+  se crean vía API al vuelo con datos únicos por corrida (timestamp) en
+  vez de depender del negocio demo compartido — el test es repetible y
+  aislado en cualquier ejecución. Disponibilidad de 00:00 a 23:00 los 7
+  días de la semana para no depender de la hora del día en que corre el
+  test (`listarHorarios` excluye horarios ya pasados del día actual, ver
+  código de `ReservaPublicaService`).
+- La verificación final no se queda en la pantalla de "¡Reserva
+  confirmada!" — hace un `GET /reservas` real como el admin recién
+  registrado y confirma que la reserva del cliente de prueba existe de
+  verdad en la base de datos y no quedó cancelada.
+- `socket.io-client` ya usado por el chatbot no interfiere: el wizard
+  público no lo toca.
+- `package.json` del frontend: nuevo script `test:e2e` (`playwright
+  test`); `tsconfig.node.json` ampliado para tipar `playwright.config.ts`
+  y `e2e/**/*.ts` (antes solo cubría `vite.config.ts`); `.gitignore`
+  raíz con las carpetas de artefactos de Playwright
+  (`test-results/`, `playwright-report/`, `blob-report/`).
+
+**Corrido de verdad dos veces seguidas contra los servidores de
+desarrollo reales de esta sesión (no un entorno de CI simulado)**: las
+dos corridas pasaron limpio (`1 passed`, ~9s cada una). Un bug de
+locator real (no de la app) se encontró y arregló en el camino: `Tus
+datos`/`Confirma tu reserva` aparecen dos veces en el DOM (una en el
+indicador de pasos, otra en el `<h2>` del paso activo) — Playwright en
+modo estricto lo marca como ambiguo; se resolvió apuntando el locator al
+rol `heading` específicamente. **Nota de datos**: cada corrida deja un
+negocio/admin/servicio/reserva de prueba reales en la base de datos de
+desarrollo (aislados, con sufijo de timestamp) — mismo criterio ya
+aplicado toda la sesión de dejar datos de prueba reales sin necesidad de
+limpiarlos manualmente, no le pisan nada al negocio demo compartido.
+
 Pendientes menores sin resolver, ninguno bloqueante (heredados de la
 tarjeta de responsive, siguen igual): (1) el onboarding del frontend
 puede chocar con el límite de 3 servicios del plan gratis si una
