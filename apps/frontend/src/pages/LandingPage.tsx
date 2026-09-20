@@ -50,11 +50,21 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900">
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-3 sm:px-6">
           <span className="shrink-0 text-lg font-semibold text-primary-600 dark:text-primary-400">
             {t('comun.turnify')}
           </span>
-          {/* Botón/enlace con texto abreviado en mobile (punto 12: nunca scroll horizontal) — el mismo par gap-3/ControlesGlobales+CTA no cabe en 390px con el texto completo. */}
+          {/*
+            flex-wrap en el contenedor de arriba (punto 12: nunca scroll
+            horizontal del body) — bug real encontrado verificando en un
+            viewport móvil real de 390px: ControlesGlobales creció con el
+            toggle de tema (tarjeta de Dark mode, posterior al ajuste
+            original de este header) y el grupo ya no cabía en una sola
+            fila junto a "Turnify", desbordando el body. flex-wrap deja
+            que este grupo caiga a una segunda línea en vez de desbordar
+            — el texto abreviado de "Registrarse" en mobile se mantiene
+            como red adicional para pantallas todavía más angostas.
+          */}
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <ControlesGlobales />
             <Link
