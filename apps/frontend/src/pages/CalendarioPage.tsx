@@ -17,6 +17,18 @@ import { ApiError } from '@/lib/api';
 const PUNTO_QUIEBRE_MOBILE = 768;
 const VISTAS_LISTA = new Set(['listWeek', 'listDay']);
 
+// En mobile el toolbar de FullCalendar no envuelve sus botones — con los
+// 3 grupos completos (nav + título + selector de vista) se desborda en
+// pantallas angostas. Como la vista ya cambia sola según el ancho (abajo),
+// el selector de vista es redundante en mobile: se quita en vez de dejar
+// que el layout se rompa (punto 12 del brief: nunca scroll horizontal).
+const TOOLBAR_DESKTOP = {
+  left: 'prev,next today',
+  center: 'title',
+  right: 'dayGridMonth,timeGridWeek,listWeek',
+};
+const TOOLBAR_MOBILE = { left: 'prev,next', center: 'title', right: 'today' };
+
 interface RangoVisible {
   desde: string;
   hasta: string;
@@ -49,6 +61,7 @@ export default function CalendarioPage() {
       const esVistaLista = VISTAS_LISTA.has(api.view.type);
       if (esMobile && !esVistaLista) api.changeView('listWeek');
       else if (!esMobile && esVistaLista) api.changeView('dayGridMonth');
+      api.setOption('headerToolbar', esMobile ? TOOLBAR_MOBILE : TOOLBAR_DESKTOP);
     }
     window.addEventListener('resize', alCambiarTamano);
     return () => window.removeEventListener('resize', alCambiarTamano);
@@ -88,10 +101,13 @@ export default function CalendarioPage() {
           // FullCalendar (.fc-event fuerza text-decoration:none) y además
           // un tachado puramente visual no lo transmite un lector de
           // pantalla — el texto sí, siempre.
-          title: `${reserva.servicio.nombre} · ${reserva.cliente.nombreCompleto}${cancelada ? ' (cancelada)' : ''}`,
+          // El backend ya incluye clientes/servicios desactivados en el
+          // historial (withDeleted), pero el fallback se deja igual —
+          // nunca romper el calendario entero por un dato faltante.
+          title: `${reserva.servicio?.nombre ?? 'Servicio eliminado'} · ${reserva.cliente?.nombreCompleto ?? 'Cliente eliminado'}${cancelada ? ' (cancelada)' : ''}`,
           start: reserva.fechaHoraInicio,
           end: reserva.fechaHoraFin,
-          backgroundColor: cancelada ? '#94a3b8' : (reserva.servicio.colorCalendario ?? '#4f46e5'),
+          backgroundColor: cancelada ? '#94a3b8' : (reserva.servicio?.colorCalendario ?? '#4f46e5'),
           borderColor: 'transparent',
           // una reserva cancelada se puede seguir viendo (historial) pero no se arrastra ni se cancela de nuevo
           editable: !cancelada,
@@ -196,11 +212,9 @@ export default function CalendarioPage() {
             ref={calendarRef}
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
             initialView={window.innerWidth < PUNTO_QUIEBRE_MOBILE ? 'listWeek' : 'dayGridMonth'}
-            headerToolbar={{
-              left: 'prev,next today',
-              center: 'title',
-              right: 'dayGridMonth,timeGridWeek,listWeek',
-            }}
+            headerToolbar={
+              window.innerWidth < PUNTO_QUIEBRE_MOBILE ? TOOLBAR_MOBILE : TOOLBAR_DESKTOP
+            }
             locale={esLocale}
             height="auto"
             editable
@@ -224,14 +238,15 @@ export default function CalendarioPage() {
           <div className="flex flex-col gap-2 text-sm text-slate-700 dark:text-slate-300">
             <p>
               <span className="font-medium">Cliente:</span>{' '}
-              {reservaSeleccionada.cliente.nombreCompleto}
+              {reservaSeleccionada.cliente?.nombreCompleto ?? 'Cliente eliminado'}
             </p>
             <p>
-              <span className="font-medium">Servicio:</span> {reservaSeleccionada.servicio.nombre}
+              <span className="font-medium">Servicio:</span>{' '}
+              {reservaSeleccionada.servicio?.nombre ?? 'Servicio eliminado'}
             </p>
             <p>
               <span className="font-medium">Atiende:</span>{' '}
-              {reservaSeleccionada.usuario.nombreCompleto}
+              {reservaSeleccionada.usuario?.nombreCompleto ?? 'Usuario eliminado'}
             </p>
             <p>
               <span className="font-medium">Horario:</span>{' '}

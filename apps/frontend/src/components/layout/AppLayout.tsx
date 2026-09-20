@@ -23,31 +23,44 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
-        <div className="flex items-center gap-6">
-          <Link to="/" className="text-lg font-semibold text-primary-600 dark:text-primary-400">
+      <header className="flex items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
+        {/*
+          min-w-0 en ambos contenedores flex es lo que de verdad habilita
+          el overflow-x-auto del <nav> — sin esto, un item de flexbox
+          nunca se encoge más allá del tamaño de su contenido (min-width:
+          auto por defecto) y el header entero se desborda en mobile en
+          vez de dejar que solo la tira de links haga scroll horizontal
+          propio (punto 12 del brief: nunca scroll horizontal del body).
+        */}
+        <div className="flex min-w-0 items-center gap-4">
+          <Link
+            to="/"
+            className="shrink-0 text-lg font-semibold text-primary-600 dark:text-primary-400"
+          >
             {t('comun.turnify')}
           </Link>
-          <Link
-            to="/calendario"
-            className="text-sm font-medium text-slate-600 hover:text-primary-600 dark:text-slate-300 dark:hover:text-primary-400"
-          >
-            {t('comun.calendario')}
-          </Link>
-          <Link
-            to="/notificaciones"
-            className="text-sm font-medium text-slate-600 hover:text-primary-600 dark:text-slate-300 dark:hover:text-primary-400"
-          >
-            {t('comun.notificaciones')}
-          </Link>
-          <Link
-            to="/reportes"
-            className="text-sm font-medium text-slate-600 hover:text-primary-600 dark:text-slate-300 dark:hover:text-primary-400"
-          >
-            {t('comun.reportes')}
-          </Link>
+          <nav className="flex min-w-0 gap-4 overflow-x-auto">
+            <Link
+              to="/calendario"
+              className="shrink-0 text-sm font-medium text-slate-600 hover:text-primary-600 dark:text-slate-300 dark:hover:text-primary-400"
+            >
+              {t('comun.calendario')}
+            </Link>
+            <Link
+              to="/notificaciones"
+              className="shrink-0 text-sm font-medium text-slate-600 hover:text-primary-600 dark:text-slate-300 dark:hover:text-primary-400"
+            >
+              {t('comun.notificaciones')}
+            </Link>
+            <Link
+              to="/reportes"
+              className="shrink-0 text-sm font-medium text-slate-600 hover:text-primary-600 dark:text-slate-300 dark:hover:text-primary-400"
+            >
+              {t('comun.reportes')}
+            </Link>
+          </nav>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <ControlesGlobales />
           <span className="hidden text-sm text-slate-500 sm:inline dark:text-slate-400">
             {usuario?.nombreCompleto}
