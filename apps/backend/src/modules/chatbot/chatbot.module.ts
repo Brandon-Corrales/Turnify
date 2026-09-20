@@ -9,6 +9,7 @@ import { SuscripcionesModule } from '../suscripciones/suscripciones.module';
 import { ChatbotGateway } from './chatbot.gateway';
 import { ChatbotService } from './chatbot.service';
 import { WsJwtGuard } from './guards/ws-jwt.guard';
+import { ChatbotWsThrottlerGuard } from './guards/ws-throttler.guard';
 import { LLM_CLIENT } from './providers/llm-client.interface';
 import { GroqLlmClient } from './providers/groq-llm-client.service';
 
@@ -27,6 +28,7 @@ import { GroqLlmClient } from './providers/groq-llm-client.service';
     ChatbotGateway,
     ChatbotService,
     WsJwtGuard,
+    ChatbotWsThrottlerGuard,
     { provide: LLM_CLIENT, useClass: GroqLlmClient },
   ],
 })

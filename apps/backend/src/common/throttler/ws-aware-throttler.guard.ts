@@ -9,11 +9,13 @@ import { ThrottlerGuard } from '@nestjs/throttler';
  * "res.header is not a function" (error real, encontrado al verificar el
  * Chatbot de punta a punta con una conexión real).
  *
- * El WebSocket del chatbot ya tiene su propio control de abuso —
- * WsJwtGuard exige autenticación (nada anónimo, a diferencia del resto de
- * endpoints públicos) y LimitePlanGratisGuard limita mensajesChatbot/día
- * — así que basta con que este guard se salte los contextos 'ws' en vez
- * de reimplementar un throttler consciente de sockets.
+ * El WebSocket del chatbot tiene su propio control de abuso aparte de
+ * este guard global: WsJwtGuard exige autenticación (nada anónimo, a
+ * diferencia del resto de endpoints públicos), LimitePlanGratisGuard
+ * limita mensajesChatbot/día, y ChatbotWsThrottlerGuard (módulo del
+ * chatbot) limita ráfagas por segundo — los tres viven en
+ * `modules/chatbot/guards`, aplicados directo en `ChatbotGateway`, en
+ * vez de forzar a este guard genérico a entender sockets.
  */
 @Injectable()
 export class AppThrottlerGuard extends ThrottlerGuard {
