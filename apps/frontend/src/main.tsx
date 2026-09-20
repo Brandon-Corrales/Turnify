@@ -7,6 +7,7 @@ import { queryClient } from '@/lib/queryClient';
 import { ToastProvider } from '@/components/ui/toast/ToastProvider';
 import { AuthProvider } from '@/context/AuthContext';
 import App from './App';
+import './i18n/config';
 import './index.css';
 
 createRoot(document.getElementById('root')!).render(

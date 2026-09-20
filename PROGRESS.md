@@ -1497,6 +1497,47 @@ los gráficos de verdad que pide el punto 6 del brief.
   deshabilitado con el mensaje correcto (negocio demo en Plan Gratis).
   Sin errores de consola.
 
+## Frontend: Selector de idioma (react-i18next, ES/EN) ✅
+Infraestructura real de i18n del frontend (punto 10 del brief), más
+traducción completa de las dos pantallas que el brief exige
+explícitamente para esta tarjeta.
+
+- **`react-i18next@16.2.0` + `i18next@26.4.2` + `i18next-browser-languagedetector@8.2.1`**
+  (peer deps de `react-i18next` verificadas para React 19 antes de
+  instalar). `src/i18n/config.ts` inicializa con español por defecto
+  (mercado objetivo Costa Rica) y detección en este orden: preferencia
+  guardada en `localStorage` (`turnify_idioma`) primero, idioma del
+  navegador después — para que la elección explícita del usuario nunca
+  se pierda ni la pise el navegador en la siguiente visita.
+- **`ControlesGlobales`** (nuevo, `components/layout/`): el selector
+  ES/EN en sí, diseñado a propósito como el contenedor donde van a vivir
+  también el toggle de tema y el de vista lista/cuadrícula cuando se
+  construyan (punto 9 del brief: *"un solo grupo de componentes desde el
+  principio, no ajustes sueltos agregados después"*) — ya está montado
+  en el navbar de `LandingPage` y de `AppLayout` (visible entonces en
+  TODAS las pantallas autenticadas, no solo Dashboard, superando el
+  mínimo del brief que solo pide "landing y dashboard").
+- **Alcance honesto de la traducción de contenido**: el brief pide el
+  selector visible en "landing y dashboard" — se tradujeron esas dos
+  pantallas por completo (`es.json`/`en.json`, con interpolación real
+  para los números de plan del backend y el mes del Dashboard) más las
+  etiquetas de navegación compartidas (`AppLayout`). El resto de
+  pantallas construidas en sesiones anteriores y esta misma noche
+  (Login, Registro, Onboarding, Calendario, Notificaciones, Reportes,
+  Wizard de reserva pública) siguen con texto fijo en español — no se
+  retrofitó el proyecto completo en esta tarjeta para no comerse el
+  presupuesto de las tarjetas que faltan esta noche; queda anotado como
+  trabajo incremental real, no como "ya hecho".
+- **Verificado en un Chrome real cambiando de idioma de verdad**:
+  Dashboard con sesión real → clic en EN → título, badge de plan, las 4
+  tarjetas KPI y el nombre del mes cambiaron a inglés al instante;
+  `localStorage.getItem('turnify_idioma')` confirmado en `'en'`; cierre
+  de sesión y recarga de la Landing (sin sesión) → la preferencia
+  persistió y la Landing completa (hero, características, ambos planes
+  con los límites reales interpolados, footer) se mostró en inglés
+  correctamente; vuelto a español al terminar. Sin errores de consola en
+  ningún punto.
+
 ## Tarea en curso
 **Backend 100% cerrado** (ver arriba) — Seguridad, Notificaciones (ahora
 con historial HTTP además del worker), Suscripciones, Reportes, Swagger,
@@ -1509,27 +1550,27 @@ Login/Registro, Calendario (prioridad del Seguimiento #2) cerrados de
 sesiones anteriores; de las tarjetas "después del Seguimiento #2", ya
 están cerradas Paso de onboarding + Input variante crear/editar (fuera
 de orden), Landing pública, Dashboard con KPIs, Wizard de reserva
-pública, Pantalla de Notificaciones, y ahora **Pantalla de Reportes con
-gráficos** (esta tarjeta). Siguiente en el orden acordado con el equipo
-(ver "Modo autónomo nocturno" arriba): **Selector de idioma
-(react-i18next, ES/EN)**.
+pública, Pantalla de Notificaciones, Pantalla de Reportes con gráficos,
+y ahora **Selector de idioma** (esta tarjeta). Siguiente en el orden
+acordado con el equipo (ver "Modo autónomo nocturno" arriba): **Ajustes
+responsive/mobile-first en todo el sistema**.
 
 Pendientes menores sin resolver, ninguno bloqueante: (1) el onboarding
 del frontend puede chocar con el límite de 3 servicios del plan gratis
 si una plantilla de vertical sugiere más de 3 (ver nota de Suscripciones
 arriba); (2) la mayoría de los mensajes de validación de los DTOs (fuera
-de la contraseña) todavía no usan claves de i18n (ver nota de i18n
-backend arriba) — el selector de idioma que sigue es solo frontend, así
-que este pendiente del backend queda igual después de esa tarjeta; (3)
-verificación visual responsive/mobile de todas las pantallas nuevas de
-esta noche pendiente por una limitación de la herramienta de
-automatización del navegador usada esta sesión (`resize_window` no
-afectaba el viewport real) — no bloquea, las clases responsive ya están
-escritas con las mismas convenciones verificadas en otras pantallas; (4)
-el link real del wizard (`/reservar/:idNegocio`) todavía no está
-enlazado desde ninguna pantalla del admin — anotado, no bloqueante; (5)
-un cron real de `RECORDATORIO` sigue sin construirse — mejora futura
-documentada desde la tarjeta original del Worker.
+de la contraseña) todavía no usan claves de i18n en el backend (ver nota
+de i18n backend arriba); (3) solo Landing/Dashboard/navbar están
+traducidos de verdad — el resto de pantallas queda en español fijo hasta
+que se retrofitee incrementalmente (ver nota de esta tarjeta arriba);
+(4) verificación visual responsive/mobile pendiente por una limitación
+de la herramienta de automatización del navegador usada esta sesión
+(`resize_window` no afectaba el viewport real) — la siguiente tarjeta es
+precisamente esa auditoría responsive, así que se resuelve ahí; (5) el
+link real del wizard (`/reservar/:idNegocio`) todavía no está enlazado
+desde ninguna pantalla del admin — anotado, no bloqueante; (6) un cron
+real de `RECORDATORIO` sigue sin construirse — mejora futura documentada
+desde la tarjeta original del Worker.
 
 ## Cómo probar lo que ya existe
 ```bash
