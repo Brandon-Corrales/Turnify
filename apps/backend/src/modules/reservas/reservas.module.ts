@@ -22,5 +22,8 @@ import { ReservasService } from './reservas.service';
     TenantRepositoryProvider(Usuario),
     TenantRepositoryProvider(Disponibilidad),
   ],
+  // Exportado para que ChatbotModule reutilice el service (punto 16 del
+  // brief: nunca consultar la BD directo desde el chatbot).
+  exports: [ReservasService],
 })
 export class ReservasModule {}

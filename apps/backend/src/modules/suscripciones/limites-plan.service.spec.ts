@@ -9,6 +9,7 @@ describe('LimitesPlanService', () => {
   let usuarioRepo: { count: ReturnType<typeof vi.fn> };
   let servicioRepo: { count: ReturnType<typeof vi.fn> };
   let reservaRepo: { count: ReturnType<typeof vi.fn> };
+  let mensajeChatbotRepo: { count: ReturnType<typeof vi.fn> };
   let service: LimitesPlanService;
 
   beforeEach(() => {
@@ -16,11 +17,13 @@ describe('LimitesPlanService', () => {
     usuarioRepo = { count: vi.fn() };
     servicioRepo = { count: vi.fn() };
     reservaRepo = { count: vi.fn() };
+    mensajeChatbotRepo = { count: vi.fn() };
     service = new LimitesPlanService(
       negocioRepo as any,
       usuarioRepo as any,
       servicioRepo as any,
       reservaRepo as any,
+      mensajeChatbotRepo as any,
     );
   });
 
@@ -50,9 +53,18 @@ describe('LimitesPlanService', () => {
     });
   });
 
+  it('contar("mensajesChatbot") cuenta mensajes del negocio desde el inicio del día calendario', async () => {
+    mensajeChatbotRepo.count.mockResolvedValue(4);
+    await expect(service.contar('mensajesChatbot', NEGOCIO_ID)).resolves.toBe(4);
+    expect(mensajeChatbotRepo.count).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ idNegocio: NEGOCIO_ID }) }),
+    );
+  });
+
   it('limite() devuelve los valores del punto 5.1 del brief', () => {
     expect(service.limite('usuarios')).toBe(1);
     expect(service.limite('servicios')).toBe(3);
     expect(service.limite('reservas')).toBe(20);
+    expect(service.limite('mensajesChatbot')).toBe(10);
   });
 });

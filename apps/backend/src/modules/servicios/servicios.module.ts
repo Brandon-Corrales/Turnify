@@ -10,5 +10,8 @@ import { ServiciosService } from './servicios.service';
   imports: [TypeOrmModule.forFeature([Servicio]), SuscripcionesModule],
   controllers: [ServiciosController],
   providers: [ServiciosService, TenantRepositoryProvider(Servicio)],
+  // Exportado para que ChatbotModule reutilice el service (punto 16 del
+  // brief: nunca consultar la BD directo desde el chatbot).
+  exports: [ServiciosService],
 })
 export class ServiciosModule {}

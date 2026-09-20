@@ -15,6 +15,15 @@ export class JwtAuthGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    // Global (APP_GUARD), pero solo entiende HTTP: el transporte WebSocket
+    // del Chatbot tiene su propia autenticación (WsJwtGuard, aplicado
+    // explícito en el gateway) porque un handshake de socket.io no trae
+    // el header Authorization de una request HTTP normal. Sin este salto,
+    // `request.headers.authorization` revienta con el socket que devuelve
+    // switchToHttp().getRequest() en un contexto 'ws' (error real,
+    // encontrado al verificar el chatbot de punta a punta).
+    if (context.getType() === 'ws') return true;
+
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
