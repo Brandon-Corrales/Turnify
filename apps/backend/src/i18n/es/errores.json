@@ -37,5 +37,6 @@
   "LIMITE_PLAN_SERVICIOS": "El Plan Gratis permite hasta 3 servicios activos. Actualiza a un plan de pago para agregar más.",
   "LIMITE_PLAN_RESERVAS": "El Plan Gratis permite hasta 20 reservas por mes. Actualiza a un plan de pago para seguir reservando.",
   "PRIVILEGIO_CLIENTE_NIVEL": "El canal WhatsApp para recordatorios está disponible solo para clientes de nivel Premium",
-  "PRIVILEGIO_CLIENTE_PLAN_NEGOCIO": "El plan actual del negocio no tiene el canal WhatsApp habilitado"
+  "PRIVILEGIO_CLIENTE_PLAN_NEGOCIO": "El plan actual del negocio no tiene el canal WhatsApp habilitado",
+  "LIMITE_PLAN_MENSAJES_CHATBOT": "El Plan Gratis permite hasta 10 mensajes al chatbot por día. Actualiza a un plan de pago para seguir preguntando hoy."
 }

@@ -6,12 +6,27 @@ import { LIMITE_PLAN_KEY } from '../decorators/limite-plan.decorator';
 
 const NEGOCIO_ID = 'negocio-1';
 
-function crearContextoMock(recurso?: string) {
+function crearContextoHttpMock(recurso?: string) {
   const reflector = { get: vi.fn().mockReturnValue(recurso) } as unknown as Reflector;
   const contexto = {
     getHandler: () => ({}),
+    getType: () => 'http',
     switchToHttp: () => ({
       getRequest: () => ({ user: { idNegocio: NEGOCIO_ID, sub: 'admin-1', rol: 'admin' } }),
+    }),
+  } as unknown as ExecutionContext;
+  return { reflector, contexto };
+}
+
+function crearContextoWsMock(recurso?: string) {
+  const reflector = { get: vi.fn().mockReturnValue(recurso) } as unknown as Reflector;
+  const contexto = {
+    getHandler: () => ({}),
+    getType: () => 'ws',
+    switchToWs: () => ({
+      getClient: () => ({
+        data: { user: { idNegocio: NEGOCIO_ID, sub: 'admin-1', rol: 'admin' } },
+      }),
     }),
   } as unknown as ExecutionContext;
   return { reflector, contexto };
@@ -21,21 +36,30 @@ function crearLimitesPlanMock() {
   return {
     estaEnPlanGratis: vi.fn(),
     contar: vi.fn(),
-    limite: vi.fn((recurso: string) => ({ usuarios: 1, servicios: 3, reservas: 20 })[recurso]!),
+    limite: vi.fn(
+      (recurso: string) =>
+        ({ usuarios: 1, servicios: 3, reservas: 20, mensajesChatbot: 10 })[recurso]!,
+    ),
   };
+}
+
+function crearI18nMock() {
+  return { translate: vi.fn((_key: string, opts: any) => opts.defaultValue) };
 }
 
 describe('LimitePlanGratisGuard', () => {
   let limitesPlan: ReturnType<typeof crearLimitesPlanMock>;
+  let i18n: ReturnType<typeof crearI18nMock>;
 
   function crearGuard(recurso?: string) {
-    const { reflector, contexto } = crearContextoMock(recurso);
-    const guard = new LimitePlanGratisGuard(reflector, limitesPlan as any);
+    const { reflector, contexto } = crearContextoHttpMock(recurso);
+    const guard = new LimitePlanGratisGuard(reflector, limitesPlan as any, i18n as any);
     return { guard, contexto, reflector };
   }
 
   beforeEach(() => {
     limitesPlan = crearLimitesPlanMock();
+    i18n = crearI18nMock();
   });
 
   it('permite el paso si el endpoint no tiene @LimitePlan(...)', async () => {
@@ -81,10 +105,32 @@ describe('LimitePlanGratisGuard', () => {
     await expect(guard.canActivate(contexto)).rejects.toThrow(ForbiddenException);
   });
 
-  it('lee el idNegocio de request.user (no de TenantContextService — ver comentario del guard)', async () => {
+  it('bloquea un 11vo mensaje al chatbot hoy en Plan Gratis (límite: 10)', async () => {
+    limitesPlan.estaEnPlanGratis.mockResolvedValue(true);
+    limitesPlan.contar.mockResolvedValue(10);
+    const { guard, contexto } = crearGuard('mensajesChatbot');
+    await expect(guard.canActivate(contexto)).rejects.toMatchObject({
+      response: { errorCode: 'LIMITE_PLAN_ALCANZADO' },
+    });
+    expect(i18n.translate).toHaveBeenCalledWith(
+      'errores.LIMITE_PLAN_MENSAJES_CHATBOT',
+      expect.objectContaining({ defaultValue: expect.any(String) }),
+    );
+  });
+
+  it('lee el idNegocio de request.user en un contexto HTTP', async () => {
     limitesPlan.estaEnPlanGratis.mockResolvedValue(true);
     limitesPlan.contar.mockResolvedValue(0);
     const { guard, contexto } = crearGuard('servicios');
+    await guard.canActivate(contexto);
+    expect(limitesPlan.estaEnPlanGratis).toHaveBeenCalledWith(NEGOCIO_ID);
+  });
+
+  it('lee el idNegocio de client.data.user en un contexto WebSocket (chatbot)', async () => {
+    limitesPlan.estaEnPlanGratis.mockResolvedValue(true);
+    limitesPlan.contar.mockResolvedValue(0);
+    const { reflector, contexto } = crearContextoWsMock('mensajesChatbot');
+    const guard = new LimitePlanGratisGuard(reflector, limitesPlan as any, i18n as any);
     await guard.canActivate(contexto);
     expect(limitesPlan.estaEnPlanGratis).toHaveBeenCalledWith(NEGOCIO_ID);
   });

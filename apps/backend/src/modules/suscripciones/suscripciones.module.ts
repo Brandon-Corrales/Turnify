@@ -1,6 +1,13 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Negocio, Reserva, Servicio, Suscripcion, Usuario } from '../../database/entities';
+import {
+  MensajeChatbot,
+  Negocio,
+  Reserva,
+  Servicio,
+  Suscripcion,
+  Usuario,
+} from '../../database/entities';
 import { SuscripcionesController } from './suscripciones.controller';
 import { SuscripcionesService } from './suscripciones.service';
 import { LimitesPlanService } from './limites-plan.service';
@@ -14,7 +21,9 @@ import { LimitePlanGratisGuard } from './guards/limite-plan-gratis.guard';
  * idNegocio explícito, no del contexto ambiental de OTRO módulo.
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([Suscripcion, Negocio, Usuario, Servicio, Reserva])],
+  imports: [
+    TypeOrmModule.forFeature([Suscripcion, Negocio, Usuario, Servicio, Reserva, MensajeChatbot]),
+  ],
   controllers: [SuscripcionesController],
   providers: [SuscripcionesService, LimitesPlanService, StripeService, LimitePlanGratisGuard],
   // LimitesPlanService se exporta (no los Repository que envuelve) para

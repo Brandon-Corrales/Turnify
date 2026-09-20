@@ -1,7 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MoreThanOrEqual, Repository } from 'typeorm';
-import { Negocio, PlanSuscripcion, Reserva, Servicio, Usuario } from '../../database/entities';
+import {
+  MensajeChatbot,
+  Negocio,
+  PlanSuscripcion,
+  Reserva,
+  Servicio,
+  Usuario,
+} from '../../database/entities';
 import { RecursoLimitado } from './decorators/limite-plan.decorator';
 
 /**
@@ -13,6 +20,7 @@ const LIMITES_PLAN_GRATIS: Record<RecursoLimitado, number> = {
   usuarios: 1, // solo el admin, sin poder invitar empleados
   servicios: 3, // servicios activos
   reservas: 20, // por mes calendario
+  mensajesChatbot: 10, // por día calendario
 };
 
 /**
@@ -32,6 +40,8 @@ export class LimitesPlanService {
     @InjectRepository(Usuario) private readonly usuarioRepo: Repository<Usuario>,
     @InjectRepository(Servicio) private readonly servicioRepo: Repository<Servicio>,
     @InjectRepository(Reserva) private readonly reservaRepo: Repository<Reserva>,
+    @InjectRepository(MensajeChatbot)
+    private readonly mensajeChatbotRepo: Repository<MensajeChatbot>,
   ) {}
 
   async estaEnPlanGratis(idNegocio: string): Promise<boolean> {
@@ -58,6 +68,15 @@ export class LimitesPlanService {
         const inicioDeMes = new Date(Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), 1));
         return this.reservaRepo.count({
           where: { idNegocio, creadoEn: MoreThanOrEqual(inicioDeMes) },
+        });
+      }
+      case 'mensajesChatbot': {
+        const ahora = new Date();
+        const inicioDeHoy = new Date(
+          Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), ahora.getUTCDate()),
+        );
+        return this.mensajeChatbotRepo.count({
+          where: { idNegocio, creadoEn: MoreThanOrEqual(inicioDeHoy) },
         });
       }
     }

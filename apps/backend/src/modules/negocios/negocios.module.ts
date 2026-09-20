@@ -8,5 +8,8 @@ import { NegociosService } from './negocios.service';
   imports: [TypeOrmModule.forFeature([Negocio])],
   controllers: [NegociosController],
   providers: [NegociosService],
+  // Exportado para que ChatbotModule reutilice el service (punto 16 del
+  // brief: nunca consultar la BD directo desde el chatbot).
+  exports: [NegociosService],
 })
 export class NegociosModule {}

@@ -44,6 +44,12 @@ const envSchema = z.object({
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   STRIPE_PRICE_ID_PLAN_PAGO: z.string().optional(),
+
+  // Opcional por el mismo motivo: sin ella, ChatbotGateway responde con
+  // un mensaje degradado en vez de tumbar el servidor (punto 16 del
+  // brief: "manejo de fallas... degradarse a un mensaje amable").
+  LLM_API_KEY: z.string().optional(),
+  LLM_MODEL: z.string().default('gemini-3.6-flash'),
 });
 
 export type Env = z.infer<typeof envSchema>;

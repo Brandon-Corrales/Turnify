@@ -3,7 +3,7 @@ import * as path from 'path';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 import { validateEnv, Env } from './config/env.schema';
@@ -21,6 +21,8 @@ import { PlantillasServicioModule } from './modules/plantillas-servicio/plantill
 import { NotificacionesModule } from './modules/notificaciones/notificaciones.module';
 import { SuscripcionesModule } from './modules/suscripciones/suscripciones.module';
 import { ReportesModule } from './modules/reportes/reportes.module';
+import { ChatbotModule } from './modules/chatbot/chatbot.module';
+import { AppThrottlerGuard } from './common/throttler/ws-aware-throttler.guard';
 
 @Module({
   imports: [
@@ -89,7 +91,8 @@ import { ReportesModule } from './modules/reportes/reportes.module';
     NotificacionesModule,
     SuscripcionesModule,
     ReportesModule,
+    ChatbotModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [{ provide: APP_GUARD, useClass: AppThrottlerGuard }],
 })
 export class AppModule {}
