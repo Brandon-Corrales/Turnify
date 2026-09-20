@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -8,16 +7,13 @@ import {
   Bell,
   Building2,
   Calendar,
-  Check,
   MessageCircle,
   ShieldCheck,
   Sparkles,
-  X,
 } from 'lucide-react';
 import { Boton } from '@/components/ui';
-import { SkeletonText } from '@/components/ui/Skeleton';
 import { ControlesGlobales } from '@/components/layout/ControlesGlobales';
-import { suscripcionesApi } from '@/lib/suscripciones-api';
+import { TarjetasPlanes } from '@/components/suscripciones/TarjetasPlanes';
 
 const ICONOS_CARACTERISTICAS = [Calendar, Bell, BarChart3, MessageCircle, Building2, ShieldCheck];
 
@@ -41,36 +37,9 @@ function Seccion({ children, className }: { children: ReactNode; className?: str
   );
 }
 
-function ItemPlan({ incluido, texto }: { incluido: boolean; texto: string }) {
-  return (
-    <li className="flex items-start gap-2 text-sm">
-      {incluido ? (
-        <Check className="mt-0.5 h-4 w-4 shrink-0 text-secondary-600 dark:text-secondary-400" />
-      ) : (
-        <X className="mt-0.5 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-600" />
-      )}
-      <span
-        className={
-          incluido ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-600'
-        }
-      >
-        {texto}
-      </span>
-    </li>
-  );
-}
-
 export default function LandingPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const {
-    data: planes,
-    isPending,
-    isError,
-  } = useQuery({
-    queryKey: ['suscripciones', 'planes'],
-    queryFn: suscripcionesApi.obtenerPlanes,
-  });
 
   const caracteristicas = [1, 2, 3, 4, 5, 6].map((n, i) => ({
     icono: ICONOS_CARACTERISTICAS[i],
@@ -166,91 +135,22 @@ export default function LandingPage() {
               {t('landing.planesSubtitulo')}
             </p>
 
-            {isError && (
-              <p className="mt-8 text-center text-sm text-danger">{t('landing.planesError')}</p>
-            )}
-
-            <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2">
-              {/* Plan Gratis */}
-              <div className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                  {t('landing.planGratisTitulo')}
-                </h3>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  {t('landing.planGratisSubtitulo')}
-                </p>
-                <p className="mt-4 text-3xl font-bold text-slate-900 dark:text-white">₡0</p>
-
-                {isPending ? (
-                  <SkeletonText lineas={6} className="mt-6" />
-                ) : (
-                  <ul className="mt-6 flex flex-col gap-2.5">
-                    <ItemPlan
-                      incluido
-                      texto={t('landing.planGratisUsuarios', { n: planes?.gratis.usuarios ?? 1 })}
-                    />
-                    <ItemPlan
-                      incluido
-                      texto={t('landing.planGratisServicios', {
-                        n: planes?.gratis.servicios ?? 3,
-                      })}
-                    />
-                    <ItemPlan
-                      incluido
-                      texto={t('landing.planGratisReservas', {
-                        n: planes?.gratis.reservasPorMes ?? 20,
-                      })}
-                    />
-                    <ItemPlan
-                      incluido
-                      texto={t('landing.planGratisChatbot', {
-                        n: planes?.gratis.mensajesChatbotPorDia ?? 10,
-                      })}
-                    />
-                    <ItemPlan incluido texto={t('landing.planGratisEmail')} />
-                    <ItemPlan incluido={false} texto={t('landing.planGratisWhatsapp')} />
-                    <ItemPlan incluido={false} texto={t('landing.planGratisMarca')} />
-                  </ul>
-                )}
-
+            <TarjetasPlanes
+              ctaGratis={
                 <Boton
                   variante="secundario"
-                  className="mt-6 w-full"
+                  className="w-full"
                   onClick={() => navigate('/registro')}
                 >
                   {t('landing.empezarGratis')}
                 </Boton>
-              </div>
-
-              {/* Plan de Pago */}
-              <div className="relative rounded-xl border-2 border-primary-600 bg-white p-6 dark:bg-slate-900">
-                <span className="absolute -top-3 left-6 rounded-full bg-primary-600 px-3 py-0.5 text-xs font-medium text-white">
-                  {t('landing.planPagoBadge')}
-                </span>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                  {t('landing.planPagoTitulo')}
-                </h3>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  {t('landing.planPagoSubtitulo')}
-                </p>
-                <p className="mt-4 text-3xl font-bold text-slate-900 dark:text-white">
-                  {t('landing.planPagoCobro')}
-                </p>
-
-                <ul className="mt-6 flex flex-col gap-2.5">
-                  <ItemPlan incluido texto={t('landing.planPagoUsuarios')} />
-                  <ItemPlan incluido texto={t('landing.planPagoServicios')} />
-                  <ItemPlan incluido texto={t('landing.planPagoReservas')} />
-                  <ItemPlan incluido texto={t('landing.planPagoChatbot')} />
-                  <ItemPlan incluido texto={t('landing.planPagoEmailWhatsapp')} />
-                  <ItemPlan incluido texto={t('landing.planPagoMarca')} />
-                </ul>
-
-                <Boton className="mt-6 w-full" onClick={() => navigate('/registro')}>
+              }
+              ctaPago={
+                <Boton className="w-full" onClick={() => navigate('/registro')}>
                   {t('landing.empezarYActualizar')}
                 </Boton>
-              </div>
-            </div>
+              }
+            />
           </div>
         </Seccion>
       </main>

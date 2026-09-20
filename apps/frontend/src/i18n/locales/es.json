@@ -9,6 +9,7 @@
     "reservas": "Reservas",
     "notificaciones": "Notificaciones",
     "reportes": "Reportes",
+    "suscripcion": "Suscripción",
     "registrarNegocio": "Registrar mi negocio",
     "registrarse": "Registrarse",
     "idioma": "Idioma",
@@ -72,6 +73,23 @@
     "reservasPorDia": "Reservas por día",
     "sinReservas": "Todavía no tienes reservas este mes.",
     "verCalendario": "Ver calendario",
-    "errorResumen": "No se pudo cargar el resumen del mes. Intenta de nuevo más tarde."
+    "errorResumen": "No se pudo cargar el resumen del mes. Intenta de nuevo más tarde.",
+    "bannerPlanGratisTitulo": "Estás en el Plan Gratis",
+    "bannerPlanGratisDescripcion": "Actualiza para desbloquear usuarios ilimitados, WhatsApp y más.",
+    "bannerPlanGratisBoton": "Ver planes"
+  },
+  "suscripcion": {
+    "titulo": "Tu suscripción",
+    "subtitulo": "Compara los planes y actualiza cuando quieras.",
+    "tuPlanActual": "Tu plan actual",
+    "botonActualizar": "Actualizar a Plan de Pago",
+    "redirigiendo": "Redirigiendo a la pasarela de pago…",
+    "errorCheckout": "No se pudo iniciar el pago. Intenta de nuevo.",
+    "exitoTitulo": "¡Listo! Ya estás en el Plan de Pago",
+    "exitoDescripcion": "Puede tardar unos segundos en reflejarse mientras confirmamos el pago con la pasarela.",
+    "exitoVolver": "Volver al panel",
+    "canceladaTitulo": "Pago cancelado",
+    "canceladaDescripcion": "Sigues en el Plan Gratis — puedes intentarlo de nuevo cuando quieras.",
+    "canceladaVolver": "Volver a mi suscripción"
   }
 }
