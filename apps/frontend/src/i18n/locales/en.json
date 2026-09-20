@@ -9,6 +9,7 @@
     "reservas": "Bookings",
     "notificaciones": "Notifications",
     "reportes": "Reports",
+    "suscripcion": "Subscription",
     "registrarNegocio": "Register my business",
     "registrarse": "Sign up",
     "idioma": "Language",
@@ -72,6 +73,23 @@
     "reservasPorDia": "Bookings by day",
     "sinReservas": "You don't have any bookings this month yet.",
     "verCalendario": "View calendar",
-    "errorResumen": "Couldn't load this month's summary. Please try again later."
+    "errorResumen": "Couldn't load this month's summary. Please try again later.",
+    "bannerPlanGratisTitulo": "You're on the Free Plan",
+    "bannerPlanGratisDescripcion": "Upgrade to unlock unlimited users, WhatsApp, and more.",
+    "bannerPlanGratisBoton": "View plans"
+  },
+  "suscripcion": {
+    "titulo": "Your subscription",
+    "subtitulo": "Compare plans and upgrade whenever you're ready.",
+    "tuPlanActual": "Your current plan",
+    "botonActualizar": "Upgrade to Paid Plan",
+    "redirigiendo": "Redirecting to the payment gateway…",
+    "errorCheckout": "Couldn't start the payment. Please try again.",
+    "exitoTitulo": "All set! You're now on the Paid Plan",
+    "exitoDescripcion": "It may take a few seconds to reflect while we confirm the payment with the gateway.",
+    "exitoVolver": "Back to dashboard",
+    "canceladaTitulo": "Payment cancelled",
+    "canceladaDescripcion": "You're still on the Free Plan — you can try again whenever you're ready.",
+    "canceladaVolver": "Back to my subscription"
   }
 }

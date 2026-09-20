@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Calendar, CalendarX2, CheckCircle2, Coins, TrendingUp } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { Banner, Boton } from '@/components/ui';
 import { Skeleton, SkeletonCard } from '@/components/ui/Skeleton';
 import { useAuth } from '@/context/AuthContext';
 import { negociosApi } from '@/lib/negocios-api';
@@ -126,6 +127,20 @@ export default function InicioPage() {
             </span>
           )}
         </div>
+
+        {esPlanGratis && (
+          <Banner
+            className="mt-6"
+            variante="info"
+            titulo={t('dashboard.bannerPlanGratisTitulo')}
+            descripcion={t('dashboard.bannerPlanGratisDescripcion')}
+            accion={
+              <Boton tamano="sm" onClick={() => navigate('/suscripcion')}>
+                {t('dashboard.bannerPlanGratisBoton')}
+              </Boton>
+            }
+          />
+        )}
 
         {resumenQuery.isPending && (
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

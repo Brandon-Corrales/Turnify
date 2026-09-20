@@ -1749,13 +1749,76 @@ un gap real que sí faltaba: FullCalendar.
   vía `el.click()` en la página (equivalente a un clic de usuario real,
   no un mock) — mismo resultado que clicar por referencia de elemento.
 
+## Frontend: Pantalla/banner de upgrade de plan (Plan Gratis → Plan de Pago) ✅
+El backend de Suscripciones (Stripe Test Mode, checkout + webhook) ya
+existía completo de una tarjeta anterior — esta tarjeta era 100%
+frontend: exponer ese flujo real al admin.
+
+- **Refactor antes de construir**: la Landing pública ya tenía una
+  comparación de planes completa (`ItemPlan` + las dos tarjetas); en vez
+  de copiar esas ~90 líneas en la pantalla nueva, se extrajo a
+  `components/suscripciones/TarjetasPlanes.tsx` (props `ctaGratis`/
+  `ctaPago`/`planActual`) y `LandingPage.tsx` se reescribió para
+  consumirlo — una sola fuente para los números reales del Plan Gratis
+  (misma query a `GET /suscripciones/planes`) en vez de dos copias que se
+  desincronizarían si cambian los límites.
+- **`SuscripcionPage`** (`/suscripcion`, nueva): usa `TarjetasPlanes` con
+  `planActual` calculado desde `negociosApi.obtenerMiNegocio()`; el CTA
+  del Plan de Pago llama `POST /suscripciones/checkout` con las
+  `successUrl`/`cancelUrl` reales (`/suscripcion/exito` y
+  `/suscripcion/cancelada`, los mismos ejemplos que trae
+  `IniciarCheckoutDto`) y redirige el navegador a la URL de Stripe
+  Checkout devuelta (`window.location.href`, no un `navigate` de router,
+  porque es un dominio externo). El plan activo muestra un botón
+  deshabilitado "Tu plan actual" en vez de un CTA — nunca un botón
+  accionable sin sentido.
+- **`SuscripcionExitoPage`/`SuscripcionCanceladaPage`** (nuevas): las
+  pantallas exactas a las que Stripe redirige tras el Checkout;
+  éxito invalida las queries de `negocios`/`suscripciones` para que la
+  siguiente vista pida el estado fresco (el webhook de Stripe puede
+  tardar unos segundos más que el redirect).
+- **Banner en el Dashboard** (`InicioPage`, usando el `Banner` compartido
+  del punto 8 — no uno inventado ad-hoc): visible solo si
+  `planSuscripcion === 'gratis'`, con CTA a `/suscripcion`.
+- Link "Suscripción" nuevo en el nav de `AppLayout` + claves i18n nuevas
+  (`comun.suscripcion`, namespace `suscripcion.*`, `dashboard.bannerPlanGratis*`).
+- `suscripciones-api.ts` extendido con `obtenerMiSuscripcion()` e
+  `iniciarCheckout()`.
+- `tsc -b`, `eslint`, `npm run build` y `prettier --write` limpios.
+
+**Verificado en Chrome real, con la cuenta demo (Plan Gratis):**
+- Dashboard muestra el banner real con el CTA correcto; `/suscripcion`
+  carga los límites reales del Plan Gratis (1 usuario/3 servicios/20
+  reservas/10 mensajes chatbot — los mismos números que
+  `LimitePlanGratisGuard` aplica de verdad) con el badge "Tu plan actual"
+  en la tarjeta correcta y "Sin límites" en la de pago.
+- Clic real en "Actualizar a Plan de Pago" → llamada real a `POST
+  /suscripciones/checkout` → **el backend respondió 503
+  `PASARELA_PAGOS_NO_DISPONIBLE`, mostrado tal cual en un toast** ("La
+  pasarela de pagos no está disponible en este momento"). Esto es un
+  hallazgo real del entorno, no un bug de esta tarjeta: `STRIPE_SECRET_KEY`
+  y `STRIPE_WEBHOOK_SECRET` están vacíos en `.env` (confirmado con
+  `grep`) — nunca se configuraron credenciales de prueba reales de Stripe
+  en este proyecto. El flujo de éxito/degradación se verificó de punta a
+  punta contra el backend real hasta el límite que el entorno permite; un
+  Stripe Checkout Session real requeriría esas credenciales, que no
+  existen aquí — no se puede verificar más allá de esto sin ellas.
+- `/suscripcion/exito` y `/suscripcion/cancelada` renderizan su copy
+  correcto navegando directo (no se pudo llegar ahí por un Checkout real,
+  por el punto anterior).
+- Landing pública (sin sesión, `localStorage` limpiado a propósito para
+  la prueba) sigue mostrando ambas tarjetas de planes correctamente tras
+  el refactor a `TarjetasPlanes` — sin regresión.
+- Sin errores de consola en ninguna pantalla.
+
 ## Tarea en curso
-Con Toggle de vista y Dark mode cerrados y verificados, la siguiente
-tarjeta en el orden acordado (ver "Modo autónomo nocturno" arriba) es
-**Pantalla/banner de upgrade de plan (Plan Gratis → Plan de Pago)**,
-seguida de: Marcar/mostrar `nivel_cliente` en Clientes (ya hay badge
-Gratis/Premium desde la tarjeta del Toggle — revisar si el brief pide
-algo más ahí) → Widget de chatbot flotante.
+Con Toggle de vista, Dark mode y el upgrade de plan cerrados y
+verificados, la siguiente tarjeta en el orden acordado (ver "Modo
+autónomo nocturno" arriba) es **Marcar/mostrar `nivel_cliente` en
+Clientes** (ya hay badge Gratis/Premium en `ClientesPage` desde la
+tarjeta del Toggle — revisar si el brief pide algo más ahí, p.ej. poder
+cambiarlo desde la tabla sin abrir el modal, o si el formulario de
+crear/editar ya alcanza), seguida de: Widget de chatbot flotante.
 
 El reporte final consolidado (un solo mensaje, no uno por tarjeta) sigue
 pendiente hasta cerrar TODO el frontend — no se ha escrito ningún

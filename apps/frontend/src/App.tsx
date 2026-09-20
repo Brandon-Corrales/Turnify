@@ -14,6 +14,9 @@ import ReportesPage from '@/pages/ReportesPage';
 import ClientesPage from '@/pages/ClientesPage';
 import ServiciosPage from '@/pages/ServiciosPage';
 import ReservasPage from '@/pages/ReservasPage';
+import SuscripcionPage from '@/pages/SuscripcionPage';
+import SuscripcionExitoPage from '@/pages/SuscripcionExitoPage';
+import SuscripcionCanceladaPage from '@/pages/SuscripcionCanceladaPage';
 
 /**
  * "/" es pública (Landing, punto 6 del brief) para quien no tiene sesión,
@@ -87,6 +90,30 @@ function App() {
         element={
           <RutaProtegida>
             <ReservasPage />
+          </RutaProtegida>
+        }
+      />
+      <Route
+        path="/suscripcion"
+        element={
+          <RutaProtegida>
+            <SuscripcionPage />
+          </RutaProtegida>
+        }
+      />
+      <Route
+        path="/suscripcion/exito"
+        element={
+          <RutaProtegida>
+            <SuscripcionExitoPage />
+          </RutaProtegida>
+        }
+      />
+      <Route
+        path="/suscripcion/cancelada"
+        element={
+          <RutaProtegida>
+            <SuscripcionCanceladaPage />
           </RutaProtegida>
         }
       />

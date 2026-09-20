@@ -76,6 +76,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
             >
               {t('comun.reportes')}
             </Link>
+            <Link
+              to="/suscripcion"
+              className="shrink-0 text-sm font-medium text-slate-600 hover:text-primary-600 dark:text-slate-300 dark:hover:text-primary-400"
+            >
+              {t('comun.suscripcion')}
+            </Link>
           </nav>
         </div>
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
