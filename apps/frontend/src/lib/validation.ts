@@ -45,3 +45,34 @@ export const datosClientePublicoSchema = z.object({
 });
 
 export type DatosClientePublicoFormValues = z.infer<typeof datosClientePublicoSchema>;
+
+export const clienteSchema = z.object({
+  nombreCompleto: z.string().min(2, 'Mínimo 2 caracteres').max(150),
+  correoElectronico: z.string().min(1, 'El correo es obligatorio').email('Correo inválido'),
+  telefono: z.string().max(30).optional().or(z.literal('')),
+  notas: z.string().max(500).optional().or(z.literal('')),
+  canalPreferido: z.enum(['email', 'whatsapp']),
+  idiomaPreferido: z.enum(['es', 'en']),
+  nivelCliente: z.enum(['gratis', 'premium']),
+});
+
+export type ClienteFormValues = z.infer<typeof clienteSchema>;
+
+export const servicioSchema = z.object({
+  nombre: z.string().min(2, 'Mínimo 2 caracteres').max(150),
+  descripcion: z.string().max(500).optional().or(z.literal('')),
+  // Mismos límites que CrearServicioDto en el backend (IsInt, Min(1), Max(1440)).
+  // Sin z.coerce: el input usa registro con {valueAsNumber: true} (RHF ya
+  // entrega number), así el tipo de entrada/salida del resolver coincide y
+  // useForm<ServicioFormValues> no choca con TFieldValues (ver ServiciosPage).
+  duracionMinutos: z.number('Ingresa un número').int().min(1, 'Mínimo 1 minuto').max(1440),
+  // IsPositive() en el backend — un servicio no puede costar 0.
+  precio: z.number('Ingresa un número').positive('Debe ser mayor a 0'),
+  colorCalendario: z
+    .string()
+    .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, 'Color hex inválido (#rrggbb)')
+    .optional()
+    .or(z.literal('')),
+});
+
+export type ServicioFormValues = z.infer<typeof servicioSchema>;

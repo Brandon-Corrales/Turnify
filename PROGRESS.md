@@ -1607,36 +1607,114 @@ verificando esta misma tarjeta.
   en ningún caso (confirmado limpiando el buffer de consola y navegando
   de nuevo, no solo leyendo mensajes viejos).
 
+## Frontend: Toggle de vista lista/cuadrícula reutilizable (Clientes, Servicios, Reservas) ✅ (parcial — ver "Tarea en curso")
+El punto 9 del brief pedía el toggle en 3 pantallas administrativas que
+**todavía no existían** (`ls src/pages` confirmó que no había
+`ClientesPage`/`ServiciosPage`/`ReservasPage` antes de esta tarjeta) —
+así que la tarjeta terminó siendo "construir las 3 pantallas admin
+completas" y no solo "agregar un toggle a algo ya construido". Backend
+no necesitó cambios: `GET/POST/PATCH/DELETE /clientes` y `/servicios` y
+`GET /reservas` (+ `/cancelar`) ya existían y se reusaron tal cual.
+
+- **`useVistaPreferida(clave)`** (`lib/vista-preferida.ts`): hook
+  genérico, localStorage-backed, con una clave POR PANTALLA
+  (`turnify_vista_clientes`/`_servicios`/`_reservas`) — mismo patrón que
+  ya se usaba para la preferencia de idioma.
+- **`<ToggleVista>`** (`components/ui/ToggleVista.tsx`): el único
+  componente de toggle grid/lista para las 3 pantallas, con
+  `aria-pressed` por botón (punto 10, accesibilidad) — nunca reinventado
+  por pantalla.
+- **`ClientesPage`** (`/clientes`, nueva): CRUD completo (crear/editar
+  vía `Modal`+react-hook-form+zod, desactivar vía `ConfirmDialog`),
+  badges de nivel (Gratis/Premium) y canal preferido, vista
+  cuadrícula/lista con `ToggleVista`. `clientes-api.ts` nuevo.
+- **`ServiciosPage`** (`/servicios`, nueva): mismo patrón CRUD;
+  `servicios-api.ts` extendido con `listar`/`actualizar`/`desactivar`
+  (antes solo tenía `crear`). Validación de `duracionMinutos`
+  (1-1440, entero) y `precio` (`positive()`) alineada exactamente con
+  `CrearServicioDto` del backend (`IsInt/Min/Max`, `IsPositive`), no
+  límites inventados en el frontend.
+- **`ReservasPage`** (`/reservas`, nueva): vista ADMINISTRATIVA de
+  reservas (punto 9 la distingue explícitamente del Calendario), de solo
+  lectura + cancelar, con filtro por estado y el mismo `ToggleVista`.
+  `reservas-api.ts` existente se extendió (`page`, `estado` opcionales
+  en `listar()`, antes solo soportaba `desde`/`hasta`/`idUsuario`) sin
+  tocar su uso ya existente en `CalendarioPage`.
+- Rutas nuevas en `App.tsx` (las 3 envueltas en `RutaProtegida`) y links
+  nuevos en el nav de `AppLayout` (+ claves i18n `comun.clientes`/
+  `servicios`/`reservas` en es.json/en.json).
+- `tsc -b`, `eslint`, `npm run build` y `prettier --write` limpios en
+  todos los archivos nuevos/tocados.
+
+**Verificado de verdad en Chrome real, contra el backend real (no
+mocks), con la cuenta demo (`admin@turnify.app`) — Clientes y
+Servicios:**
+- Clientes: login real → `/clientes` carga los 2 clientes reales del
+  seed en vista cuadrícula; toggle a lista (persistencia confirmada
+  leyendo `localStorage.getItem('turnify_vista_clientes') === 'lista'`
+  tras recargar el estado); crear "Cliente E2E Verificación" real (POST
+  201, aparece en la lista); editar y poner canal WhatsApp + nivel
+  Premium → **bloqueado por el backend real** con el mensaje exacto de
+  `PrivilegiosClienteService` ("El plan actual del negocio no tiene el
+  canal WhatsApp habilitado" — el negocio demo está en Plan Gratis, la
+  regla de dependencia del punto 5 funcionando de punta a punta, no
+  simulada); revertir a canal correo → guarda bien ("Cliente
+  actualizado"); desactivar → soft-delete real confirmado (desaparece de
+  la lista activa, toast "Cliente desactivado").
+- Servicios: `/servicios` carga los 3 servicios reales del seed (Corte
+  clásico, Corte + barba, Afeitado clásico) con su color/duración/precio
+  correctos; intentar crear un 4to servicio activo → **bloqueado por
+  `LimitePlanGratisGuard` real** (el negocio demo ya tiene exactamente 3
+  servicios activos = el límite del Plan Gratis), con el mensaje real
+  del backend tanto en el toast como en el banner ámbar dentro del modal
+  ("El Plan Gratis permite hasta 3 servicios activos..."). No se forzó
+  la creación (habría requerido desactivar un servicio real del seed).
+- Sin errores de consola en ninguna de las dos pantallas.
+
 ## Tarea en curso
-**Backend 100% cerrado** (ver arriba) — Seguridad, Notificaciones (ahora
-con historial HTTP además del worker), Suscripciones, Reportes, Swagger,
-i18n backend, guard de límites del plan gratis, guard de privilegios por
-nivel_cliente, Módulo Chatbot y el endpoint público de reservas, todos
-verificados contra Postgres/Supabase real.
+**Pausa de seguridad por límite de tokens de la sesión** (99% del cupo
+de 5 horas alcanzado a mitad de la verificación en Chrome, justo después
+de cerrar Clientes/Servicios y antes de poder abrir el modal de
+Servicios en `/reservas`) — seguido el punto 2 de "Modo autónomo
+nocturno": se paró en el límite entre pantallas, nunca a mitad de una,
+todo lo de arriba ya está compilado/lintado/commiteado.
 
-**Frontend, en el orden de docs/spec.md**: Setup, componentes UI,
-Login/Registro, Calendario (prioridad del Seguimiento #2) cerrados de
-sesiones anteriores; de las tarjetas "después del Seguimiento #2", ya
-están cerradas Paso de onboarding + Input variante crear/editar (fuera
-de orden), Landing pública, Dashboard con KPIs, Wizard de reserva
-pública, Pantalla de Notificaciones, Pantalla de Reportes con gráficos,
-Selector de idioma, y ahora **Ajustes responsive** (esta tarjeta).
-Siguiente en el orden acordado con el equipo (ver "Modo autónomo
-nocturno" arriba): **Toggle de vista lista/cuadrícula reutilizable**.
+**Pendiente exacto para retomar** (leer esto primero al reanudar):
+1. `ReservasPage` está escrita, tipada, lintada y buildeada, pero
+   **todavía no verificada en navegador real** — falta: cargar
+   `/reservas` con la cuenta demo, confirmar que lista las reservas
+   reales, probar el filtro por `estado`, alternar cuadrícula/lista, y
+   cancelar una reserva de prueba (verificar que dispara la notificación
+   de cancelación ya existente). Si aparece algún bug real al verificar,
+   arreglarlo antes de dar la tarjeta por cerrada.
+2. Una vez verificada Reservas, cerrar esta tarjeta en el índice de
+   arriba (quitar el "parcial") y seguir el orden de "Modo autónomo
+   nocturno" sin pedir confirmación: **Dark mode (modo oscuro/claro
+   persistente)** → Pantalla/banner de upgrade de plan → Marcar/mostrar
+   `nivel_cliente` en Clientes (ya hay badge Gratis/Premium desde esta
+   tarjeta — revisar si el brief pide algo más ahí) → Widget de chatbot
+   flotante.
+3. Los tokens de la sesión se restablecen ~01:10 hora CR
+   (`2026-09-20T07:10:00Z`). Si esta sesión se reanuda automáticamente
+   tras el reset, leer este archivo y `git log` primero (ya lo dice el
+   punto 3 del modo autónomo), no reiniciar nada ya commiteado.
+4. El reporte final consolidado (un solo mensaje, no uno por tarjeta)
+   sigue pendiente hasta cerrar TODO el frontend — no se ha escrito
+   ningún reporte parcial todavía, por diseño (instrucción del equipo).
 
-Pendientes menores sin resolver, ninguno bloqueante: (1) el onboarding
-del frontend puede chocar con el límite de 3 servicios del plan gratis
-si una plantilla de vertical sugiere más de 3 (ver nota de Suscripciones
-arriba); (2) la mayoría de los mensajes de validación de los DTOs (fuera
-de la contraseña) todavía no usan claves de i18n en el backend; (3) solo
-Landing/Dashboard/navbar están traducidos de verdad, el resto sigue en
-español fijo; (4) el link real del wizard (`/reservar/:idNegocio`)
-todavía no está enlazado desde ninguna pantalla del admin; (5) un cron
-real de `RECORDATORIO` sigue sin construirse; (6) la auditoría
-responsive de esta tarjeta fue por código + verificación de escritorio,
-no una captura de pantalla real en 390px — la herramienta de
-automatización del navegador de esta sesión nunca logró cambiar el
-viewport real pese a varios intentos con pestañas nuevas.
+Pendientes menores sin resolver, ninguno bloqueante (heredados de la
+tarjeta de responsive, siguen igual): (1) el onboarding del frontend
+puede chocar con el límite de 3 servicios del plan gratis si una
+plantilla de vertical sugiere más de 3; (2) la mayoría de los mensajes
+de validación de los DTOs (fuera de la contraseña) todavía no usan
+claves de i18n en el backend; (3) solo Landing/Dashboard/navbar están
+traducidos de verdad, el resto (incluidas las 3 pantallas nuevas de esta
+tarjeta) sigue en español fijo; (4) el link real del wizard
+(`/reservar/:idNegocio`) todavía no está enlazado desde ninguna pantalla
+del admin; (5) un cron real de `RECORDATORIO` sigue sin construirse;
+(6) la auditoría responsive es por código + verificación de escritorio,
+no una captura de pantalla real en 390px (limitación de la herramienta
+de automatización del navegador, no del código).
 
 ## Cómo probar lo que ya existe
 ```bash

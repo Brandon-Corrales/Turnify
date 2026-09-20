@@ -47,6 +47,24 @@ export function AppLayout({ children }: { children: ReactNode }) {
               {t('comun.calendario')}
             </Link>
             <Link
+              to="/clientes"
+              className="shrink-0 text-sm font-medium text-slate-600 hover:text-primary-600 dark:text-slate-300 dark:hover:text-primary-400"
+            >
+              {t('comun.clientes')}
+            </Link>
+            <Link
+              to="/servicios"
+              className="shrink-0 text-sm font-medium text-slate-600 hover:text-primary-600 dark:text-slate-300 dark:hover:text-primary-400"
+            >
+              {t('comun.servicios')}
+            </Link>
+            <Link
+              to="/reservas"
+              className="shrink-0 text-sm font-medium text-slate-600 hover:text-primary-600 dark:text-slate-300 dark:hover:text-primary-400"
+            >
+              {t('comun.reservas')}
+            </Link>
+            <Link
               to="/notificaciones"
               className="shrink-0 text-sm font-medium text-slate-600 hover:text-primary-600 dark:text-slate-300 dark:hover:text-primary-400"
             >

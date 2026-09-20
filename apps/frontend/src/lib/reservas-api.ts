@@ -29,9 +29,11 @@ interface PaginatedResult<T> {
 }
 
 export interface ListarReservasParams {
-  desde: string;
-  hasta: string;
+  desde?: string;
+  hasta?: string;
   idUsuario?: string;
+  estado?: EstadoReserva;
+  page?: number;
   limit?: number;
 }
 
@@ -52,9 +54,16 @@ function construirQuery(params: Record<string, string | number | undefined>): st
 const LIMITE_MAXIMO_BACKEND = 100;
 
 export const reservasApi = {
-  listar: ({ desde, hasta, idUsuario, limit = LIMITE_MAXIMO_BACKEND }: ListarReservasParams) =>
+  listar: ({
+    desde,
+    hasta,
+    idUsuario,
+    estado,
+    page,
+    limit = LIMITE_MAXIMO_BACKEND,
+  }: ListarReservasParams) =>
     apiFetch<PaginatedResult<Reserva>>(
-      `/reservas${construirQuery({ desde, hasta, idUsuario, limit })}`,
+      `/reservas${construirQuery({ desde, hasta, idUsuario, estado, page, limit })}`,
     ),
 
   cancelar: (idReserva: string) =>
