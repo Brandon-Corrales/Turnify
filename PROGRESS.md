@@ -2133,6 +2133,47 @@ encabezados de tabla y formato de fecha, todo cambia junto, sin recargar
 la página. Volver a español revierte todo, incluida la fecha. Sin
 errores de consola en ningún idioma.
 
+## Ronda de seguimiento QA (3 tarjetas adicionales del equipo)
+Tras el reporte de la ronda anterior, el equipo pidió 3 tarjetas más,
+una por una:
+
+### 1. QA: tests de integración reales de Auth/Reservas ✅
+El equipo preguntó primero si los 14+6+10 tests ya escritos (`AuthService`,
+`ReservasService`, guards) eran de integración real o unitarios —
+respuesta honesta: **eran unitarios**. Cada uno instancia la clase de
+servicio/guard directamente con dependencias mockeadas a mano (repos
+falsos, `dataSource.transaction` falso, `jwtService` falso) — nunca
+arrancan la app real ni hacen una request HTTP real. Cubren la lógica de
+negocio muy bien, pero NO ejercitan el pipeline real completo (guards
+globales como `APP_GUARD`, `ValidationPipe`, `AllExceptionsFilter`, el
+interceptor multi-tenant, TypeORM contra la base real) — por eso la
+tarjeta de integración seguía genuinamente pendiente, no estaba
+satisfecha por lo anterior.
+
+- **`test-utils/bootstrap-integration-app.ts`** (nuevo, compartido):
+  levanta `AppModule` COMPLETO vía `Test.createTestingModule` de
+  `@nestjs/testing` (no un módulo recortado a mano), aplica el mismo
+  `ValidationPipe`/`AllExceptionsFilter` que `main.ts`, y expone
+  `app.getHttpServer()` para `supertest` — sin `app.listen()`, no hace
+  falta un puerto real.
+- **`auth.integration.spec.ts`** (nuevo, 9 tests): registro real →
+  duplicado real (409), `/auth/me` sin token (401) y con token real
+  (200), login con contraseña incorrecta (401) y correcta, rotación
+  real de refresh token, **reuso de un token ya rotado revocando la
+  sesión de punta a punta** (el mismo caso que el test unitario prueba
+  a nivel de servicio, ahora demostrado con requests HTTP reales
+  encadenadas), y logout invalidando la sesión.
+- **`reservas.integration.spec.ts`** (nuevo, 9 tests): negocio/servicio/
+  disponibilidad/cliente creados vía la API real en `beforeAll` (mismo
+  criterio que el E2E de Playwright); crear sin token (401), fecha en
+  el pasado (400), creación real, traslape real (409), listar con las
+  relaciones reales, 404 real, cancelar real, cancelar dos veces (409),
+  reprogramar una cancelada (409).
+- `supertest`/`@types/supertest` agregados como devDependencies.
+- Suite completa del backend: **201/201 tests pasan** (183 + 18
+  nuevas), corridas de verdad contra la base de datos real que usa el
+  servidor de desarrollo — no una base de test aparte ni mocks.
+
 Pendientes menores sin resolver, ninguno bloqueante (heredados de la
 tarjeta de responsive, siguen igual): (1) el onboarding del frontend
 puede chocar con el límite de 3 servicios del plan gratis si una
