@@ -2276,6 +2276,52 @@ como bug real. El único bug reportado en esta tarjeta (el header de
 Landing) se confirmó con una barra de scroll horizontal visible en la
 captura misma, no solo con una medición de JS.
 
+## Bug real encontrado corriendo el proyecto localmente (fuera de las rondas de QA)
+El usuario levantó el backend en su máquina para probar la app en el
+navegador (`npm run backend:dev`) y el log mostró un error real
+repitiéndose cada minuto:
+```
+ERROR [Scheduler] TypeError: Cannot read properties of null (reading 'correoElectronico')
+    at NotificacionesService.enviarUna (notificaciones.service.ts:137:50)
+```
+
+**Causa**: exactamente el mismo patrón ya encontrado y arreglado en
+`ReservasService.listar()`/`obtenerUna()` en la tarjeta de responsive,
+pero sin tocar acá — `procesarPendientes()` cargaba la relación
+`cliente` sin `withDeleted: true`. Si el cliente de una notificación
+pendiente fue desactivado después de programarla (pasó con datos de
+prueba reales de esta sesión), TypeORM lo excluye del join y
+`notificacion.cliente` llega `null`.
+
+**Peor que solo ruido en el log**: como nada atrapaba el error, el
+`for` de `procesarPendientes()` se cortaba en la primera notificación
+envenenada — cualquier notificación real que viniera después en el
+mismo lote de 50 nunca se procesaba, y la envenenada nunca llegaba a
+marcarse `fallida` (esa lógica vive después del punto donde revienta),
+así que se reintentaba cada minuto para siempre.
+
+**Fix** (`notificaciones.service.ts`):
+- `withDeleted: true` en la consulta de `procesarPendientes()` — un
+  cliente desactivado sigue siendo un destinatario real de una
+  notificación ya programada, mismo criterio que el historial de
+  Reservas.
+- `try/catch` alrededor de `enviarUna()` dentro del `for`: una
+  notificación con datos irrecuperables se marca `FALLIDA` directo y
+  el lote sigue con las demás, en vez de cortarse ahí.
+- 2 tests nuevos en `notificaciones.service.spec.ts`: confirma que
+  `find()` se llama con `withDeleted: true`, y confirma que una
+  notificación con `cliente: null` no bloquea el procesamiento de la
+  siguiente notificación real del mismo lote (el escenario exacto del
+  bug, reproducido con el log real capturado en consola: "Notificación
+  notif-envenenada no se pudo procesar..." seguido de "Notificación
+  notif-5 enviada por email").
+- Suite completa del backend: **206/206 tests pasan**.
+
+El servidor del usuario corre en modo watch (`nest start --watch`), así
+que debería recompilar solo con este cambio sin que él tenga que hacer
+nada más que confirmar que el error deja de repetirse en el próximo
+tick del minuto.
+
 Pendientes menores sin resolver, ninguno bloqueante (heredados de la
 tarjeta de responsive, siguen igual): (1) el onboarding del frontend
 puede chocar con el límite de 3 servicios del plan gratis si una

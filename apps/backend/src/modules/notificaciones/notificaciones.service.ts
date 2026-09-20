@@ -120,10 +120,32 @@ export class NotificacionesService {
     const pendientes = await this.notificacionRepo.find({
       where: { estado: EstadoNotificacion.PENDIENTE, programadoPara: LessThanOrEqual(new Date()) },
       relations: { cliente: true },
+      // El cliente puede haberse desactivado (soft-delete) DESPUÉS de
+      // programar la notificación — sin esto TypeORM lo excluye del join
+      // y notificacion.cliente llega null, reventando enviarUna() (bug
+      // real, mismo patrón ya encontrado y arreglado en
+      // ReservasService.listar()/obtenerUna(): el historial no debe
+      // romperse porque un cliente se desactivó después).
+      withDeleted: true,
       take: 50,
     });
     for (const notificacion of pendientes) {
-      await this.enviarUna(notificacion);
+      try {
+        await this.enviarUna(notificacion);
+      } catch (error) {
+        // Una notificación con datos irrecuperables (p.ej. el cliente ya
+        // no existe ni con withDeleted) nunca debe bloquear el resto del
+        // lote — antes de este fix, un error sin atrapar acá cortaba el
+        // `for` entero y dejaba sin procesar cualquier notificación real
+        // que viniera después en el mismo lote de 50.
+        this.logger.error(
+          `Notificación ${notificacion.idNotificacion} no se pudo procesar: ${(error as Error).message}`,
+        );
+        await this.notificacionRepo.update(
+          { idNotificacion: notificacion.idNotificacion },
+          { estado: EstadoNotificacion.FALLIDA },
+        );
+      }
     }
   }
 

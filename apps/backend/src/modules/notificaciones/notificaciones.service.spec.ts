@@ -199,6 +199,52 @@ describe('NotificacionesService', () => {
     );
   });
 
+  it('procesarPendientes() busca las pendientes con withDeleted (el cliente puede haberse desactivado después de programar la notificación)', async () => {
+    await service.procesarPendientes();
+    expect(notificacionRepo.find).toHaveBeenCalledWith(
+      expect.objectContaining({ withDeleted: true }),
+    );
+  });
+
+  it('procesarPendientes() — bug real corregido: una notificación con cliente irrecuperable se marca FALLIDA y NO bloquea el resto del lote', async () => {
+    notificacionRepo.find.mockResolvedValue([
+      {
+        idNotificacion: 'notif-envenenada',
+        canal: CanalNotificacion.EMAIL,
+        mensaje: 'Asunto\nCuerpo',
+        reintentos: 0,
+        cliente: null, // cliente ya no recuperable ni con withDeleted (p.ej. borrado físico)
+      },
+      {
+        idNotificacion: 'notif-5',
+        canal: CanalNotificacion.EMAIL,
+        mensaje: 'Asunto\nCuerpo del mensaje',
+        reintentos: 0,
+        cliente: CLIENTE_EMAIL,
+      },
+    ]);
+    resend.enviarCorreo.mockResolvedValue({ exito: true });
+
+    await service.procesarPendientes();
+
+    // Antes del fix, el TypeError al leer cliente.correoElectronico de la
+    // primera notificación cortaba el `for` entero y notif-5 (real, con
+    // cliente válido) nunca se procesaba.
+    expect(notificacionRepo.update).toHaveBeenCalledWith(
+      { idNotificacion: 'notif-envenenada' },
+      { estado: EstadoNotificacion.FALLIDA },
+    );
+    expect(resend.enviarCorreo).toHaveBeenCalledWith(
+      'cliente@example.com',
+      'Asunto',
+      'Cuerpo del mensaje',
+    );
+    expect(notificacionRepo.update).toHaveBeenCalledWith(
+      { idNotificacion: 'notif-5' },
+      expect.objectContaining({ estado: EstadoNotificacion.ENVIADA }),
+    );
+  });
+
   it('listar() filtra por el negocio actual vía join con Cliente y pagina el resultado', async () => {
     const filas = [{ idNotificacion: 'notif-1' }];
     notificacionRepo._queryBuilder.getManyAndCount.mockResolvedValue([filas, 1]);
