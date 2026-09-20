@@ -1811,18 +1811,33 @@ frontend: exponer ese flujo real al admin.
   el refactor a `TarjetasPlanes` — sin regresión.
 - Sin errores de consola en ninguna pantalla.
 
-## Tarea en curso
-Con Toggle de vista, Dark mode y el upgrade de plan cerrados y
-verificados, la siguiente tarjeta en el orden acordado (ver "Modo
-autónomo nocturno" arriba) es **Marcar/mostrar `nivel_cliente` en
-Clientes** (ya hay badge Gratis/Premium en `ClientesPage` desde la
-tarjeta del Toggle — revisar si el brief pide algo más ahí, p.ej. poder
-cambiarlo desde la tabla sin abrir el modal, o si el formulario de
-crear/editar ya alcanza), seguida de: Widget de chatbot flotante.
+## Frontend: Marcar/mostrar nivel_cliente (Gratis/Premium) en Clientes ✅ (ya estaba hecho)
+Al revisar esta tarjeta contra el código actual, **ya estaba 100%
+satisfecha** por `ClientesPage` (construida en la tarjeta del Toggle,
+antes de que esta tarjeta empezara formalmente):
+- **Marcar**: el formulario de crear/editar tiene un `Select` "Nivel de
+  cliente" (Gratis/Premium) — `ClientesPage.tsx` línea ~334-338 —, ya
+  verificado en Chrome real durante la tarjeta del Toggle (se cambió un
+  cliente de prueba a Premium y se guardó correctamente).
+- **Mostrar**: `BadgeNivel` (ámbar "Premium" / slate "Gratis") se
+  renderiza tanto en la vista de cuadrícula como en la de lista —
+  exactamente lo que pide el punto 5.2 del brief ("Badge visible
+  'Cliente Premium'... lista y cuadrícula").
+No se necesitó ni una línea de código nueva; se documenta aquí para que
+el reporte final la liste como tarjeta cerrada, con honestidad sobre que
+el trabajo real ocurrió en la tarjeta anterior.
 
-El reporte final consolidado (un solo mensaje, no uno por tarjeta) sigue
-pendiente hasta cerrar TODO el frontend — no se ha escrito ningún
-reporte parcial todavía, por diseño (instrucción del equipo).
+## Tarea en curso
+Con Toggle de vista, Dark mode, upgrade de plan y nivel_cliente
+cerrados, queda la ÚLTIMA tarjeta del orden acordado (ver "Modo autónomo
+nocturno" arriba): **Widget de chatbot flotante (tiempo real,
+contextual, responsive)**. El backend del Chatbot (WebSocket Gateway +
+Groq) ya está cerrado y verificado de una tarjeta anterior — esta es
+puramente la UI del widget flotante que lo consume.
+
+El reporte final consolidado (un solo mensaje, no uno por tarjeta) se
+escribe apenas se cierre esta última tarjeta — no antes, por diseño
+(instrucción del equipo).
 
 Pendientes menores sin resolver, ninguno bloqueante (heredados de la
 tarjeta de responsive, siguen igual): (1) el onboarding del frontend
