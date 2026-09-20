@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Calendar, CalendarX2, CheckCircle2, Coins, TrendingUp } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -73,6 +74,7 @@ function GraficoReservasPorDia({ datos }: { datos: ResumenReportes['reservasPorD
 }
 
 export default function InicioPage() {
+  const { t, i18n } = useTranslation();
   const { usuario } = useAuth();
   const navigate = useNavigate();
   const { desde, hasta } = rangoMesActual();
@@ -90,7 +92,13 @@ export default function InicioPage() {
   const esPlanGratis = negocioQuery.data?.planSuscripcion === 'gratis';
   const resumen = resumenQuery.data;
   const total = resumen ? totalReservas(resumen.reservasPorEstado) : 0;
-  const nombreMes = new Date().toLocaleDateString('es-CR', { month: 'long', year: 'numeric' });
+  const nombreMes = new Date().toLocaleDateString(
+    i18n.language.startsWith('en') ? 'en-US' : 'es-CR',
+    {
+      month: 'long',
+      year: 'numeric',
+    },
+  );
 
   return (
     <AppLayout>
@@ -98,10 +106,10 @@ export default function InicioPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">
-              Hola, {usuario?.nombreCompleto?.split(' ')[0]}
+              {t('dashboard.hola', { nombre: usuario?.nombreCompleto?.split(' ')[0] })}
             </h1>
             <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400 capitalize">
-              Resumen de {nombreMes}
+              {t('dashboard.resumenDe', { mes: nombreMes })}
             </p>
           </div>
           {negocioQuery.isPending ? (
@@ -114,7 +122,7 @@ export default function InicioPage() {
                   : 'rounded-full bg-secondary-100 px-3 py-1 text-xs font-medium text-secondary-700 dark:bg-secondary-900/40 dark:text-secondary-300'
               }
             >
-              {esPlanGratis ? 'Plan Gratis' : 'Plan de Pago'}
+              {esPlanGratis ? t('dashboard.planGratis') : t('dashboard.planPago')}
             </span>
           )}
         </div>
@@ -128,9 +136,7 @@ export default function InicioPage() {
         )}
 
         {resumenQuery.isError && (
-          <p className="mt-6 text-sm text-danger">
-            No se pudo cargar el resumen del mes. Intenta de nuevo más tarde.
-          </p>
+          <p className="mt-6 text-sm text-danger">{t('dashboard.errorResumen')}</p>
         )}
 
         {resumen && (
@@ -144,27 +150,27 @@ export default function InicioPage() {
               {[
                 {
                   icono: Calendar,
-                  etiqueta: 'Reservas este mes',
+                  etiqueta: t('dashboard.reservasEsteMes'),
                   valor: String(total),
                   claseIcono:
                     'bg-primary-50 text-primary-600 dark:bg-primary-900/40 dark:text-primary-400',
                 },
                 {
                   icono: CheckCircle2,
-                  etiqueta: 'Confirmadas',
+                  etiqueta: t('dashboard.confirmadas'),
                   valor: String(resumen.reservasPorEstado.confirmada),
                   claseIcono:
                     'bg-secondary-50 text-secondary-600 dark:bg-secondary-900/40 dark:text-secondary-400',
                 },
                 {
                   icono: CalendarX2,
-                  etiqueta: 'Canceladas',
+                  etiqueta: t('dashboard.canceladas'),
                   valor: String(resumen.reservasPorEstado.cancelada),
                   claseIcono: 'bg-red-50 text-danger dark:bg-red-900/30',
                 },
                 {
                   icono: Coins,
-                  etiqueta: 'Ingresos estimados',
+                  etiqueta: t('dashboard.ingresosEstimados'),
                   valor: formatearColones(resumen.ingresosEstimados),
                   claseIcono: 'bg-amber-50 text-warning dark:bg-amber-900/30',
                 },
@@ -184,7 +190,7 @@ export default function InicioPage() {
                   className="h-4 w-4 text-primary-600 dark:text-primary-400"
                   aria-hidden="true"
                 />
-                Reservas por día
+                {t('dashboard.reservasPorDia')}
               </div>
               {total === 0 ? (
                 <div className="mt-4 flex flex-col items-center gap-2 py-8 text-center">
@@ -193,14 +199,14 @@ export default function InicioPage() {
                     aria-hidden="true"
                   />
                   <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Todavía no tienes reservas este mes.
+                    {t('dashboard.sinReservas')}
                   </p>
                   <button
                     type="button"
                     onClick={() => navigate('/calendario')}
                     className="text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
                   >
-                    Ver calendario
+                    {t('dashboard.verCalendario')}
                   </button>
                 </div>
               ) : (
