@@ -10,7 +10,7 @@ import { ChatbotGateway } from './chatbot.gateway';
 import { ChatbotService } from './chatbot.service';
 import { WsJwtGuard } from './guards/ws-jwt.guard';
 import { LLM_CLIENT } from './providers/llm-client.interface';
-import { GeminiLlmClient } from './providers/gemini-llm-client.service';
+import { GroqLlmClient } from './providers/groq-llm-client.service';
 
 @Module({
   imports: [
@@ -27,7 +27,7 @@ import { GeminiLlmClient } from './providers/gemini-llm-client.service';
     ChatbotGateway,
     ChatbotService,
     WsJwtGuard,
-    { provide: LLM_CLIENT, useClass: GeminiLlmClient },
+    { provide: LLM_CLIENT, useClass: GroqLlmClient },
   ],
 })
 export class ChatbotModule {}

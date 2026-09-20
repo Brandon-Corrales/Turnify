@@ -48,8 +48,13 @@ const envSchema = z.object({
   // Opcional por el mismo motivo: sin ella, ChatbotGateway responde con
   // un mensaje degradado en vez de tumbar el servidor (punto 16 del
   // brief: "manejo de fallas... degradarse a un mensaje amable").
+  // Proveedor: Groq (API compatible con el SDK de OpenAI) — el primer
+  // proveedor (Gemini) quedó bloqueado a nivel de proyecto de Google
+  // Cloud, ver PROGRESS.md. Nombres de variable genéricos a propósito:
+  // GroqLlmClient implementa la misma interfaz LlmClient que cualquier
+  // otro proveedor futuro.
   LLM_API_KEY: z.string().optional(),
-  LLM_MODEL: z.string().default('gemini-3.6-flash'),
+  LLM_MODEL: z.string().default('openai/gpt-oss-20b'),
 });
 
 export type Env = z.infer<typeof envSchema>;

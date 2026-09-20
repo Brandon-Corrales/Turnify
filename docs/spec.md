@@ -6,7 +6,7 @@ de producción real: SOLID, Clean Architecture, buenas prácticas, seguridad rea
 
 Antes de escribir código, consulta la documentación oficial vigente de NestJS,
 TypeORM/Prisma, React, FullCalendar.js, Resend, Meta WhatsApp Cloud API, Stripe, Supabase,
-nestjs-i18n/react-i18next y Framer Motion para confirmar sintaxis y APIs
+Groq, nestjs-i18n/react-i18next y Framer Motion para confirmar sintaxis y APIs
 actuales — no asumas versiones ni APIs de memoria, verifica.
 
 Las tareas de la sección "ORDEN DE TRABAJO" son EXACTAMENTE las tarjetas del
@@ -504,11 +504,15 @@ sistema.
   punto 1 — bajo ninguna circunstancia puede responder con datos de un
   negocio distinto al del usuario que pregunta, ni aunque se lo pidan
   explícitamente en el mensaje. Trátalo como un endpoint autenticado más.
-- **Proveedor del LLM**: usa una API de LLM externa (Claude, OpenAI, u otra)
-  vía variable de entorno para la API key, nunca hardcodeada. Si el
-  presupuesto del equipo es limitado, prioriza un modelo económico o de
-  capa gratuita — el chatbot es una capa de ayuda, no necesita el modelo
-  más caro disponible.
+- **Proveedor del LLM**: Groq (API compatible con el SDK de OpenAI, modelo
+  `openai/gpt-oss-20b` del tier gratuito), vía variable de entorno
+  para la API key, nunca hardcodeada. Decisión final del equipo tras
+  probar Google Gemini primero: la cuenta de Google Cloud del equipo
+  quedó bloqueada a nivel de proyecto ("denied access, contact support")
+  para todo modelo Gemini vigente, y sin tiempo razonable para esperar un
+  ticket de soporte. El backend mantiene el LLM desacoplado del proveedor
+  específico (interfaz `LlmClient`) precisamente para poder resolver este
+  tipo de cambio sin reescribir el resto del módulo.
 - **Manejo de fallas**: si la API del LLM falla o se agota el límite de uso,
   el widget debe degradarse a un mensaje amable (usando el componente de
   Alert del punto 8) en vez de romper la pantalla o quedarse cargando
