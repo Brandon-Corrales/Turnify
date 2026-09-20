@@ -11,7 +11,9 @@
     "reportes": "Reportes",
     "registrarNegocio": "Registrar mi negocio",
     "registrarse": "Registrarse",
-    "idioma": "Idioma"
+    "idioma": "Idioma",
+    "cambiarATemaClaro": "Cambiar a tema claro",
+    "cambiarATemaOscuro": "Cambiar a tema oscuro"
   },
   "landing": {
     "badge": "Reservas y turnos, sin hojas de cálculo",
