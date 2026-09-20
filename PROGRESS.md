@@ -1327,31 +1327,136 @@ ninguna cifra hardcodeada.
   un ancho fijo angosto (`w-3`, `max-w-6`) para que se vea como una barra
   incluso con pocos días de datos.
 
+## Frontend: Wizard de reserva pública (4 pasos) ✅
+Backend nuevo + frontend, cerrados juntos: no existía NINGÚN endpoint sin
+sesión para que un cliente final reserve — todo `/reservas` exigía JWT
+(`ReservasController` lo dice explícito en su propio comentario). Esta
+tarjeta construyó esa superficie pública desde cero.
+
+- **Backend — módulo nuevo `ReservaPublicaModule`** (`/publico/negocios/:idNegocio/...`,
+  todo `@Public()`): `GET /` (nombre/tipo del negocio), `GET /servicios`,
+  `GET /horarios?idServicio&fecha`, `POST /reservas`. En vez de duplicar
+  la lógica de disponibilidad/traslapes/notificaciones ya construida en
+  `ReservasService`, cada método abre un `TenantContextService.run(...)`
+  **sintético** para el `idNegocio` de la URL (nunca de un JWT, que aquí
+  no existe) y adentro reutiliza `NegociosService`/`ServiciosService`/
+  `ClientesService`/`ReservasService` tal cual los usaría un admin — así
+  ninguna regla de negocio puede desincronizarse entre el flujo interno
+  y el público.
+  - Cálculo real de horarios disponibles (nuevo, no existía): cruza
+    `Disponibilidad` (por día de la semana, hora local CR) con
+    `Reserva` no cancelada del día, genera slots espaciados por la
+    duración del servicio, y solo cuenta un horario si ALGÚN usuario
+    activo está libre — el wizard nunca pide elegir empleado (no es uno
+    de los 4 pasos del brief), así que el backend asigna uno disponible
+    automáticamente al confirmar (re-verificado en ese momento, nunca
+    confía en el cálculo de la lista).
+  - Find-or-create de `Cliente` por correo (`ClientesService.buscarPorCorreo`,
+    nuevo) — un visitante que reserva dos veces con el mismo correo no
+    duplica su ficha de cliente.
+  - **Límite freemium replicado, no salteado**: `POST /reservas` no pasa
+    por `LimitePlanGratisGuard` (depende de `request.user`, inexistente
+    aquí) — el service llama `LimitesPlanService` directo con el mismo
+    criterio, mismo `errorCode`, mismo i18n.
+  - Rate limit propio más estricto (10/min) en el POST — punto 15 del
+    brief lo pide explícito para el endpoint de reserva pública.
+  - Nuevas utilidades de zona horaria (`inicioDeDiaLocalCR`,
+    `horaMinutoADate`) en `zona-horaria-negocio.ts`, inversas de la ya
+    existente `aMomentoLocalCR` — mismo archivo, no un cálculo de offset
+    duplicado en otro lugar.
+  - 8 tests unitarios nuevos (`reserva-publica.service.spec.ts`).
+  - **Verificado contra el servidor real** (no solo unit tests): negocio
+    demo real, disponibilidad real creada por API, servicio real →
+    `GET /servicios` y `GET /horarios` devolvieron datos reales; `POST
+    /reservas` creó una reserva real con `origen: "online"`; el horario
+    recién tomado desapareció de `GET /horarios` en la siguiente
+    consulta; reservar el mismo horario otra vez devolvió 404
+    `HORARIO_NO_DISPONIBLE`; reservar de nuevo con el mismo correo
+    reusó el mismo `idCliente` (find-or-create confirmado). Datos de
+    prueba limpiados al final.
+- **Frontend — `ReservaPublicaPage`** (`/reservar/:idNegocio`, pública,
+  fuera de `RutaProtegida`): los 4 pasos exactos del punto 6 del brief
+  (Servicio → Horario → Datos del cliente → Confirmación), con
+  indicador de progreso, Skeletons mientras cargan servicios/horarios
+  (nunca spinners), animación de confirmación (check animado, punto 7),
+  y manejo de error real si el horario ya se lo llevaron entre que el
+  cliente lo vio y confirmó.
+- **Bug real encontrado y arreglado — el más serio de la sesión hasta
+  ahora**: `AnimatePresence mode="wait"` (Framer Motion) para animar la
+  transición entre pasos dejaba el wizard **completamente congelado en
+  el paso 1** — confirmado con evidencia sólida, no una sospecha: logs
+  de render mostraban `paso=2` con el estado de React ya actualizado
+  correctamente tras el click, pero el DOM seguía mostrando el contenido
+  del paso 1 indefinidamente (`AnimatePresence` nunca completaba la
+  animación de salida y por eso nunca montaba el paso entrante, en modo
+  `"wait"`). Fix: se quitó `AnimatePresence` de la transición entre pasos
+  (innecesaria para la corrección funcional) y se dejó una animación de
+  entrada simple (`initial`/`animate` con `key` por paso, sin `exit`) —
+  sacrifica la animación de salida pero el wizard avanza de verdad, que
+  es lo que importa. Encontrado y arreglado ANTES de comitear, verificando
+  con clicks reales disparados por JavaScript (no solo capturas de
+  pantalla) hasta confirmar que el paso 4 (confirmación real, con
+  reserva creada en Postgres) se alcanzaba.
+- **Verificado de punta a punta en un Chrome real** los 4 pasos
+  completos: selección de "Corte clásico" → fecha de hoy con horarios
+  reales (08:00–17:30 cada 30 min, según la disponibilidad real creada)
+  → selección de las 10:00 a.m. → formulario de datos del cliente →
+  pantalla de confirmación con el resumen correcto (servicio, fecha/hora
+  en español, precio, nombre, correo) → clic en "Confirmar reserva" →
+  pantalla de éxito animada con el check, mismo resumen, y "Volver al
+  inicio". Reserva de prueba y cliente de prueba limpiados al final
+  (cancelada / desactivado) — no queda basura en el Supabase real del
+  equipo.
+
+## Modo autónomo nocturno (instrucción del equipo, sin pedir confirmación entre tarjetas)
+El equipo pidió continuar TODAS las tarjetas de Frontend restantes en el
+orden exacto de docs/spec.md, una tras otra, sin pausar a preguntar,
+repartiendo el token budget restante entre las tareas, y deteniéndose
+limpio (comiteado + esta nota actualizada) en el límite entre dos
+tarjetas si el contexto se agota antes de terminar todas. Esta sesión
+sigue ese modo desde el Wizard de reserva pública en adelante. Orden
+exacto acordado con el equipo para el resto de la noche:
+
+Notificaciones (pantalla) → Reportes (pantalla con gráficos) → Selector
+de idioma → Responsive → Toggle lista/cuadrícula → Dark mode → Pantalla
+de upgrade de plan → Marcar nivel_cliente → Widget de chatbot flotante.
+
+Si esta sesión se corta a mitad de la lista: seguir exactamente en ese
+orden desde la tarjeta que NO tenga su propio "✅" y su propia sección
+en este archivo — cada tarjeta cerrada de verdad deja su commit +
+sección aquí, igual que todas las anteriores.
+
 ## Tarea en curso
 **Backend 100% cerrado** (ver arriba) — Seguridad, Notificaciones,
 Suscripciones, Reportes, Swagger, i18n backend, guard de límites del
-plan gratis, guard de privilegios por nivel_cliente y Módulo Chatbot,
-todos verificados contra Postgres/Supabase real.
+plan gratis, guard de privilegios por nivel_cliente, Módulo Chatbot y
+ahora también el endpoint público de reservas, todos verificados contra
+Postgres/Supabase real.
 
 **Frontend, en el orden de docs/spec.md**: Setup, componentes UI,
 Login/Registro, Calendario (prioridad del Seguimiento #2) cerrados de
 sesiones anteriores; de las tarjetas "después del Seguimiento #2", ya
 están cerradas Paso de onboarding + Input variante crear/editar (fuera
-de orden, resueltas junto con la tarjeta de plantillas por vertical),
-Landing pública, y ahora **Dashboard con KPIs** (esta tarjeta). La
-siguiente en el orden exacto del punto 18 es **"Frontend: Wizard de
-reserva pública (4 pasos) conectado a Servicios/Disponibilidad/Reservas"**.
+de orden), Landing pública, Dashboard con KPIs, y ahora **Wizard de
+reserva pública** (esta tarjeta). Siguiente en el orden acordado con el
+equipo (ver "Modo autónomo nocturno" arriba): **Pantalla de
+Notificaciones (historial + configuración de recordatorios)**.
 
 Pendientes menores sin resolver, ninguno bloqueante: (1) el onboarding
 del frontend puede chocar con el límite de 3 servicios del plan gratis
 si una plantilla de vertical sugiere más de 3 (ver nota de Suscripciones
 arriba); (2) la mayoría de los mensajes de validación de los DTOs (fuera
 de la contraseña) todavía no usan claves de i18n (ver nota de i18n
-backend arriba); (3) verificación visual responsive/mobile de la Landing
-y del Dashboard pendiente por una limitación de la herramienta de
-automatización del navegador usada esta sesión (`resize_window` no
+backend arriba); (3) verificación visual responsive/mobile de la Landing,
+el Dashboard y el Wizard pendiente por una limitación de la herramienta
+de automatización del navegador usada esta sesión (`resize_window` no
 afectaba el viewport real) — no bloquea, las clases responsive ya están
-escritas con las mismas convenciones verificadas en otras pantallas.
+escritas con las mismas convenciones verificadas en otras pantallas; (4)
+el link real del wizard (`/reservar/:idNegocio`) todavía no está
+enlazado desde ninguna pantalla del admin (Dashboard, Ajustes) — el
+admin hoy tendría que copiar la URL a mano con el UUID de su negocio;
+anotado para no olvidarlo, no bloqueante para cerrar esta tarjeta tal
+como está descrita en el backlog.
 
 ## Cómo probar lo que ya existe
 ```bash

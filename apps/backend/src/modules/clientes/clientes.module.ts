@@ -21,5 +21,10 @@ import { PrivilegioClienteGuard } from './guards/privilegio-cliente.guard';
     PrivilegiosClienteService,
     PrivilegioClienteGuard,
   ],
+  // Exportado para que ReservaPublicaModule reutilice el service (mismo
+  // patrón que NegociosModule/ServiciosModule/ReservasModule para el
+  // Chatbot): el wizard de reserva pública hace find-or-create de
+  // Cliente sin duplicar esa lógica.
+  exports: [ClientesService],
 })
 export class ClientesModule {}

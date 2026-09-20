@@ -32,6 +32,11 @@ export class ClientesService {
     }
   }
 
+  /** Usado por el wizard de reserva pública para no duplicar un cliente que ya escribió a este negocio antes (find-or-create por correo, sin exponer el resto del CRUD de Clientes a un visitante anónimo). */
+  async buscarPorCorreo(correoElectronico: string): Promise<Cliente | null> {
+    return this.clienteRepo.findOne({ where: { correoElectronico } as any });
+  }
+
   async listar(query: PaginationQueryDto): Promise<PaginatedResult<Cliente>> {
     const { page, limit } = query;
     const [clientes, total] = await this.clienteRepo.findAndCount({
