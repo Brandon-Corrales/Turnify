@@ -222,4 +222,17 @@ describe('ReservasService', () => {
       expect.objectContaining({ relations: { cliente: true, servicio: true, usuario: true } }),
     );
   });
+
+  it('listar() y obtenerUna() incluyen relaciones con soft-delete (withDeleted) para que el historial no se rompa si el cliente/servicio/usuario se desactiva después', async () => {
+    await comoAdmin(() => service.listar({ page: 1, limit: 20 } as any));
+    expect(reservaRepo.findAndCount).toHaveBeenCalledWith(
+      expect.objectContaining({ withDeleted: true }),
+    );
+
+    reservaRepo.findOne.mockResolvedValue({ idReserva: 'reserva-1' });
+    await service.obtenerUna('reserva-1');
+    expect(reservaRepo.findOne).toHaveBeenCalledWith(
+      expect.objectContaining({ withDeleted: true }),
+    );
+  });
 });

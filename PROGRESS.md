@@ -1538,6 +1538,75 @@ explícitamente para esta tarjeta.
   correctamente; vuelto a español al terminar. Sin errores de consola en
   ningún punto.
 
+## Frontend: Ajustes responsive/mobile-first en todo el sistema ✅
+Auditoría real de código (no solo visual) de todas las pantallas
+construidas hasta ahora, más un bug real encontrado y arreglado en el
+camino que no tiene nada que ver con "responsive" pero salió a la luz
+verificando esta misma tarjeta.
+
+- **Limitación de herramienta, resuelta con otro método**: `resize_window`
+  seguía sin cambiar `window.innerWidth` real en este entorno (confirmado
+  de nuevo, dos veces, con pestañas nuevas) — en vez de insistir, se hizo
+  una auditoría de código dirigida: cálculo manual del ancho combinado de
+  cada fila de controles a 390px (el ancho de referencia mobile del
+  punto 12), `grep` sistemático de grids/tablas/anchos fijos en todo
+  `src/pages` y `src/components`, y verificación real en Chrome de que
+  los fixes no rompieran nada en desktop (única resolución que la
+  herramienta sí permite esta noche).
+- **3 desbordes horizontales reales encontrados y arreglados** (los tres
+  por el mismo patrón: varios elementos en una fila `flex` sin
+  `flex-wrap` ni `min-w-0`, cuyo ancho combinado excede 390px):
+  1. **Navbar de `AppLayout`** (Turnify + 3 links + selector de idioma +
+     nombre + logout): el ancho combinado del lado izquierdo YA superaba
+     390px él solo. Fix: `<nav>` propio con `overflow-x-auto` + `min-w-0`
+     en ambos contenedores flex (sin `min-w-0` un hijo de flexbox nunca
+     se encoge más allá de su contenido — la causa real de que
+     `overflow-x-auto` no hiciera nada antes de este fix) — la tira de
+     links ahora puede hacer su propio scroll horizontal si hiciera
+     falta, sin que el header entero se desborde.
+  2. **Navbar de `LandingPage`**: "Turnify" + selector ES/EN + "Iniciar
+     sesión" + botón "Registrar mi negocio" completo no cabían juntos en
+     390px. Fix: el botón muestra un texto abreviado ("Registrarse"/
+     "Sign up", nueva clave `comun.registrarse` en ambos idiomas) por
+     debajo de `sm:`, con el texto completo intacto en desktop.
+  3. **Selector de período de `ReportesPage`**: la fila de 3 botones de
+     período + botón Exportar podía desbordarse en el punto justo entre
+     "cabe" y "no cabe". Fix: `flex-wrap` en ambos contenedores para que
+     se acomoden en una segunda línea en vez de desbordar, sin cambiar
+     nada en desktop.
+- **Toolbar de FullCalendar (Calendario) simplificado en mobile**: el
+  header de FullCalendar no envuelve sus propios botones — con los 3
+  grupos completos (nav + título + selector de vista) se arriesgaba a
+  desbordarse en pantallas angostas. Como la vista ya cambiaba sola según
+  el ancho (código ya existente de una sesión anterior), el selector de
+  vista es redundante en mobile: se quita ahí (`TOOLBAR_MOBILE` vs
+  `TOOLBAR_DESKTOP`, aplicado tanto al montar como en el listener de
+  resize que ya existía).
+- **Bug real encontrado sin buscarlo, verificando el Calendario en un
+  Chrome real durante esta tarjeta**: el Calendario se rompía por
+  completo (pantalla en blanco) para cualquier reserva cuyo cliente
+  hubiera sido desactivado después — `TypeError: Cannot read properties
+  of null (reading 'nombreCompleto')`. Causa raíz real: `ReservasService.listar()`/`obtenerUna()`
+  piden las relaciones `cliente`/`servicio`/`usuario` sin `withDeleted`,
+  y TypeORM excluye por defecto las filas con soft-delete de un join —
+  cualquier reserva (nunca se borra, es historial permanente) que
+  referenciara un cliente ya desactivado llegaba con `cliente: null` al
+  frontend. Fix en dos capas: `withDeleted: true` en ambas consultas del
+  backend (2 tests nuevos que lo confirman) para que el historial nunca
+  pierda esas relaciones, más `?.` defensivo en `CalendarioPage` como red
+  de seguridad adicional (nunca romper toda la pantalla por un dato
+  faltante). Encontrado con datos de prueba reales de esta misma noche
+  (un cliente que se había desactivado durante la limpieza del Wizard de
+  reserva pública) — no un caso inventado.
+- **Verificado en un Chrome real** (a la resolución de escritorio
+  disponible, la limitación de la herramienta ya documentada): Landing,
+  Dashboard y Calendario renderizan sin regresiones tras los cambios, el
+  botón "Registrar mi negocio" muestra el texto completo en desktop como
+  antes, y el Calendario carga y responde a clicks en eventos
+  correctamente después del fix de `withDeleted`. Sin errores de consola
+  en ningún caso (confirmado limpiando el buffer de consola y navegando
+  de nuevo, no solo leyendo mensajes viejos).
+
 ## Tarea en curso
 **Backend 100% cerrado** (ver arriba) — Seguridad, Notificaciones (ahora
 con historial HTTP además del worker), Suscripciones, Reportes, Swagger,
@@ -1551,26 +1620,23 @@ sesiones anteriores; de las tarjetas "después del Seguimiento #2", ya
 están cerradas Paso de onboarding + Input variante crear/editar (fuera
 de orden), Landing pública, Dashboard con KPIs, Wizard de reserva
 pública, Pantalla de Notificaciones, Pantalla de Reportes con gráficos,
-y ahora **Selector de idioma** (esta tarjeta). Siguiente en el orden
-acordado con el equipo (ver "Modo autónomo nocturno" arriba): **Ajustes
-responsive/mobile-first en todo el sistema**.
+Selector de idioma, y ahora **Ajustes responsive** (esta tarjeta).
+Siguiente en el orden acordado con el equipo (ver "Modo autónomo
+nocturno" arriba): **Toggle de vista lista/cuadrícula reutilizable**.
 
 Pendientes menores sin resolver, ninguno bloqueante: (1) el onboarding
 del frontend puede chocar con el límite de 3 servicios del plan gratis
 si una plantilla de vertical sugiere más de 3 (ver nota de Suscripciones
 arriba); (2) la mayoría de los mensajes de validación de los DTOs (fuera
-de la contraseña) todavía no usan claves de i18n en el backend (ver nota
-de i18n backend arriba); (3) solo Landing/Dashboard/navbar están
-traducidos de verdad — el resto de pantallas queda en español fijo hasta
-que se retrofitee incrementalmente (ver nota de esta tarjeta arriba);
-(4) verificación visual responsive/mobile pendiente por una limitación
-de la herramienta de automatización del navegador usada esta sesión
-(`resize_window` no afectaba el viewport real) — la siguiente tarjeta es
-precisamente esa auditoría responsive, así que se resuelve ahí; (5) el
-link real del wizard (`/reservar/:idNegocio`) todavía no está enlazado
-desde ninguna pantalla del admin — anotado, no bloqueante; (6) un cron
-real de `RECORDATORIO` sigue sin construirse — mejora futura documentada
-desde la tarjeta original del Worker.
+de la contraseña) todavía no usan claves de i18n en el backend; (3) solo
+Landing/Dashboard/navbar están traducidos de verdad, el resto sigue en
+español fijo; (4) el link real del wizard (`/reservar/:idNegocio`)
+todavía no está enlazado desde ninguna pantalla del admin; (5) un cron
+real de `RECORDATORIO` sigue sin construirse; (6) la auditoría
+responsive de esta tarjeta fue por código + verificación de escritorio,
+no una captura de pantalla real en 390px — la herramienta de
+automatización del navegador de esta sesión nunca logró cambiar el
+viewport real pese a varios intentos con pestañas nuevas.
 
 ## Cómo probar lo que ya existe
 ```bash

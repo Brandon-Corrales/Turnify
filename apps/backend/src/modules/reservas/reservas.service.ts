@@ -163,6 +163,13 @@ export class ReservasService {
       // del servicio y nombre del empleado para mostrar algo útil — sin
       // esto solo tendría los UUID crudos de las FK.
       relations: { cliente: true, servicio: true, usuario: true },
+      // withDeleted: una reserva es historial permanente (nunca se borra,
+      // solo se cancela) — si el cliente/servicio/usuario de una reserva
+      // vieja se desactiva después (soft-delete), TypeORM por defecto
+      // excluye esa relación del join y la devuelve como `null`, rompiendo
+      // cualquier pantalla que asuma que siempre viene el objeto completo
+      // (bug real encontrado verificando el Calendario de punta a punta).
+      withDeleted: true,
       order: { fechaHoraInicio: 'ASC' },
       skip: (page - 1) * limit,
       take: limit,
@@ -289,6 +296,7 @@ export class ReservasService {
     const reserva = await this.reservaRepo.findOne({
       where: { idReserva } as any,
       relations: { cliente: true, servicio: true, usuario: true },
+      withDeleted: true, // ver comentario en listar()
     });
     if (!reserva) {
       throw new NotFoundException({

@@ -143,8 +143,8 @@ export default function ReportesPage() {
               Reservas e ingresos estimados, calculados desde tus datos reales.
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex rounded-lg border border-slate-200 p-1 dark:border-slate-700">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap rounded-lg border border-slate-200 p-1 dark:border-slate-700">
               {(Object.keys(ETIQUETA_PERIODO) as Periodo[]).map((p) => (
                 <button
                   key={p}
