@@ -2174,6 +2174,37 @@ satisfecha por lo anterior.
   nuevas), corridas de verdad contra la base de datos real que usa el
   servidor de desarrollo — no una base de test aparte ni mocks.
 
+### 2. QA: límite de 20 reservas/mes del Plan Gratis ✅
+Ya se habían verificado de punta a punta el límite de 3 servicios
+activos y el bloqueo de WhatsApp (tarjeta del Toggle) y el límite de 10
+mensajes/día del chatbot (tarjeta de rate limiting) — pero el límite de
+**20 reservas por mes calendario** nunca se había probado de verdad.
+`limite-plan-gratis.guard.spec.ts` sí tenía un test unitario para
+`'reservas'` con `LimitesPlanService` mockeado — pero eso solo prueba
+que el guard LEE el conteo que le devuelven, nunca que
+`LimitesPlanService.contar('reservas', ...)` arme el query real
+correcto contra la base real, ni que la reserva 21 falle de verdad a
+través del pipeline HTTP completo. Confirmado como gap real antes de
+escribir nada, tal como pidió el equipo.
+
+- **`reservas-limite-plan-gratis.integration.spec.ts`** (nuevo, 2
+  tests): crea un negocio nuevo (Plan Gratis por defecto) vía la API
+  real, 20 reservas REALES en 20 horarios distintos del mismo día
+  (espaciados 40 min, dentro de la disponibilidad real registrada) — 
+  las 20 se crean sin bloqueo — y confirma que la reserva 21 del mismo
+  mes es rechazada con `403 LIMITE_PLAN_ALCANZADO` real.
+- Se cerró también el hueco menor en `limites-plan.service.spec.ts`:
+  faltaba el test de `contar('reservas')` (usuarios/servicios/
+  mensajesChatbot ya estaban, reservas no).
+- Suite completa del backend: **204/204 tests pasan** (201 + 3
+  nuevas: 2 de integración + 1 unitaria).
+
+**Verificado de verdad, no un número inventado**: correr el test mostró
+que las 20 reservas se crean sin fricción y la 21 se bloquea con el
+mensaje real del sistema — la misma ruta HTTP, el mismo guard, la misma
+consulta a la base de datos que usaría un negocio real llegando a su
+cuota mensual.
+
 Pendientes menores sin resolver, ninguno bloqueante (heredados de la
 tarjeta de responsive, siguen igual): (1) el onboarding del frontend
 puede chocar con el límite de 3 servicios del plan gratis si una

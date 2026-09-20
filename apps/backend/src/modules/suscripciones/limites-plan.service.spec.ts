@@ -53,6 +53,14 @@ describe('LimitesPlanService', () => {
     });
   });
 
+  it('contar("reservas") cuenta reservas del negocio desde el inicio del mes calendario', async () => {
+    reservaRepo.count.mockResolvedValue(20);
+    await expect(service.contar('reservas', NEGOCIO_ID)).resolves.toBe(20);
+    expect(reservaRepo.count).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ idNegocio: NEGOCIO_ID }) }),
+    );
+  });
+
   it('contar("mensajesChatbot") cuenta mensajes del negocio desde el inicio del día calendario', async () => {
     mensajeChatbotRepo.count.mockResolvedValue(4);
     await expect(service.contar('mensajesChatbot', NEGOCIO_ID)).resolves.toBe(4);
