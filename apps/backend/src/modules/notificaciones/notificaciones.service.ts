@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { I18nService } from 'nestjs-i18n';
 import { LessThanOrEqual, Repository } from 'typeorm';
 import {
   CanalNotificacion,
@@ -43,6 +44,7 @@ export class NotificacionesService {
     @InjectRepository(Notificacion) private readonly notificacionRepo: Repository<Notificacion>,
     private readonly resend: ResendService,
     private readonly whatsapp: WhatsappCloudApiService,
+    private readonly i18n: I18nService,
   ) {}
 
   async programarConfirmacion(
@@ -67,7 +69,7 @@ export class NotificacionesService {
     cliente: Cliente,
     servicio: Servicio,
   ): Promise<void> {
-    const { asunto, texto } = construirMensaje(tipo, cliente.idiomaPreferido, {
+    const { asunto, texto } = construirMensaje(this.i18n, tipo, cliente.idiomaPreferido, {
       nombreServicio: servicio.nombre,
       fechaHoraTexto: formatearFechaHoraLocalCR(reserva.fechaHoraInicio, cliente.idiomaPreferido),
     });

@@ -1,3 +1,4 @@
+import { I18nService } from 'nestjs-i18n';
 import { Idioma, TipoNotificacion } from '../../database/entities';
 
 export interface DatosMensajeReserva {
@@ -5,44 +6,37 @@ export interface DatosMensajeReserva {
   fechaHoraTexto: string;
 }
 
-/**
- * Diccionario ES/EN mínimo solo para el texto de notificaciones (punto 10
- * del brief: el mensaje se genera en el idioma preferido del CLIENTE,
- * nunca en el del negocio, desde el primer módulo que lo necesite — no se
- * puede esperar a la tarjeta de "i18n backend" para cumplir esto). Cuando
- * se construya esa tarjeta con nestjs-i18n, este archivo se reemplaza por
- * claves de traducción reales sin tocar NotificacionesService.
- */
-const PLANTILLAS: Record<
+const CLAVES: Record<
   TipoNotificacion.CONFIRMACION | TipoNotificacion.CANCELACION,
-  Record<Idioma, (datos: DatosMensajeReserva) => { asunto: string; texto: string }>
+  { asunto: string; texto: string }
 > = {
   [TipoNotificacion.CONFIRMACION]: {
-    [Idioma.ES]: ({ nombreServicio, fechaHoraTexto }) => ({
-      asunto: 'Reserva confirmada',
-      texto: `Tu reserva de "${nombreServicio}" para el ${fechaHoraTexto} quedó confirmada.`,
-    }),
-    [Idioma.EN]: ({ nombreServicio, fechaHoraTexto }) => ({
-      asunto: 'Booking confirmed',
-      texto: `Your "${nombreServicio}" appointment on ${fechaHoraTexto} has been confirmed.`,
-    }),
+    asunto: 'notificaciones.CONFIRMACION_ASUNTO',
+    texto: 'notificaciones.CONFIRMACION_TEXTO',
   },
   [TipoNotificacion.CANCELACION]: {
-    [Idioma.ES]: ({ nombreServicio, fechaHoraTexto }) => ({
-      asunto: 'Reserva cancelada',
-      texto: `Tu reserva de "${nombreServicio}" para el ${fechaHoraTexto} fue cancelada.`,
-    }),
-    [Idioma.EN]: ({ nombreServicio, fechaHoraTexto }) => ({
-      asunto: 'Booking cancelled',
-      texto: `Your "${nombreServicio}" appointment on ${fechaHoraTexto} has been cancelled.`,
-    }),
+    asunto: 'notificaciones.CANCELACION_ASUNTO',
+    texto: 'notificaciones.CANCELACION_TEXTO',
   },
 };
 
+/**
+ * Vía nestjs-i18n (punto 10 del brief): el mensaje se genera en el
+ * idioma preferido del CLIENTE (`idioma`), NUNCA en el del negocio ni en
+ * el de la request HTTP que disparó la reserva — por eso `lang` se pasa
+ * explícito en vez de dejar que I18nContext.current() resuelva el de la
+ * request (que podría ser el idioma del admin creando la reserva, no el
+ * del cliente que la recibe).
+ */
 export function construirMensaje(
+  i18n: I18nService,
   tipo: TipoNotificacion.CONFIRMACION | TipoNotificacion.CANCELACION,
   idioma: Idioma,
   datos: DatosMensajeReserva,
 ): { asunto: string; texto: string } {
-  return PLANTILLAS[tipo][idioma](datos);
+  const claves = CLAVES[tipo];
+  return {
+    asunto: i18n.translate(claves.asunto, { lang: idioma }),
+    texto: i18n.translate(claves.texto, { lang: idioma, args: datos }),
+  };
 }

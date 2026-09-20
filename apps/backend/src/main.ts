@@ -4,6 +4,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { I18nService } from 'nestjs-i18n';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/errors/all-exceptions.filter';
 import { validationExceptionFactory } from './common/errors/validation-exception-factory';
@@ -26,7 +27,7 @@ async function bootstrap() {
       exceptionFactory: validationExceptionFactory,
     }),
   );
-  app.useGlobalFilters(new AllExceptionsFilter());
+  app.useGlobalFilters(new AllExceptionsFilter(app.get(I18nService)));
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Turnify API')

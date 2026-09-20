@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { I18nContext, I18nService } from 'nestjs-i18n';
 import { ErrorCodeException } from './api-error.interface';
 
 const DEFAULT_ERROR_CODE_BY_STATUS: Record<number, string> = {
@@ -28,17 +29,20 @@ const DEFAULT_ERROR_CODE_BY_STATUS: Record<number, string> = {
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger('ExceptionFilter');
 
+  constructor(private readonly i18n: I18nService) {}
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
+    const lang = I18nContext.current(host)?.lang;
 
     if (exception instanceof ErrorCodeException) {
       this.respond(
         response,
         exception.statusCode,
         exception.errorCode,
-        exception.message,
+        this.traducir(exception.errorCode, exception.message, lang),
         exception.field,
       );
       return;
@@ -58,14 +62,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
           response,
           status,
           errorCode,
-          Array.isArray(message) ? message[0] : message,
+          this.traducir(errorCode, Array.isArray(message) ? message[0] : message, lang),
           field,
         );
         return;
       }
 
       const message = typeof body === 'string' ? body : exception.message;
-      this.respond(response, status, DEFAULT_ERROR_CODE_BY_STATUS[status] ?? 'ERROR_HTTP', message);
+      const errorCode = DEFAULT_ERROR_CODE_BY_STATUS[status] ?? 'ERROR_HTTP';
+      this.respond(response, status, errorCode, this.traducir(errorCode, message, lang));
       return;
     }
 
@@ -77,8 +82,22 @@ export class AllExceptionsFilter implements ExceptionFilter {
       response,
       HttpStatus.INTERNAL_SERVER_ERROR,
       'ERROR_INTERNO',
-      'Ocurrió un error inesperado. Intenta de nuevo más tarde.',
+      this.traducir(
+        'ERROR_INTERNO',
+        'Ocurrió un error inesperado. Intenta de nuevo más tarde.',
+        lang,
+      ),
     );
+  }
+
+  /**
+   * Traduce por errorCode (punto 10 del brief) cuando existe una clave en
+   * i18n/{lang}/errores.json — `defaultValue` cubre los pocos errorCodes
+   * sin traducción todavía (usa el mensaje original tal cual en vez de
+   * romper la respuesta).
+   */
+  private traducir(errorCode: string, mensajeOriginal: string, lang: string | undefined): string {
+    return this.i18n.translate(`errores.${errorCode}`, { lang, defaultValue: mensajeOriginal });
   }
 
   private respond(

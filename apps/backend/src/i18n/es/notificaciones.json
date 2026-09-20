@@ -1,0 +1,6 @@
+{
+  "CONFIRMACION_ASUNTO": "Reserva confirmada",
+  "CONFIRMACION_TEXTO": "Tu reserva de \"{nombreServicio}\" para el {fechaHoraTexto} quedó confirmada.",
+  "CANCELACION_ASUNTO": "Reserva cancelada",
+  "CANCELACION_TEXTO": "Tu reserva de \"{nombreServicio}\" para el {fechaHoraTexto} fue cancelada."
+}

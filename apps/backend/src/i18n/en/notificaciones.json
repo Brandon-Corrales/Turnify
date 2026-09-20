@@ -1,0 +1,6 @@
+{
+  "CONFIRMACION_ASUNTO": "Booking confirmed",
+  "CONFIRMACION_TEXTO": "Your \"{nombreServicio}\" appointment on {fechaHoraTexto} has been confirmed.",
+  "CANCELACION_ASUNTO": "Booking cancelled",
+  "CANCELACION_TEXTO": "Your \"{nombreServicio}\" appointment on {fechaHoraTexto} has been cancelled."
+}

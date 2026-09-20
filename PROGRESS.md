@@ -967,22 +967,83 @@ anotado aquí para que el equipo no las espere**:
   duplicada al final de la lista de Backend porque también se agregó en
   el punto 2 del brief cuando se sumaron las 5 tarjetas de plantillas.
 
+## i18n backend (nestjs-i18n, mensajes de validación/errores ES/EN)
+**Backend: i18n backend (nestjs-i18n, mensajes de validación/errores
+ES/EN)** ✅
+
+- `I18nModule.forRoot()` (`app.module.ts`), global, español por defecto
+  (`fallbackLanguage: 'es'`, mercado objetivo Costa Rica). Resolvers:
+  `?lang=en` y el header `Accept-Language` — cualquiera de los dos elige
+  el idioma de una request puntual. Archivos en
+  `apps/backend/src/i18n/{es,en}/{errores,validacion,notificaciones}.json`,
+  copiados a `dist/i18n` en cada build (`nest-cli.json` →
+  `compilerOptions.assets`).
+- **Errores**: `AllExceptionsFilter` ahora traduce por `errorCode` — nuevo
+  método `traducir()` que llama `i18n.translate('errores.<CODE>', {lang,
+  defaultValue: mensajeOriginal})`. `defaultValue` es la clave: si un
+  errorCode no tiene traducción todavía, el filtro sigue funcionando con
+  el mensaje original en vez de romperse. 31 de los 32 `errorCode`
+  distintos del backend ya tienen traducción ES/EN real; el único que
+  queda fuera de este mecanismo genérico es `LIMITE_PLAN_ALCANZADO`
+  (un solo código para 3 mensajes distintos según el recurso) — ese se
+  tradujo aparte, directo en `LimitePlanGratisGuard`, con 3 claves
+  (`LIMITE_PLAN_USUARIOS/SERVICIOS/RESERVAS`).
+- **Validación**: `EsContrasenaValida()` usa `i18nValidationMessage('validacion.CONTRASENA_INVALIDA')`
+  en vez de un string fijo — se resuelve en el momento de la validación
+  (antes de que `validationExceptionFactory` arme la respuesta), así que
+  no hizo falta tocar el ValidationPipe ni la factory existentes. Se hizo
+  solo con la contraseña como caso representativo (usado por
+  Registro/futuros formularios de cambio de contraseña); migrar los ~30
+  mensajes de validación restantes del resto de DTOs a claves de i18n es
+  mecánico pero no se hizo completo en esta tarjeta — la mayoría de esos
+  mensajes son explicaciones de formato de campo, no texto de cara al
+  cliente final como sí lo son los errores y las notificaciones.
+- **Notificaciones**: se cumplió la promesa dejada en la tarjeta de
+  Notificaciones — `mensajes-notificacion.ts` ya NO tiene un diccionario
+  ES/EN a mano, ahora llama `I18nService.translate()` con `lang:
+  cliente.idiomaPreferido` explícito (nunca el resolver de la request:
+  el admin que crea la reserva y el cliente que la recibe pueden hablar
+  idiomas distintos) e interpolación de `{nombreServicio}`/`{fechaHoraTexto}`
+  vía `args`.
+- **Probado de verdad contra el servidor real**: `POST /auth/login` con
+  credenciales inválidas devuelve `"Correo o contraseña incorrectos"`
+  sin header, y `"Incorrect email or password"` con
+  `Accept-Language: en` — mismo `errorCode`, mensaje traducido. Reserva
+  creada con `Accept-Language: es` para un cliente con
+  `idiomaPreferido: en`: el mensaje guardado en `notificaciones` salió en
+  inglés genuino ("Booking confirmed... has been confirmed.", fecha en
+  formato `en-US`) — confirma que el idioma de la notificación depende
+  del CLIENTE, no de la request que disparó la reserva.
+- 5 tests unitarios nuevos (`all-exceptions.filter.spec.ts`, 4 casos) +
+  ajuste de `notificaciones.service.spec.ts` para mockear
+  `I18nService.translate()` con interpolación real.
+
 ## Tarea en curso
 Ninguna de las priorizadas explícitamente por el usuario está pendiente.
 Cerrado en esta sesión: Seguridad (categoría completa), las 5 tarjetas de
 plantillas por vertical, las 2 tarjetas de Worker de Notificaciones
 (Resend + Meta WhatsApp Cloud API, reemplazando Twilio), Suscripciones
 (Stripe Test Mode — verificado solo con mocks por la restricción
-geográfica de Stripe en Costa Rica), Reportes, Documentación Swagger, y
-2 tarjetas cerradas retroactivamente por trabajo ya hecho (Guard de
-límites del plan freemium, Validar tipo_negocio en el DTO de registro).
-Pendiente sin resolver, no bloqueante: el onboarding puede chocar con el
-límite de 3 servicios del plan gratis (ver nota de Suscripciones arriba)
-— ajustarlo es trabajo de frontend, no de una tarjeta de backend.
-Siguiente en el orden de docs/spec.md (punto 18, sección "después del
-Seguimiento #2"): Backend: i18n backend (nestjs-i18n) → Backend: Guard de
-privilegios por nivel_cliente (Gratis vs Premium) → Backend: Módulo
-Chatbot, y después el resto de Frontend.
+geográfica de Stripe en Costa Rica), Reportes, Documentación Swagger,
+i18n backend, y 2 tarjetas cerradas retroactivamente por trabajo ya hecho
+(Guard de límites del plan freemium, Validar tipo_negocio en el DTO de
+registro). Pendiente sin resolver, no bloqueante: el onboarding puede
+chocar con el límite de 3 servicios del plan gratis (ver nota de
+Suscripciones arriba) — ajustarlo es trabajo de frontend, no de una
+tarjeta de backend. También pendiente, no bloqueante: la mayoría de los
+mensajes de validación de los DTOs (fuera de la contraseña) todavía no
+usan claves de i18n — ver nota arriba.
+
+Quedan 2 tarjetas de Backend antes de que le toque el turno a Frontend
+en el orden de docs/spec.md (punto 18): **Guard de privilegios por
+nivel_cliente (Gratis vs Premium, limitado por el plan del negocio)** —
+mediana, similar en forma al guard de límites del plan gratis — y
+**Módulo Chatbot (WebSocket Gateway + integración con LLM)** — grande,
+necesita su propia API key de un proveedor de LLM y no estaba en el
+backlog original de Trello (el brief pide avisarle al equipo para que se
+agregue como tarjetas nuevas antes de construirlo). Dada la magnitud de
+lo que llevamos en esta sesión, el Chatbot es un buen punto para
+confirmar con el equipo antes de seguir en piloto automático.
 
 ## Cómo probar lo que ya existe
 ```bash
