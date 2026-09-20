@@ -5,6 +5,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
+import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 import { validateEnv, Env } from './config/env.schema';
 import { listaEntidades } from './database/entity-list';
 import { HealthModule } from './health/health.module';
@@ -61,6 +62,20 @@ import { ReportesModule } from './modules/reportes/reportes.module';
     // Habilita @Cron en cualquier provider del árbol de módulos — el
     // worker de Notificaciones lo usa para revisar pendientes cada minuto.
     ScheduleModule.forRoot(),
+    // i18n backend (punto 10 del brief): mensajes de validación, errores
+    // y notificaciones en ES/EN. Español por defecto (mercado objetivo es
+    // Costa Rica); ?lang=en o el header Accept-Language cambian el
+    // idioma de una request puntual — las notificaciones, en cambio,
+    // siempre usan el idioma_preferido del CLIENTE (nunca el resolver de
+    // la request), ver NotificacionesService.
+    I18nModule.forRoot({
+      fallbackLanguage: 'es',
+      loaderOptions: {
+        path: path.join(__dirname, 'i18n/'),
+        watch: true,
+      },
+      resolvers: [{ use: QueryResolver, options: ['lang'] }, AcceptLanguageResolver],
+    }),
     HealthModule,
     TenantModule,
     AuthModule,

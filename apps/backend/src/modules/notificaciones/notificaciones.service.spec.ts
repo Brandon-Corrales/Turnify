@@ -21,6 +21,29 @@ function crearProviderMock() {
   return { enviarCorreo: vi.fn(), enviarMensaje: vi.fn() };
 }
 
+/** Simula lo suficiente de I18nService.translate() para probar interpolación y selección de idioma, sin cargar archivos reales. */
+function crearI18nMock() {
+  const textos: Record<string, Record<string, string>> = {
+    'notificaciones.CONFIRMACION_ASUNTO': { es: 'Reserva confirmada', en: 'Booking confirmed' },
+    'notificaciones.CONFIRMACION_TEXTO': {
+      es: 'Tu reserva de "{nombreServicio}" para el {fechaHoraTexto} quedó confirmada.',
+      en: 'Your "{nombreServicio}" appointment on {fechaHoraTexto} has been confirmed.',
+    },
+    'notificaciones.CANCELACION_ASUNTO': { es: 'Reserva cancelada', en: 'Booking cancelled' },
+    'notificaciones.CANCELACION_TEXTO': {
+      es: 'Tu reserva de "{nombreServicio}" para el {fechaHoraTexto} fue cancelada.',
+      en: 'Your "{nombreServicio}" appointment on {fechaHoraTexto} has been cancelled.',
+    },
+  };
+  return {
+    translate: vi.fn((clave: string, opts: { lang: string; args?: Record<string, string> }) => {
+      let texto = textos[clave]?.[opts.lang] ?? clave;
+      for (const [k, v] of Object.entries(opts.args ?? {})) texto = texto.replace(`{${k}}`, v);
+      return texto;
+    }),
+  };
+}
+
 const CLIENTE_EMAIL = {
   idCliente: 'cliente-1',
   correoElectronico: 'cliente@example.com',
@@ -40,13 +63,20 @@ describe('NotificacionesService', () => {
   let notificacionRepo: ReturnType<typeof crearNotificacionRepoMock>;
   let resend: ReturnType<typeof crearProviderMock>;
   let whatsapp: ReturnType<typeof crearProviderMock>;
+  let i18n: ReturnType<typeof crearI18nMock>;
   let service: NotificacionesService;
 
   beforeEach(() => {
     notificacionRepo = crearNotificacionRepoMock();
     resend = crearProviderMock();
     whatsapp = crearProviderMock();
-    service = new NotificacionesService(notificacionRepo as any, resend as any, whatsapp as any);
+    i18n = crearI18nMock();
+    service = new NotificacionesService(
+      notificacionRepo as any,
+      resend as any,
+      whatsapp as any,
+      i18n as any,
+    );
   });
 
   it('programarConfirmacion() crea una notificación pendiente con el canal preferido del cliente', async () => {
