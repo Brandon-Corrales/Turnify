@@ -6,5 +6,6 @@ export * from './Modal';
 export * from './ConfirmDialog';
 export * from './Skeleton';
 export * from './Banner';
+export * from './ToggleVista';
 export * from './feedback-variants';
 export * from './toast/ToastProvider';

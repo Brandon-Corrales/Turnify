@@ -11,6 +11,9 @@ import OnboardingPage from '@/pages/OnboardingPage';
 import ReservaPublicaPage from '@/pages/ReservaPublicaPage';
 import NotificacionesPage from '@/pages/NotificacionesPage';
 import ReportesPage from '@/pages/ReportesPage';
+import ClientesPage from '@/pages/ClientesPage';
+import ServiciosPage from '@/pages/ServiciosPage';
+import ReservasPage from '@/pages/ReservasPage';
 
 /**
  * "/" es pública (Landing, punto 6 del brief) para quien no tiene sesión,
@@ -60,6 +63,30 @@ function App() {
         element={
           <RutaProtegida>
             <ReportesPage />
+          </RutaProtegida>
+        }
+      />
+      <Route
+        path="/clientes"
+        element={
+          <RutaProtegida>
+            <ClientesPage />
+          </RutaProtegida>
+        }
+      />
+      <Route
+        path="/servicios"
+        element={
+          <RutaProtegida>
+            <ServiciosPage />
+          </RutaProtegida>
+        }
+      />
+      <Route
+        path="/reservas"
+        element={
+          <RutaProtegida>
+            <ReservasPage />
           </RutaProtegida>
         }
       />
