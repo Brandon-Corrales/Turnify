@@ -91,5 +91,16 @@
     "canceladaTitulo": "Payment cancelled",
     "canceladaDescripcion": "You're still on the Free Plan — you can try again whenever you're ready.",
     "canceladaVolver": "Back to my subscription"
+  },
+  "chat": {
+    "titulo": "Turnify Assistant",
+    "abrir": "Open assistant",
+    "cerrar": "Close assistant",
+    "bienvenida": "Hi! Ask me how to use Turnify — bookings, services, reports, anything you need.",
+    "placeholder": "Type your question…",
+    "enviar": "Send",
+    "conectando": "Connecting to the assistant…",
+    "errorConexion": "Couldn't connect to the assistant. Check your connection and try again.",
+    "pensando": "Typing…"
   }
 }

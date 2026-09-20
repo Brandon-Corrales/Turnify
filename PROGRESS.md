@@ -1827,17 +1827,91 @@ No se necesitó ni una línea de código nueva; se documenta aquí para que
 el reporte final la liste como tarjeta cerrada, con honestidad sobre que
 el trabajo real ocurrió en la tarjeta anterior.
 
-## Tarea en curso
-Con Toggle de vista, Dark mode, upgrade de plan y nivel_cliente
-cerrados, queda la ÚLTIMA tarjeta del orden acordado (ver "Modo autónomo
-nocturno" arriba): **Widget de chatbot flotante (tiempo real,
-contextual, responsive)**. El backend del Chatbot (WebSocket Gateway +
-Groq) ya está cerrado y verificado de una tarjeta anterior — esta es
-puramente la UI del widget flotante que lo consume.
+## Frontend: Widget de chatbot flotante (tiempo real, contextual, responsive) ✅
+Última tarjeta del orden acordado. El backend (Gateway WebSocket + Groq)
+ya estaba cerrado y verificado de una tarjeta anterior — esta era
+puramente la UI del widget que lo consume, sin tocar el backend.
 
-El reporte final consolidado (un solo mensaje, no uno por tarjeta) se
-escribe apenas se cierre esta última tarjeta — no antes, por diseño
-(instrucción del equipo).
+- **`useChatbotSocket(activo)`** (`lib/chatbot-socket.ts`): cliente
+  `socket.io-client` (ya estaba en `package.json`, mismo major que el
+  servidor `4.8.x`) contra el namespace real `/chatbot` —
+  `emit('mensaje', {pregunta, pantallaActual})`, escucha
+  `'respuesta-chunk'` (concatena cada fragmento al último mensaje del
+  asistente, streaming real token a token, no espera la respuesta
+  completa), `'respuesta-fin'` y `'error-chatbot'` (la misma forma
+  estándar de error del resto del sistema). Conexión perezosa: el socket
+  solo se abre mientras el panel está desplegado.
+  - El primer intento de esta tarjeta violaba la regla nueva de ESLint
+    `react-hooks/set-state-in-effect` (llamar `setState` de forma
+    síncrona en el cuerpo del efecto, antes de cualquier callback
+    async) — se corrigió derivando el estado de conexión
+    (`inactivo/conectando/conectado/error`) de dos flags booleanos que
+    solo cambian dentro de los propios callbacks de eventos del socket
+    (`'connect'`/`'connect_error'`/`'disconnect'`), nunca de forma
+    síncrona en el efecto.
+- **`ChatbotWidget`** (`components/chat/ChatbotWidget.tsx`): botón
+  flotante circular (Framer Motion, mismo patrón de `AnimatePresence`
+  simple ya usado en `Modal` — sin `mode="wait"`, el que causó el bug
+  real de la Wizard en una tarjeta anterior) que despliega un panel de
+  chat con burbujas usuario/asistente, indicador de streaming en curso,
+  degradación a mensaje de sistema ante `error-chatbot` o fallo de
+  conexión (nunca una pantalla rota ni un loading infinito, punto 16 del
+  brief), input + botón enviar (Enter para mandar). La pantalla actual
+  (vía `useLocation()` de React Router, mapeada a un nombre legible) se
+  manda en cada pregunta — el rol del usuario y los datos reales del
+  negocio los resuelve el backend a partir del JWT y sus propios
+  services, nunca se mandan desde el frontend.
+- Montado UNA sola vez en `AppLayout` (punto 16: "no repetido por
+  pantalla") — visible en todas las pantallas autenticadas del admin.
+- `BASE_URL` de `lib/api.ts` se exportó (antes era un `const` privado)
+  para que el socket use el mismo origen que el HTTP, una sola fuente.
+- Claves i18n nuevas (namespace `chat.*`).
+- `tsc -b`, `eslint` (incluida la regla nueva de hooks) y `npm run
+  build` limpios.
+
+**Verificado en Chrome real, contra el Gateway y Groq reales (no
+mocks), con la cuenta demo:**
+- El botón flotante y el panel abren correctamente; el socket conecta
+  de verdad (input habilitado solo tras el evento `'connect'` real).
+- **Pregunta real sobre datos reales**: "¿Cuántos servicios activos
+  tengo ahora mismo?" → el asistente respondió "Tienes 3 servicios
+  activos en este momento" — el número real y correcto del negocio demo
+  (Corte clásico, Corte + barba, Afeitado clásico), confirmando que el
+  backend reutilizó de verdad el service de Servicios para este tenant
+  y no inventó/alucinó la cifra.
+- **Contextualización de pantalla real**: navegando a `/clientes` y
+  preguntando "¿En qué pantalla estoy ahora mismo?" → el asistente
+  respondió "Estás en la pantalla **Clientes** del panel de
+  administración de Barbería Demo Turnify..." — acertó tanto la
+  pantalla actual (mandada por el frontend) como el nombre real del
+  negocio (inyectado por el backend desde el JWT/tenant), cubriendo los
+  tres ejes de "Contextualización real" del punto 16 (rol vía JWT,
+  pantalla actual, datos reales del negocio).
+- Dark mode: el panel completo (burbujas, input, botones) se ve
+  correctamente con buen contraste en oscuro — sin colores sueltos que
+  se hayan escapado de la auditoría de la tarjeta de Dark mode.
+- Sin errores de consola en ninguna prueba.
+- **No verificado a propósito**: el límite diario del Plan Gratis
+  (`mensajesChatbot`) — forzar 10 mensajes reales solo para ver el
+  mismo `error-chatbot` genérico (que ya se probó con el mismo patrón en
+  Clientes/Servicios esta sesión) habría gastado cupo real de la API de
+  Groq sin aportar una verificación distinta.
+- **Gap real, documentado, no resuelto a propósito**: el punto 16 pide
+  el widget "tanto para el cliente final (mientras reserva) como para
+  el admin", pero `ChatbotGateway` exige JWT (`WsJwtGuard`, sin ruta
+  anónima) — el wizard de reserva pública (`ReservaPublicaPage`, sin
+  sesión) no puede usar el chatbot real tal como está construido el
+  backend. Extender el gateway a un modo anónimo es un cambio de
+  backend fuera del alcance de "construir la UI del widget" y no se
+  inventó aquí; el widget se montó donde el backend real lo soporta
+  (todo el panel autenticado del admin).
+
+## Modo autónomo nocturno — TODO EL FRONTEND CERRADO
+Con esta tarjeta se cierran las 10 tarjetas de frontend del orden
+acordado (ver "Modo autónomo nocturno" arriba). El reporte final
+consolidado se entrega en el mensaje de chat de esta sesión, no aquí —
+por instrucción del equipo, un solo reporte al final y no uno por
+tarjeta.
 
 Pendientes menores sin resolver, ninguno bloqueante (heredados de la
 tarjeta de responsive, siguen igual): (1) el onboarding del frontend
