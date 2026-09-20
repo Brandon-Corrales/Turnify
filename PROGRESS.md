@@ -1018,32 +1018,82 @@ ES/EN)** ✅
   ajuste de `notificaciones.service.spec.ts` para mockear
   `I18nService.translate()` con interpolación real.
 
-## Tarea en curso
-Ninguna de las priorizadas explícitamente por el usuario está pendiente.
-Cerrado en esta sesión: Seguridad (categoría completa), las 5 tarjetas de
-plantillas por vertical, las 2 tarjetas de Worker de Notificaciones
-(Resend + Meta WhatsApp Cloud API, reemplazando Twilio), Suscripciones
-(Stripe Test Mode — verificado solo con mocks por la restricción
-geográfica de Stripe en Costa Rica), Reportes, Documentación Swagger,
-i18n backend, y 2 tarjetas cerradas retroactivamente por trabajo ya hecho
-(Guard de límites del plan freemium, Validar tipo_negocio en el DTO de
-registro). Pendiente sin resolver, no bloqueante: el onboarding puede
-chocar con el límite de 3 servicios del plan gratis (ver nota de
-Suscripciones arriba) — ajustarlo es trabajo de frontend, no de una
-tarjeta de backend. También pendiente, no bloqueante: la mayoría de los
-mensajes de validación de los DTOs (fuera de la contraseña) todavía no
-usan claves de i18n — ver nota arriba.
+## Guard de privilegios por nivel_cliente (Gratis vs Premium)
+**Backend: Guard de privilegios por nivel_cliente (Gratis vs Premium),
+limitado por el plan del negocio** ✅
 
-Quedan 2 tarjetas de Backend antes de que le toque el turno a Frontend
-en el orden de docs/spec.md (punto 18): **Guard de privilegios por
-nivel_cliente (Gratis vs Premium, limitado por el plan del negocio)** —
-mediana, similar en forma al guard de límites del plan gratis — y
-**Módulo Chatbot (WebSocket Gateway + integración con LLM)** — grande,
-necesita su propia API key de un proveedor de LLM y no estaba en el
-backlog original de Trello (el brief pide avisarle al equipo para que se
-agregue como tarjetas nuevas antes de construirlo). Dada la magnitud de
-lo que llevamos en esta sesión, el Chatbot es un buen punto para
-confirmar con el equipo antes de seguir en piloto automático.
+Punto 5.2 del brief: el nivel Premium de un CLIENTE desbloquea un canal
+de notificación adicional (WhatsApp), pero **siempre limitado por el
+techo que impone el plan del propio NEGOCIO** — el ejemplo textual del
+brief ("un cliente Premium de un negocio en Plan Gratis igual no recibe
+WhatsApp") es literalmente el escenario que este guard bloquea.
+
+- `PrivilegioClienteGuard` + `PrivilegiosClienteService`
+  (`modules/clientes/`), aplicado en `POST /clientes` y `PATCH /clientes/:id`
+  vía `@UseGuards`. Solo actúa cuando el body trae `canalPreferido: whatsapp`;
+  cualquier otro canal pasa de largo sin consultar nada.
+  - Bloquea con `errorCode: PRIVILEGIO_CLIENTE_NO_DISPONIBLE` (el mismo
+    que da de ejemplo el brief) si el nivel efectivo del cliente no es
+    `premium`, **o** si `Negocio.planSuscripcion === gratis` — dos
+    chequeos independientes, cada uno con su propio mensaje traducido
+    (`errores.PRIVILEGIO_CLIENTE_NIVEL` / `..._PLAN_NEGOCIO`).
+  - "Nivel efectivo": el `nivelCliente` del body si viene, si no el del
+    cliente ya guardado en BD (para un `PATCH` que solo cambia
+    `canalPreferido` sin tocar `nivelCliente`), si no `GRATIS` (default
+    de un cliente nuevo).
+  - A diferencia de `LimitePlanGratisGuard`, este guard vive por completo
+    DENTRO de `ClientesModule` (no se reutiliza en otros módulos) — sin
+    el gotcha de "guard instanciado por el módulo consumidor" porque
+    aquí guard y servicio comparten el mismo módulo.
+- **Probado de verdad contra el servidor real** con un negocio real:
+  1. Cliente nuevo con `canalPreferido: whatsapp` y `nivelCliente` por
+     defecto (gratis) → 403, mensaje de nivel.
+  2. Mismo canal con `nivelCliente: premium`, negocio todavía en Plan
+     Gratis → 403, pero esta vez el mensaje es el de plan del negocio
+     (confirma que ambos checks son independientes y se distinguen).
+  3. Negocio actualizado a plan de pago directo en BD → la misma
+     creación anterior ahora responde 201.
+  4. `PATCH` a un cliente existente (nivel gratis) con solo
+     `canalPreferido: whatsapp` (sin `nivelCliente` en el body) → 403
+     (usa el nivel actual de BD); el mismo `PATCH` agregando
+     `nivelCliente: premium` → 200.
+- 8 tests unitarios nuevos (`privilegios-cliente.service.spec.ts`,
+  `privilegio-cliente.guard.spec.ts`).
+
+## Tarea en curso
+**Todo el Backend de docs/spec.md (punto 18) está terminado, salvo el
+Módulo Chatbot.** No queda ninguna otra tarjeta de Backend pendiente —
+Seguridad (categoría completa), Notificaciones (Resend + Meta WhatsApp),
+Suscripciones (Stripe Test Mode, verificado solo con mocks por la
+restricción geográfica de Stripe en Costa Rica), Reportes, Documentación
+Swagger, i18n backend, el guard de límites del plan gratis y este guard
+de privilegios por nivel_cliente están todos cerrados y verificados
+contra Postgres real.
+
+**Backend: Módulo Chatbot (WebSocket Gateway + integración con LLM)**
+queda **en pausa a propósito**, no iniciado: necesita que el equipo
+decida primero qué proveedor de LLM usar (Claude, OpenAI, u otro) y
+consiga su propia API key — el brief además pide avisarle al equipo para
+que se agregue como tarjetas nuevas antes de construirlo, porque no
+estaba en el backlog original de Trello. No hay nada más que resolver de
+este lado hasta que llegue esa decisión.
+
+Pendientes menores sin resolver, ninguno bloqueante: (1) el onboarding
+del frontend puede chocar con el límite de 3 servicios del plan gratis
+si una plantilla de vertical sugiere más de 3 (ver nota de Suscripciones
+arriba) — trabajo de frontend, no de backend; (2) la mayoría de los
+mensajes de validación de los DTOs (fuera de la contraseña) todavía no
+usan claves de i18n (ver nota de i18n backend arriba).
+
+**Esta sesión se detiene aquí a propósito** por límite de tokens (se
+restablecen a las 20:10) — no es una interrupción a media tarea, todo lo
+de arriba está comiteado y verificado. Al retomar: leer este archivo y
+`git log --oneline -20`, y decidir con el equipo si se sigue con el
+Módulo Chatbot (una vez haya proveedor de LLM + API key) o se salta
+directo a las tarjetas de Frontend marcadas "después del Seguimiento
+#2" (Landing pública, Dashboard con KPIs, wizard de reserva pública,
+Notificaciones/Reportes en pantalla, selector de idioma, responsive,
+dark mode, etc. — ver punto 18 de docs/spec.md).
 
 ## Cómo probar lo que ya existe
 ```bash
