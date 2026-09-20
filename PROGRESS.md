@@ -1465,6 +1465,38 @@ cerrados juntos.
   bloqueado (negocio demo en Plan Gratis) — apagado visualmente y con el
   mensaje real de por qué. Sin errores de consola.
 
+## Frontend: Pantalla de Reportes con gráficos de datos reales ✅
+Reusa el mismo `GET /reportes/resumen` del Dashboard (sin cambios de
+backend) — la diferencia con la tarjeta del Dashboard es que aquí sí van
+los gráficos de verdad que pide el punto 6 del brief.
+
+- **Librería nueva**: `recharts@3.10.1` (peer deps declaran soporte
+  React 19 explícito, verificado antes de instalar). Es la primera
+  dependencia de gráficos del proyecto — el Dashboard usó barras CSS a
+  propósito para no anticipar esta dependencia antes de que existiera
+  una tarjeta que la pidiera.
+- **Selector de período real** (Este mes / Mes pasado / Últimos 3 meses)
+  que recalcula `desde`/`hasta` y vuelve a pedir el resumen — no un
+  filtro decorativo.
+- **Gráfico de barras** (reservas por día) y **gráfico de dona**
+  (reservas por estado, con los mismos colores que ya usa el Dashboard/
+  Calendario para cada estado) — ambos con estado vacío diseñado si el
+  período no tiene datos.
+- **Exportar CSV, gated por el plan** (punto 5.1 del brief: *"Reportes
+  básicos, sin exportación de datos"* en el Plan Gratis): botón
+  deshabilitado + texto explicando por qué si `negocio.planSuscripcion === 'gratis'`,
+  generación de CSV 100% en el cliente (Blob + `<a download>`) a partir
+  de los datos ya cargados — no requirió tocar el backend.
+- **Verificado en un Chrome real con datos reales** (el mismo historial
+  de pruebas de esta noche: 5 reservas, todas canceladas): KPIs
+  correctos (5 reservas totales, ₡0 ingresos estimados, 100% tasa de
+  cancelación — coincide con que ninguna quedó confirmada), barras
+  reales para los días 19 y 26 de septiembre (las fechas reales de las
+  pruebas), dona con la porción "Cancelada" completa, cambio de período
+  a "Últimos 3 meses" recalculó correctamente, botón Exportar
+  deshabilitado con el mensaje correcto (negocio demo en Plan Gratis).
+  Sin errores de consola.
+
 ## Tarea en curso
 **Backend 100% cerrado** (ver arriba) — Seguridad, Notificaciones (ahora
 con historial HTTP además del worker), Suscripciones, Reportes, Swagger,
@@ -1477,25 +1509,27 @@ Login/Registro, Calendario (prioridad del Seguimiento #2) cerrados de
 sesiones anteriores; de las tarjetas "después del Seguimiento #2", ya
 están cerradas Paso de onboarding + Input variante crear/editar (fuera
 de orden), Landing pública, Dashboard con KPIs, Wizard de reserva
-pública, y ahora **Pantalla de Notificaciones** (esta tarjeta). Siguiente
-en el orden acordado con el equipo (ver "Modo autónomo nocturno" arriba):
-**Pantalla de Reportes con gráficos de datos reales**.
+pública, Pantalla de Notificaciones, y ahora **Pantalla de Reportes con
+gráficos** (esta tarjeta). Siguiente en el orden acordado con el equipo
+(ver "Modo autónomo nocturno" arriba): **Selector de idioma
+(react-i18next, ES/EN)**.
 
 Pendientes menores sin resolver, ninguno bloqueante: (1) el onboarding
 del frontend puede chocar con el límite de 3 servicios del plan gratis
 si una plantilla de vertical sugiere más de 3 (ver nota de Suscripciones
 arriba); (2) la mayoría de los mensajes de validación de los DTOs (fuera
 de la contraseña) todavía no usan claves de i18n (ver nota de i18n
-backend arriba); (3) verificación visual responsive/mobile de la Landing,
-el Dashboard, el Wizard y Notificaciones pendiente por una limitación de
-la herramienta de automatización del navegador usada esta sesión
-(`resize_window` no afectaba el viewport real) — no bloquea, las clases
-responsive ya están escritas con las mismas convenciones verificadas en
-otras pantallas; (4) el link real del wizard (`/reservar/:idNegocio`)
-todavía no está enlazado desde ninguna pantalla del admin — anotado, no
-bloqueante; (5) un cron real de `RECORDATORIO` (aviso antes de la cita,
-no solo confirmación/cancelación) sigue sin construirse — mejora futura
-documentada desde la tarjeta original del Worker, no de esta pantalla.
+backend arriba) — el selector de idioma que sigue es solo frontend, así
+que este pendiente del backend queda igual después de esa tarjeta; (3)
+verificación visual responsive/mobile de todas las pantallas nuevas de
+esta noche pendiente por una limitación de la herramienta de
+automatización del navegador usada esta sesión (`resize_window` no
+afectaba el viewport real) — no bloquea, las clases responsive ya están
+escritas con las mismas convenciones verificadas en otras pantallas; (4)
+el link real del wizard (`/reservar/:idNegocio`) todavía no está
+enlazado desde ninguna pantalla del admin — anotado, no bloqueante; (5)
+un cron real de `RECORDATORIO` sigue sin construirse — mejora futura
+documentada desde la tarjeta original del Worker.
 
 ## Cómo probar lo que ya existe
 ```bash
