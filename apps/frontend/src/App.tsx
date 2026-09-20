@@ -9,6 +9,7 @@ import InicioPage from '@/pages/InicioPage';
 import CalendarioPage from '@/pages/CalendarioPage';
 import OnboardingPage from '@/pages/OnboardingPage';
 import ReservaPublicaPage from '@/pages/ReservaPublicaPage';
+import NotificacionesPage from '@/pages/NotificacionesPage';
 
 /**
  * "/" es pública (Landing, punto 6 del brief) para quien no tiene sesión,
@@ -42,6 +43,14 @@ function App() {
         element={
           <RutaProtegida>
             <OnboardingPage />
+          </RutaProtegida>
+        }
+      />
+      <Route
+        path="/notificaciones"
+        element={
+          <RutaProtegida>
+            <NotificacionesPage />
           </RutaProtegida>
         }
       />
