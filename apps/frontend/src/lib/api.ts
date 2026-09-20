@@ -5,7 +5,8 @@ import {
   obtenerRefreshToken,
 } from './token-storage';
 
-const BASE_URL = import.meta.env.VITE_API_URL;
+/** Exportado para el socket del Chatbot (lib/chatbot-socket.ts) — mismo origen que el HTTP, una sola fuente. */
+export const BASE_URL = import.meta.env.VITE_API_URL;
 
 /** Misma forma de error que el filtro global del backend: {statusCode, errorCode, message, field?}. */
 export class ApiError extends Error {

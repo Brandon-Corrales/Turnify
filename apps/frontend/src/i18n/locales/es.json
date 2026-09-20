@@ -91,5 +91,16 @@
     "canceladaTitulo": "Pago cancelado",
     "canceladaDescripcion": "Sigues en el Plan Gratis — puedes intentarlo de nuevo cuando quieras.",
     "canceladaVolver": "Volver a mi suscripción"
+  },
+  "chat": {
+    "titulo": "Asistente Turnify",
+    "abrir": "Abrir asistente",
+    "cerrar": "Cerrar asistente",
+    "bienvenida": "¡Hola! Pregúntame cómo usar Turnify — reservas, servicios, reportes, lo que necesites.",
+    "placeholder": "Escribe tu pregunta…",
+    "enviar": "Enviar",
+    "conectando": "Conectando con el asistente…",
+    "errorConexion": "No se pudo conectar con el asistente. Verifica tu conexión e intenta de nuevo.",
+    "pensando": "Escribiendo…"
   }
 }

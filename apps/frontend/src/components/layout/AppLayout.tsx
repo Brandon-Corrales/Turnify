@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { LogOut } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { ChatbotWidget } from '@/components/chat/ChatbotWidget';
 import { ControlesGlobales } from './ControlesGlobales';
 
 /**
@@ -100,6 +101,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </header>
       <main>{children}</main>
+      <ChatbotWidget />
     </div>
   );
 }
