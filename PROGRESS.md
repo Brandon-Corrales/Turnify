@@ -1282,6 +1282,51 @@ características y sección de planes.
     convenciones `sm:`/`lg:` ya usadas y verificadas en Login/Registro/
     Onboarding, pero eso no es lo mismo que haberlo visto en mobile).
 
+## Frontend: Dashboard con KPIs desde el módulo Reportes ✅
+`InicioPage` (la home autenticada, en `/`) deja de ser el placeholder
+"Bienvenido + botón a Calendario" y pasa a ser el Dashboard real que pide
+punto 6 del brief, con datos reales del mes calendario en curso —
+ninguna cifra hardcodeada.
+
+- **KPIs reales desde `GET /reportes/resumen`** (`lib/reportes-api.ts`,
+  nuevo): Reservas este mes (suma de `reservasPorEstado`), Confirmadas,
+  Canceladas, Ingresos estimados (formateado con
+  `Intl.NumberFormat('es-CR', {currency:'CRC'})`) — `desde`/`hasta` se
+  calculan como el mes calendario completo en UTC (mismo criterio que
+  usa el backend para el límite de 20 reservas/mes del Plan Gratis, para
+  que el número del Dashboard y el límite que aplica el sistema hablen
+  del mismo período).
+- **Badge de plan** (requisito explícito del punto 5: *"Plan Gratis"/
+  "Plan Pago" en el Dashboard del admin*): `negociosApi.obtenerMiNegocio()`
+  ganó el campo `planSuscripcion` (ya lo devolvía el backend, el tipo del
+  frontend no lo tenía declarado) y el Dashboard lo pinta como badge real,
+  no decorativo.
+- **Gráfico de reservas por día**: barras simples con `framer-motion`
+  (altura animada, escala por el día con más reservas del mes) — sin
+  librería de gráficos nueva, esa se reserva a propósito para la tarjeta
+  futura "Pantalla de Reportes con gráficos de datos reales", que sí la
+  necesitará para vistas más completas.
+- **Estados de carga y vacío** (punto 7): `SkeletonCard` mientras cargan
+  los KPIs (nunca un spinner genérico), y un empty state diseñado
+  (ícono + mensaje + link a Calendario) cuando el negocio no tiene
+  reservas todavía en el mes, en vez de KPIs en cero sin contexto.
+- **Verificado en un Chrome real con datos reales, no solo con ceros**:
+  con la cuenta demo (`admin@turnify.app`) primero se confirmó el estado
+  vacío real (0 en las 4 tarjetas, empty state del gráfico). Después se
+  creó una disponibilidad temporal + 2 reservas reales por API (una
+  confirmada, ₡8000; una cancelada, ₡12000) para confirmar que los KPIs
+  cambian con datos reales: "Reservas este mes: 2", "Confirmadas: 1",
+  "Canceladas: 1", "Ingresos estimados: ₡8 000" (la cancelada NO se
+  contó, tal como filtra `ReportesService.sumarIngresosEstimados`) — y
+  que el gráfico de barras sí dibuja con datos reales. Disponibilidad y
+  reservas de prueba limpiadas al final (reservas canceladas —no hay
+  borrado físico en la API—, disponibilidad eliminada).
+- Un ajuste visual real detectado en esa misma verificación: con un solo
+  día de datos, la barra (antes `flex-1`) se estiraba a todo el ancho del
+  contenedor pareciendo un bloque sólido en vez de una barra — se le puso
+  un ancho fijo angosto (`w-3`, `max-w-6`) para que se vea como una barra
+  incluso con pocos días de datos.
+
 ## Tarea en curso
 **Backend 100% cerrado** (ver arriba) — Seguridad, Notificaciones,
 Suscripciones, Reportes, Swagger, i18n backend, guard de límites del
@@ -1292,10 +1337,10 @@ todos verificados contra Postgres/Supabase real.
 Login/Registro, Calendario (prioridad del Seguimiento #2) cerrados de
 sesiones anteriores; de las tarjetas "después del Seguimiento #2", ya
 están cerradas Paso de onboarding + Input variante crear/editar (fuera
-de orden, resueltas junto con la tarjeta de plantillas por vertical) y
-ahora **Landing pública** (esta tarjeta). La siguiente en el orden
-exacto del punto 18 es **"Frontend: Dashboard con KPIs desde el módulo
-Reportes"**.
+de orden, resueltas junto con la tarjeta de plantillas por vertical),
+Landing pública, y ahora **Dashboard con KPIs** (esta tarjeta). La
+siguiente en el orden exacto del punto 18 es **"Frontend: Wizard de
+reserva pública (4 pasos) conectado a Servicios/Disponibilidad/Reservas"**.
 
 Pendientes menores sin resolver, ninguno bloqueante: (1) el onboarding
 del frontend puede chocar con el límite de 3 servicios del plan gratis
@@ -1303,9 +1348,10 @@ si una plantilla de vertical sugiere más de 3 (ver nota de Suscripciones
 arriba); (2) la mayoría de los mensajes de validación de los DTOs (fuera
 de la contraseña) todavía no usan claves de i18n (ver nota de i18n
 backend arriba); (3) verificación visual responsive/mobile de la Landing
-pendiente por la limitación de herramienta descrita arriba — no bloquea,
-las clases responsive ya están escritas con las mismas convenciones
-verificadas en otras pantallas.
+y del Dashboard pendiente por una limitación de la herramienta de
+automatización del navegador usada esta sesión (`resize_window` no
+afectaba el viewport real) — no bloquea, las clases responsive ya están
+escritas con las mismas convenciones verificadas en otras pantallas.
 
 ## Cómo probar lo que ya existe
 ```bash
