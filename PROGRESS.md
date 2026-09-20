@@ -1060,31 +1060,41 @@ WhatsApp") es literalmente el escenario que este guard bloquea.
 - 8 tests unitarios nuevos (`privilegios-cliente.service.spec.ts`,
   `privilegio-cliente.guard.spec.ts`).
 
-## Módulo Chatbot (WebSocket Gateway + integración con LLM — Google Gemini) ✅
+## Módulo Chatbot (WebSocket Gateway + integración con LLM — Groq) ✅
 **Backend: Módulo Chatbot — WebSocket Gateway + integración con LLM
-(contexto por rol y por negocio)** — cerrado. El equipo decidió el
-proveedor (Google Gemini, Google AI Studio, tier gratuito) y entregó su
-propia API key real; se construyó punto 16 del brief completo.
+(contexto por rol y por negocio)** — cerrado, con generación de texto
+real funcionando de punta a punta. Proveedor actual: **Groq** (API
+compatible con el SDK de OpenAI, modelo `openai/gpt-oss-20b` del tier
+gratuito) — segundo proveedor de este módulo, ver "Cambio de proveedor"
+más abajo para por qué se abandonó Google Gemini, el primero.
 
-- **Desacoplado del proveedor** (requisito explícito): `LlmClient`
-  (interfaz) + token de DI `LLM_CLIENT` + `GeminiLlmClient` (adaptador
-  concreto). Cambiar de proveedor más adelante es escribir una clase
-  nueva que implemente `LlmClient` y cambiar un `useClass` en
-  `ChatbotModule` — nada más del módulo se toca.
-- **SDK real verificado contra el paquete instalado** (`@google/genai@2.23.0`),
-  no de memoria: la superficie pública documentada es
-  `ai.models.generateContentStream(...)`, no `ai.interactions.create()`
-  (existe en el SDK pero sin ejemplos de uso, se descartó a propósito).
+- **Desacoplado del proveedor** (requisito explícito, y la razón por la
+  que cambiar de proveedor a mitad de camino fue barato): `LlmClient`
+  (interfaz) + token de DI `LLM_CLIENT` + `GroqLlmClient` (adaptador
+  concreto, reusa el SDK oficial `openai` apuntando a
+  `https://api.groq.com/openai/v1`). Cambiar de proveedor es escribir una
+  clase nueva que implemente `LlmClient` y cambiar un `useClass` en
+  `ChatbotModule` — nada más del módulo se tocó ni al pasar de Gemini a
+  Groq ni debería tocarse en un cambio futuro.
+- **SDK real verificado contra el paquete instalado** (`openai@7.20.0`),
+  no de memoria: `client.chat.completions.create({..., stream: true})`
+  devuelve un `Stream<ChatCompletionChunk>` async-iterable, el texto de
+  cada chunk viene en `choices[0].delta.content`. A diferencia de Gemini,
+  esta API no tiene un campo separado para el system prompt — va como un
+  mensaje `role: 'system'` más al inicio de `messages`, y los turnos
+  previos del asistente usan `role: 'assistant'` (no `'model'`).
 - **Contexto por rol y por negocio, multi-tenant real**: `ChatbotService`
   arma el prompt dentro de `TenantContextService.run(...)` — el MISMO
   mecanismo que usa cualquier endpoint HTTP — y reutiliza
   `NegociosService`/`ServiciosService`/`ReservasService` ya existentes en
-  vez de consultar la base de datos directo.
-- **Privacidad (instrucción explícita del equipo)**: el contexto que se
-  arma nunca incluye datos de CLIENTE ni credenciales — solo nombre/tipo/
-  plan del negocio propio y conteos genéricos (servicios activos,
-  reservas de hoy). Motivo: en el tier gratuito de Gemini, Google puede
-  usar prompts/respuestas para mejorar sus productos.
+  vez de consultar la base de datos directo. Esta capa no cambió nada al
+  cambiar de proveedor — vive en `ChatbotService`, no en el adaptador.
+- **Privacidad (instrucción explícita del equipo, independiente del
+  proveedor)**: el contexto que se arma nunca incluye datos de CLIENTE ni
+  credenciales — solo nombre/tipo/plan del negocio propio y conteos
+  genéricos (servicios activos, reservas de hoy). Un tier gratuito de
+  cualquier proveedor de LLM puede usar prompts/respuestas para mejorar
+  sus productos, así que esta regla no es específica de Gemini ni de Groq.
 - **Límite de mensajes por plan freemium** (punto 5): `RecursoLimitado`
   ganó un 4to valor (`mensajesChatbot`, 10/día en Plan Gratis) y
   `LimitesPlanService`/`LimitePlanGratisGuard` se extendieron para
@@ -1097,7 +1107,9 @@ propia API key real; se construyó punto 16 del brief completo.
   el wizard público + auth de cliente, todavía no construidos).
 - **Degradación real, no solo documentada**: si el LLM falla (o no hay
   `LLM_API_KEY`), `ChatbotService.responder()` cae a un mensaje amable en
-  vez de romper la conexión — y el turno igual se guarda en BD.
+  vez de romper la conexión — y el turno igual se guarda en BD. Se
+  verificó de punta a punta en ambos sentidos: fallando en vivo (con
+  Gemini bloqueado) y respondiendo en vivo (con Groq).
 
 ### 3 bugs reales encontrados y arreglados verificando de punta a punta
 Los guards/interceptors globales de la app se escribieron pensando solo
@@ -1133,57 +1145,69 @@ en realidad a `I18nService.translate()` pese a que la tarjeta de i18n
 backend decía que sí — usaba un objeto estático hardcodeado. Ya traduce
 de verdad (`errores.LIMITE_PLAN_*` en `es`/`en`).
 
-### Verificado de punta a punta contra el servidor real
-Con un negocio y usuario reales (registrados vía `/auth/registro`, no
+### Cambio de proveedor: Google Gemini → Groq (Gemini quedó descartado por completo)
+Gemini fue el primer proveedor integrado y quedó completamente bloqueado
+a nivel de **proyecto de Google Cloud**, no de una API key puntual:
+- Todo modelo 2.x (`gemini-2.5-flash`, `gemini-2.0-flash`, ...) → `404
+  NOT_FOUND`, *"is no longer available to new users... use
+  models/gemini-3.6-flash"*.
+- Todo modelo 3.x (`gemini-3.6-flash`, `gemini-3.5-flash`,
+  `gemini-flash-latest`, `gemini-pro-latest`, ...) → `403
+  PERMISSION_DENIED`, *"Your project has been denied access. Please
+  contact support."*
+- **Confirmado con DOS API keys distintas** generadas desde cero en el
+  mismo proyecto de Google Cloud, mismo resultado exacto en ambas — esto
+  descarta que fuera una key individual corrupta o mal generada; es la
+  cuenta/proyecto la que está bloqueada.
+
+El equipo decidió no esperar un ticket de soporte de Google sin fecha
+resuelta y cambió a **Groq** de forma definitiva. Gracias a que
+`LlmClient` ya estaba desacoplado del proveedor, el cambio fue: escribir
+`GroqLlmClient` (nuevo), borrar `GeminiLlmClient` (ya no se usa ni se
+piensa volver a él), y cambiar un `useClass` en `ChatbotModule` — cero
+cambios en `ChatbotService`, `ChatbotGateway`, los guards, ni los tests
+de esas piezas.
+
+**Segunda lección de "no confíes en el nombre de modelo de memoria/de un
+tercero, verifica contra la API real"**: el modelo que Groq recomendó
+inicialmente (`llama-3.3-70b-versatile`) devolvió `model_not_found` real
+contra la API — ya no existe en el catálogo actual de Groq para esta key
+(su catálogo de modelos cambia con frecuencia). Se resolvió llamando
+directo a `GET https://api.groq.com/openai/v1/models` con la key real
+del proyecto para ver el catálogo vigente, y probando candidatos de chat
+reales hasta confirmar uno que respondiera 200: `openai/gpt-oss-20b`
+(20B, el más chico/rápido de la familia `gpt-oss` disponible, ideal para
+una capa de ayuda que no necesita el modelo más grande).
+
+### Verificado de punta a punta contra el servidor real (dos veces: fallando con Gemini, respondiendo con Groq)
+Con negocios y usuarios reales (registrados vía `/auth/registro`, no
 seed) y un script real de `socket.io-client` contra `ws://localhost:3000/chatbot`:
 - Conexión + autenticación JWT real sobre WebSocket: ✅.
-- Los 3 bugs de arriba: reproducidos primero, arreglados, y
-  re-verificados hasta que la conexión funcionó sin crashear.
-- **Límite freemium de 10 mensajes/día verificado con un negocio limpio**:
-  10 mensajes se procesan, el 11vo se bloquea con
+- Los 3 bugs de guards/filtros HTTP-only de abajo: reproducidos primero,
+  arreglados, y re-verificados hasta que la conexión funcionó sin
+  crashear (esto pasó ANTES del cambio de proveedor, con Gemini, y sigue
+  aplicando igual con Groq — son bugs de transporte, no de proveedor).
+- **Con Gemini bloqueado**: el chatbot se degradó correctamente al
+  mensaje amable en cada turno, confirmando el camino de fallback real,
+  no solo mockeado.
+- **Con Groq ya integrado, una conversación real completa**: pregunta
+  "¿Qué es Turnify y qué límites tiene el Plan Gratis en servicios
+  activos?" → respuesta real generada y transmitida en streaming por
+  `respuesta-chunk`, contenido correcto (mencionó el límite real de 3
+  servicios activos del Plan Gratis, leído del contexto que arma
+  `ChatbotService`, no inventado).
+- **Límite freemium de 10 mensajes/día verificado con Groq real**: los
+  mensajes se procesan normalmente, el 11vo se bloquea con
   `{"statusCode":403,"errorCode":"LIMITE_PLAN_ALCANZADO","message":"El Plan Gratis permite hasta 10 mensajes al chatbot por día..."}`
   — el mensaje real que devuelve el servidor, no un mock.
-- Cada turno (pregunta + respuesta) se confirmó persistido en
+- Cada turno (pregunta + respuesta real) se confirmó persistido en
   `mensajes_chatbot` vía el log de queries reales de TypeORM.
-- Negocios/usuarios de prueba limpiados al final (`DELETE /negocios/mi-negocio`,
-  soft-delete) — no queda basura de prueba en el Supabase real del equipo.
-
-### Limitación real encontrada: el modelo configurado no sirve para esta cuenta de Google
-La llamada real a Gemini (no un mock) responde con error para **todo
-modelo probado**, con dos patrones distintos y consistentes:
-- Cualquier modelo de la familia 2.x (`gemini-2.5-flash`,
-  `gemini-2.5-flash-lite`, `gemini-2.0-flash`, ...) → `404 NOT_FOUND`,
-  *"is no longer available to new users... use models/gemini-3.6-flash"*.
-- Cualquier modelo de la familia 3.x (`gemini-3.6-flash`,
-  `gemini-3.5-flash`, `gemini-flash-latest`, `gemini-pro-latest`, ...) →
-  `403 PERMISSION_DENIED`, *"Your project has been denied access. Please
-  contact support."*
-
-Confirmado contra `ListModels` (los modelos SÍ existen y están listados
-para esta API key) y probando 7 modelos distintos directo por REST, no
-solo vía el SDK. Es una restricción real del lado de Google sobre esta
-cuenta/proyecto de AI Studio (cuenta nueva sin acceso habilitado a la
-generación actual, y sin acceso a la generación anterior porque ya fue
-descontinuada) — **no es un bug del código ni de este proyecto**, misma
-categoría que la restricción geográfica de Stripe en Costa Rica o la
-ventana de 24h de WhatsApp Business ya documentadas arriba.
-
-`LLM_MODEL` se dejó en `gemini-3.6-flash` (la ruta correcta una vez
-Google habilite acceso a esa cuenta — es literalmente lo que la propia
-API recomienda en su error 404) en vez de retroceder a un modelo 2.x que
-de todos modos está descontinuado para siempre. Mientras tanto, el
-chatbot se degrada correctamente al mensaje amable en cada turno — ese
-camino de fallback SÍ se verificó de punta a punta con la API real
-fallando en vivo, que es exactamente para lo que se construyó.
-
-**Antes de dar por bueno el chatbot en producción**: alguien del equipo
-debe entrar a Google AI Studio con la cuenta dueña de esa API key y
-resolver el acceso al proyecto (puede requerir habilitar facturación o
-esperar a que la cuenta nueva sea aprobada) — no hay nada más para
-diagnosticar desde el código.
+- Negocios/usuarios de prueba limpiados al final de cada ronda (`DELETE
+  /negocios/mi-negocio`, soft-delete) — no queda basura de prueba en el
+  Supabase real del equipo.
 
 - 19 tests unitarios nuevos: `ChatbotService` (incluye no-filtración de
-  PII de cliente al prompt), `GeminiLlmClient` (`vi.mock('@google/genai', ...)`,
+  PII de cliente al prompt), `GroqLlmClient` (`vi.mock('openai', ...)`,
   mismo patrón que `StripeService`), `WsJwtGuard`, `WsExceptionsFilter`,
   `AppThrottlerGuard`, y la extensión de
   `LimitesPlanService`/`LimitePlanGratisGuard` para `mensajesChatbot` +
@@ -1201,10 +1225,10 @@ del frontend puede chocar con el límite de 3 servicios del plan gratis
 si una plantilla de vertical sugiere más de 3 (ver nota de Suscripciones
 arriba) — trabajo de frontend, no de backend; (2) la mayoría de los
 mensajes de validación de los DTOs (fuera de la contraseña) todavía no
-usan claves de i18n (ver nota de i18n backend arriba); (3) el acceso de
-la cuenta de Google AI Studio a los modelos Gemini vigentes (ver sección
-del Chatbot arriba) — bloqueante solo para ver texto generado real, no
-para el resto del sistema.
+usan claves de i18n (ver nota de i18n backend arriba). El pendiente de
+Gemini de una versión anterior de esta nota quedó resuelto al cambiar de
+proveedor a Groq — el chatbot genera texto real de punta a punta, sin
+condiciones pendientes.
 
 Con el Backend 100% cerrado, lo que sigue es el resto de tarjetas de
 Frontend marcadas "después del Seguimiento #2" (Landing pública,
