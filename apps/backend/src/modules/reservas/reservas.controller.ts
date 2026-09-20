@@ -9,7 +9,8 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ErroresEstandar } from '../../common/swagger/errores-estandar.decorator';
 import { LimitePlan } from '../suscripciones/decorators/limite-plan.decorator';
 import { LimitePlanGratisGuard } from '../suscripciones/guards/limite-plan-gratis.guard';
 import { ReservasService } from './reservas.service';
@@ -29,6 +30,7 @@ import { ListarReservasQueryDto } from './dto/listar-reservas-query.dto';
  */
 @ApiBearerAuth()
 @ApiTags('reservas')
+@ErroresEstandar()
 @Controller('reservas')
 export class ReservasController {
   constructor(private readonly reservasService: ReservasService) {}
@@ -36,26 +38,38 @@ export class ReservasController {
   @UseGuards(LimitePlanGratisGuard)
   @LimitePlan('reservas')
   @Post()
+  @ApiOperation({
+    summary:
+      'Crea una reserva (valida disponibilidad y traslapes; sujeto al límite de 20/mes del Plan Gratis)',
+  })
   crear(@Body() dto: CrearReservaDto) {
     return this.reservasService.crear(dto);
   }
 
   @Get()
+  @ApiOperation({
+    summary: 'Lista reservas del negocio, filtrable por rango de fechas/usuario/cliente/estado',
+  })
   listar(@Query() query: ListarReservasQueryDto) {
     return this.reservasService.listar(query);
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Obtiene una reserva por id' })
   obtenerUna(@Param('id', ParseUUIDPipe) id: string) {
     return this.reservasService.obtenerUna(id);
   }
 
   @Patch(':id/cancelar')
+  @ApiOperation({ summary: 'Cancela una reserva (dispara la notificación de cancelación)' })
   cancelar(@Param('id', ParseUUIDPipe) id: string) {
     return this.reservasService.cancelar(id);
   }
 
   @Patch(':id/reprogramar')
+  @ApiOperation({
+    summary: 'Cambia el horario de una reserva (valida disponibilidad y traslapes de nuevo)',
+  })
   reprogramar(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ReprogramarReservaDto) {
     return this.reservasService.reprogramar(id, dto);
   }

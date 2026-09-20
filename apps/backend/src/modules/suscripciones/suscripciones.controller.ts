@@ -10,7 +10,7 @@ import {
   Req,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from '../auth/decorators/public.decorator';
 import { SuscripcionesService } from './suscripciones.service';
 import { StripeService } from './providers/stripe.service';
@@ -26,12 +26,18 @@ export class SuscripcionesController {
 
   @ApiBearerAuth()
   @Get('mi-suscripcion')
+  @ApiOperation({ summary: 'Suscripción actual del negocio (plan, estado, fechas)' })
   obtenerMiSuscripcion() {
     return this.suscripcionesService.obtenerActual();
   }
 
   @ApiBearerAuth()
   @Post('checkout')
+  @ApiOperation({
+    summary: 'Inicia un Stripe Checkout Session para pasar del Plan Gratis al plan de pago',
+    description:
+      'Devuelve la URL de checkout hospedada por Stripe. Falla con 503 PASARELA_PAGOS_NO_DISPONIBLE si Stripe no está configurado.',
+  })
   iniciarCheckout(@Body() dto: IniciarCheckoutDto) {
     return this.suscripcionesService.iniciarUpgrade(dto.successUrl, dto.cancelUrl);
   }
@@ -46,6 +52,10 @@ export class SuscripcionesController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('webhook')
+  @ApiOperation({
+    summary: 'Webhook de Stripe (llamado por Stripe, no por el frontend) — idempotente',
+    description: 'Verifica la firma HMAC del header Stripe-Signature; no requiere JWT.',
+  })
   async recibirWebhook(@Req() req: RawBodyRequest<Request>) {
     const firma = req.headers['stripe-signature'];
     if (!req.rawBody || typeof firma !== 'string') {

@@ -1,5 +1,5 @@
 import { Controller, Get, HttpCode, HttpStatus, ServiceUnavailableException } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { DataSource } from 'typeorm';
 import { Public } from '../modules/auth/decorators/public.decorator';
 
@@ -11,6 +11,7 @@ export class HealthController {
   @Public()
   @Get()
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Chequeo de salud del servicio (usado por el hosting)' })
   async check() {
     try {
       await this.dataSource.query('SELECT 1');
