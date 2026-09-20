@@ -925,19 +925,64 @@ estimados)** ✅
 - 4 tests unitarios nuevos (`reportes.service.spec.ts`) + 1 test nuevo
   para `createQueryBuilder()` en `tenant-scoped.repository.spec.ts`.
 
+## Documentación Swagger/OpenAPI en todos los endpoints
+**Backend: Documentación Swagger/OpenAPI en todos los endpoints** ✅
+
+Antes de esta tarjeta ya había cobertura básica (`@ApiTags`,
+`@ApiBearerAuth`, `@ApiProperty` en todos los DTOs) pero **cero**
+endpoints tenían `@ApiOperation` — `/docs` mostraba las rutas sin
+explicar qué hace cada una.
+
+- `@ApiOperation({ summary })` agregado a los 39 endpoints de los 11
+  controllers del backend (auditado por conteo real: `grep` de
+  `@Get|@Post|@Patch|@Delete` vs `@ApiOperation`, ambos dan 39).
+- Nuevo `ErrorResponseDto` (`common/errors/error-response.dto.ts`)
+  documenta en Swagger la forma estándar de error del punto 7/8 del
+  brief (`{statusCode, errorCode, message, field?}`) — no se usa en
+  código, solo describe la respuesta para quien lea `/docs`.
+- Nuevo decorador compuesto `@ErroresEstandar()`
+  (`common/swagger/errores-estandar.decorator.ts`): aplicado a nivel de
+  clase en cada controller autenticado, documenta 400/401/403/404 con
+  `ErrorResponseDto` sin repetir `@ApiResponse` en cada endpoint — mismo
+  principio de "nunca repetido a mano" que el resto de wrappers
+  transversales del proyecto.
+- **Probado de verdad contra el servidor real**: `GET /docs-json` parsea
+  como JSON válido, expone exactamente 39 operaciones (una por endpoint
+  real), las 39 tienen `summary` no vacío, `ErrorResponseDto` aparece en
+  `components.schemas`, y `GET /docs` devuelve la UI de Swagger (200,
+  `<title>Swagger UI</title>`).
+
+**De paso, 2 tarjetas más de la lista quedan cerradas retroactivamente
+por trabajo ya hecho en sesiones anteriores de este mismo backlog —
+anotado aquí para que el equipo no las espere**:
+- **Backend: Guard de límites por plan freemium (bloquear acciones al
+  superar límites del plan gratis)** ✅ — es el mismo `LimitePlanGratisGuard`
+  construido y verificado en la tarjeta de Suscripciones (ver esa
+  sección arriba); el título de esa tarjeta ya incluía este guard
+  explícitamente ("... + guard de límites del plan gratis").
+- **Backend: Validar tipo_negocio (enum de verticales) en el DTO de
+  registro, sobre el módulo Auth ya existente** ✅ — hecho en la sesión
+  de "Plantillas de servicio por vertical" (ver esa sección arriba,
+  `RegistroNegocioDto.tipoNegocio` con `@IsEnum(TipoNegocio)`). Aparece
+  duplicada al final de la lista de Backend porque también se agregó en
+  el punto 2 del brief cuando se sumaron las 5 tarjetas de plantillas.
+
 ## Tarea en curso
 Ninguna de las priorizadas explícitamente por el usuario está pendiente.
 Cerrado en esta sesión: Seguridad (categoría completa), las 5 tarjetas de
 plantillas por vertical, las 2 tarjetas de Worker de Notificaciones
 (Resend + Meta WhatsApp Cloud API, reemplazando Twilio), Suscripciones
 (Stripe Test Mode — verificado solo con mocks por la restricción
-geográfica de Stripe en Costa Rica, ver arriba), y Reportes. Pendiente
-sin resolver, no bloqueante: el onboarding puede chocar con el límite de
-3 servicios del plan gratis (ver nota de Suscripciones arriba) —
-ajustarlo es trabajo de frontend, no de una tarjeta de backend. Siguiente
-en el orden de docs/spec.md (punto 18, sección "después del Seguimiento
-#2"): Documentación Swagger → i18n backend, y después el resto de
-Frontend.
+geográfica de Stripe en Costa Rica), Reportes, Documentación Swagger, y
+2 tarjetas cerradas retroactivamente por trabajo ya hecho (Guard de
+límites del plan freemium, Validar tipo_negocio en el DTO de registro).
+Pendiente sin resolver, no bloqueante: el onboarding puede chocar con el
+límite de 3 servicios del plan gratis (ver nota de Suscripciones arriba)
+— ajustarlo es trabajo de frontend, no de una tarjeta de backend.
+Siguiente en el orden de docs/spec.md (punto 18, sección "después del
+Seguimiento #2"): Backend: i18n backend (nestjs-i18n) → Backend: Guard de
+privilegios por nivel_cliente (Gratis vs Premium) → Backend: Módulo
+Chatbot, y después el resto de Frontend.
 
 ## Cómo probar lo que ya existe
 ```bash
