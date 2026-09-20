@@ -5,6 +5,16 @@ import Stripe from 'stripe';
 import { EstadoSuscripcion, Negocio, PlanSuscripcion, Suscripcion } from '../../database/entities';
 import { TenantContextService } from '../../common/tenant';
 import { StripeService } from './providers/stripe.service';
+import { LimitesPlanService } from './limites-plan.service';
+
+export interface LimitesPlanes {
+  gratis: {
+    usuarios: number;
+    servicios: number;
+    reservasPorMes: number;
+    mensajesChatbotPorDia: number;
+  };
+}
 
 /**
  * Plan pago único para el MVP (punto 5.1 del brief: "si no, un solo nivel
@@ -24,7 +34,28 @@ export class SuscripcionesService {
     @InjectRepository(Negocio) private readonly negocioRepo: Repository<Negocio>,
     private readonly tenantContext: TenantContextService,
     private readonly stripe: StripeService,
+    private readonly limitesPlan: LimitesPlanService,
   ) {}
+
+  /**
+   * Público (usado por la landing pública, sin sesión) — los números de
+   * "gratis" salen de LimitesPlanService, la MISMA fuente que usa
+   * LimitePlanGratisGuard para bloquear en tiempo real, así que la landing
+   * nunca puede quedar desactualizada respecto a lo que el sistema aplica
+   * de verdad. El Plan de Pago no tiene un techo numérico en el código
+   * (la ausencia de límite ES la implementación), así que no se inventa un
+   * número aquí — el frontend lo presenta como "ilimitado".
+   */
+  obtenerLimitesPlanes(): LimitesPlanes {
+    return {
+      gratis: {
+        usuarios: this.limitesPlan.limite('usuarios'),
+        servicios: this.limitesPlan.limite('servicios'),
+        reservasPorMes: this.limitesPlan.limite('reservas'),
+        mensajesChatbotPorDia: this.limitesPlan.limite('mensajesChatbot'),
+      },
+    };
+  }
 
   async obtenerActual(): Promise<Suscripcion> {
     const idNegocio = this.tenantContext.idNegocio;

@@ -23,10 +23,20 @@ function crearStripeMock() {
   return { crearCheckoutSession: vi.fn(), construirEvento: vi.fn() };
 }
 
+function crearLimitesPlanMock() {
+  return {
+    limite: vi.fn(
+      (recurso: string) =>
+        ({ usuarios: 1, servicios: 3, reservas: 20, mensajesChatbot: 10 })[recurso]!,
+    ),
+  };
+}
+
 describe('SuscripcionesService', () => {
   let suscripcionRepo: ReturnType<typeof crearSuscripcionRepoMock>;
   let negocioRepo: ReturnType<typeof crearNegocioRepoMock>;
   let stripe: ReturnType<typeof crearStripeMock>;
+  let limitesPlan: ReturnType<typeof crearLimitesPlanMock>;
   let tenantContext: TenantContextService;
   let service: SuscripcionesService;
 
@@ -34,12 +44,14 @@ describe('SuscripcionesService', () => {
     suscripcionRepo = crearSuscripcionRepoMock();
     negocioRepo = crearNegocioRepoMock();
     stripe = crearStripeMock();
+    limitesPlan = crearLimitesPlanMock();
     tenantContext = new TenantContextService();
     service = new SuscripcionesService(
       suscripcionRepo as any,
       negocioRepo as any,
       tenantContext,
       stripe as any,
+      limitesPlan as any,
     );
   });
 
@@ -161,5 +173,15 @@ describe('SuscripcionesService', () => {
         { estado: EstadoSuscripcion.SUSPENDIDA },
       );
     });
+  });
+
+  it('obtenerLimitesPlanes() devuelve los límites reales del Plan Gratis desde LimitesPlanService (sin sesión)', () => {
+    expect(service.obtenerLimitesPlanes()).toEqual({
+      gratis: { usuarios: 1, servicios: 3, reservasPorMes: 20, mensajesChatbotPorDia: 10 },
+    });
+    expect(limitesPlan.limite).toHaveBeenCalledWith('usuarios');
+    expect(limitesPlan.limite).toHaveBeenCalledWith('servicios');
+    expect(limitesPlan.limite).toHaveBeenCalledWith('reservas');
+    expect(limitesPlan.limite).toHaveBeenCalledWith('mensajesChatbot');
   });
 });
