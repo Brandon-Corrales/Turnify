@@ -1,14 +1,15 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { Clock, Pencil, Plus, Tag, Trash2 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Boton, ConfirmDialog, Input, Modal, ToggleVista, useToast } from '@/components/ui';
 import { SkeletonCard, SkeletonTable } from '@/components/ui/Skeleton';
 import { useVistaPreferida } from '@/lib/vista-preferida';
 import { ApiError } from '@/lib/api';
-import { servicioSchema, type ServicioFormValues } from '@/lib/validation';
+import { crearServicioSchema, type ServicioFormValues } from '@/lib/validation';
 import { serviciosApi, type Servicio } from '@/lib/servicios-api';
 
 const LIMITE = 12;
@@ -21,10 +22,10 @@ const VALORES_VACIOS: ServicioFormValues = {
   colorCalendario: '#4f46e5',
 };
 
-function formatearPrecio(precio: string): string {
+function formatearPrecio(precio: string, idioma: string): string {
   const numero = Number(precio);
   return Number.isFinite(numero)
-    ? numero.toLocaleString('es-CR', {
+    ? numero.toLocaleString(idioma.startsWith('en') ? 'en-US' : 'es-CR', {
         style: 'currency',
         currency: 'CRC',
         maximumFractionDigits: 0,
@@ -33,6 +34,7 @@ function formatearPrecio(precio: string): string {
 }
 
 export default function ServiciosPage() {
+  const { t, i18n } = useTranslation();
   const [pagina, setPagina] = useState(1);
   const [vista, setVista] = useVistaPreferida('servicios');
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -47,6 +49,7 @@ export default function ServiciosPage() {
     queryFn: () => serviciosApi.listar(pagina, LIMITE),
   });
 
+  const servicioSchema = useMemo(() => crearServicioSchema(t), [t]);
   const {
     register,
     handleSubmit,
@@ -87,7 +90,9 @@ export default function ServiciosPage() {
       await queryClient.invalidateQueries({ queryKey: ['servicios'] });
       mostrarToast({
         variante: 'exito',
-        titulo: servicioEditando ? 'Servicio actualizado' : 'Servicio creado',
+        titulo: servicioEditando
+          ? t('servicios.servicioActualizado')
+          : t('servicios.servicioCreado'),
       });
       setModalAbierto(false);
     },
@@ -98,7 +103,7 @@ export default function ServiciosPage() {
       }
       mostrarToast({
         variante: 'error',
-        titulo: error instanceof ApiError ? error.message : 'No se pudo guardar el servicio',
+        titulo: error instanceof ApiError ? error.message : t('servicios.errorGuardar'),
       });
     },
   });
@@ -107,13 +112,13 @@ export default function ServiciosPage() {
     mutationFn: (idServicio: string) => serviciosApi.desactivar(idServicio),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['servicios'] });
-      mostrarToast({ variante: 'exito', titulo: 'Servicio desactivado' });
+      mostrarToast({ variante: 'exito', titulo: t('servicios.servicioDesactivado') });
       setServicioADesactivar(null);
     },
     onError: (error) => {
       mostrarToast({
         variante: 'error',
-        titulo: error instanceof ApiError ? error.message : 'No se pudo desactivar el servicio',
+        titulo: error instanceof ApiError ? error.message : t('servicios.errorDesactivar'),
       });
     },
   });
@@ -131,16 +136,18 @@ export default function ServiciosPage() {
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Servicios</h1>
+            <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">
+              {t('comun.servicios')}
+            </h1>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Los servicios que ofrece tu negocio y su duración/precio.
+              {t('servicios.subtitulo')}
             </p>
           </div>
           <div className="flex items-center gap-3">
             <ToggleVista vista={vista} onCambiar={setVista} />
             <Boton onClick={abrirCrear}>
               <Plus className="h-4 w-4" aria-hidden="true" />
-              Nuevo servicio
+              {t('servicios.nuevoServicio')}
             </Boton>
           </div>
         </div>
@@ -157,16 +164,12 @@ export default function ServiciosPage() {
               <SkeletonTable filas={6} columnas={4} />
             ))}
 
-          {serviciosQuery.isError && (
-            <p className="text-sm text-danger">No se pudo cargar la lista de servicios.</p>
-          )}
+          {serviciosQuery.isError && <p className="text-sm text-danger">{t('servicios.error')}</p>}
 
           {serviciosQuery.data?.data.length === 0 && (
             <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-300 py-12 text-center dark:border-slate-700">
               <Tag className="h-8 w-8 text-slate-300 dark:text-slate-600" aria-hidden="true" />
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Todavía no tienes servicios registrados.
-              </p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{t('servicios.vacio')}</p>
             </div>
           )}
 
@@ -188,11 +191,13 @@ export default function ServiciosPage() {
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400">
                   <tr>
-                    <th className="px-4 py-2 font-medium">Servicio</th>
-                    <th className="px-4 py-2 font-medium">Duración</th>
-                    <th className="px-4 py-2 font-medium">Precio</th>
-                    <th className="px-4 py-2 font-medium">Estado</th>
-                    <th className="px-4 py-2 font-medium text-right">Acciones</th>
+                    <th className="px-4 py-2 font-medium">{t('servicios.columnaServicio')}</th>
+                    <th className="px-4 py-2 font-medium">{t('servicios.columnaDuracion')}</th>
+                    <th className="px-4 py-2 font-medium">{t('servicios.columnaPrecio')}</th>
+                    <th className="px-4 py-2 font-medium">{t('notificaciones.columnaEstado')}</th>
+                    <th className="px-4 py-2 font-medium text-right">
+                      {t('reservas.columnaAcciones')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -209,10 +214,10 @@ export default function ServiciosPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                        {servicio.duracionMinutos} min
+                        {t('comun.minutosAbreviatura', { n: servicio.duracionMinutos })}
                       </td>
                       <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                        {formatearPrecio(servicio.precio)}
+                        {formatearPrecio(servicio.precio, i18n.language)}
                       </td>
                       <td className="px-4 py-3">
                         <BadgeEstado activo={servicio.activo} />
@@ -222,7 +227,7 @@ export default function ServiciosPage() {
                           <button
                             type="button"
                             onClick={() => abrirEditar(servicio)}
-                            aria-label={`Editar ${servicio.nombre}`}
+                            aria-label={t('comun.editarAriaLabel', { nombre: servicio.nombre })}
                             className="rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-primary-600 dark:text-slate-400 dark:hover:bg-slate-700"
                           >
                             <Pencil className="h-4 w-4" aria-hidden="true" />
@@ -231,7 +236,9 @@ export default function ServiciosPage() {
                             <button
                               type="button"
                               onClick={() => setServicioADesactivar(servicio)}
-                              aria-label={`Desactivar ${servicio.nombre}`}
+                              aria-label={t('comun.desactivarAriaLabel', {
+                                nombre: servicio.nombre,
+                              })}
                               className="rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-danger dark:text-slate-400 dark:hover:bg-slate-700"
                             >
                               <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -254,10 +261,10 @@ export default function ServiciosPage() {
                 disabled={pagina === 1}
                 onClick={() => setPagina((p) => p - 1)}
               >
-                Anterior
+                {t('comun.anterior')}
               </Boton>
               <span className="text-sm text-slate-500 dark:text-slate-400">
-                Página {pagina} de {totalPaginas}
+                {t('comun.paginaDe', { actual: pagina, total: totalPaginas })}
               </span>
               <Boton
                 variante="secundario"
@@ -265,7 +272,7 @@ export default function ServiciosPage() {
                 disabled={pagina === totalPaginas}
                 onClick={() => setPagina((p) => p + 1)}
               >
-                Siguiente
+                {t('comun.siguiente')}
               </Boton>
             </div>
           )}
@@ -275,7 +282,7 @@ export default function ServiciosPage() {
       <Modal
         abierto={modalAbierto}
         onCerrar={() => setModalAbierto(false)}
-        titulo={servicioEditando ? 'Editar servicio' : 'Nuevo servicio'}
+        titulo={servicioEditando ? t('servicios.tituloEditar') : t('servicios.tituloNuevo')}
       >
         <form
           onSubmit={handleSubmit((valores) => guardarMutation.mutate(valores))}
@@ -288,22 +295,22 @@ export default function ServiciosPage() {
             </p>
           )}
           <Input
-            label="Nombre del servicio"
+            label={t('servicios.nombreServicio')}
             variante={servicioEditando ? 'editar' : 'crear'}
             requerido
             error={errors.nombre?.message}
             {...register('nombre')}
           />
           <Input
-            label="Descripción"
+            label={t('servicios.descripcion')}
             variante={servicioEditando ? 'editar' : 'crear'}
-            hint="Opcional"
+            hint={t('comun.opcional')}
             error={errors.descripcion?.message}
             {...register('descripcion')}
           />
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
-              label="Duración (minutos)"
+              label={t('servicios.duracionMinutos')}
               type="number"
               min={1}
               max={1440}
@@ -313,7 +320,7 @@ export default function ServiciosPage() {
               {...register('duracionMinutos', { valueAsNumber: true })}
             />
             <Input
-              label="Precio (₡)"
+              label={t('servicios.precio')}
               type="number"
               min={0}
               step="0.01"
@@ -324,7 +331,7 @@ export default function ServiciosPage() {
             />
           </div>
           <Input
-            label="Color en el calendario"
+            label={t('servicios.colorCalendario')}
             type="color"
             variante={servicioEditando ? 'editar' : 'crear'}
             className="h-11 w-20 cursor-pointer p-1"
@@ -334,10 +341,10 @@ export default function ServiciosPage() {
 
           <div className="mt-2 flex justify-end gap-3">
             <Boton variante="secundario" type="button" onClick={() => setModalAbierto(false)}>
-              Cancelar
+              {t('comun.cancelar')}
             </Boton>
             <Boton type="submit" cargando={isSubmitting || guardarMutation.isPending}>
-              {servicioEditando ? 'Guardar cambios' : 'Crear servicio'}
+              {servicioEditando ? t('servicios.guardarCambios') : t('servicios.crearServicio')}
             </Boton>
           </div>
         </form>
@@ -345,8 +352,10 @@ export default function ServiciosPage() {
 
       <ConfirmDialog
         abierto={servicioADesactivar !== null}
-        titulo="Desactivar servicio"
-        descripcion={`¿Seguro que deseas desactivar "${servicioADesactivar?.nombre}"? Ya no podrá reservarse, pero se conserva su historial.`}
+        titulo={t('servicios.confirmarDesactivarTitulo')}
+        descripcion={t('servicios.confirmarDesactivarDescripcion', {
+          nombre: servicioADesactivar?.nombre ?? '',
+        })}
         onCancelar={() => setServicioADesactivar(null)}
         onConfirmar={() =>
           servicioADesactivar && desactivarMutation.mutate(servicioADesactivar.idServicio)
@@ -358,6 +367,7 @@ export default function ServiciosPage() {
 }
 
 function BadgeEstado({ activo }: { activo: boolean }) {
+  const { t } = useTranslation();
   return (
     <span
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -366,7 +376,7 @@ function BadgeEstado({ activo }: { activo: boolean }) {
           : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-500'
       }`}
     >
-      {activo ? 'Activo' : 'Inactivo'}
+      {activo ? t('comun.activo') : t('comun.inactivo')}
     </span>
   );
 }
@@ -380,6 +390,7 @@ function ServicioCard({
   onEditar: () => void;
   onDesactivar: () => void;
 }) {
+  const { t, i18n } = useTranslation();
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
       <div className="flex items-start justify-between gap-2">
@@ -397,7 +408,7 @@ function ServicioCard({
           <button
             type="button"
             onClick={onEditar}
-            aria-label={`Editar ${servicio.nombre}`}
+            aria-label={t('comun.editarAriaLabel', { nombre: servicio.nombre })}
             className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-primary-600 dark:text-slate-400 dark:hover:bg-slate-700"
           >
             <Pencil className="h-4 w-4" aria-hidden="true" />
@@ -406,7 +417,7 @@ function ServicioCard({
             <button
               type="button"
               onClick={onDesactivar}
-              aria-label={`Desactivar ${servicio.nombre}`}
+              aria-label={t('comun.desactivarAriaLabel', { nombre: servicio.nombre })}
               className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-danger dark:text-slate-400 dark:hover:bg-slate-700"
             >
               <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -422,9 +433,9 @@ function ServicioCard({
       <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
         <span className="inline-flex items-center gap-1.5">
           <Clock className="h-3.5 w-3.5" aria-hidden="true" />
-          {servicio.duracionMinutos} min
+          {t('comun.minutosAbreviatura', { n: servicio.duracionMinutos })}
         </span>
-        <span className="font-medium">{formatearPrecio(servicio.precio)}</span>
+        <span className="font-medium">{formatearPrecio(servicio.precio, i18n.language)}</span>
         <BadgeEstado activo={servicio.activo} />
       </div>
     </div>

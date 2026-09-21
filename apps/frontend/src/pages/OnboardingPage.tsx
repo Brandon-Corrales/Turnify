@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { Boton, SkeletonText, useToast } from '@/components/ui';
 import { negociosApi } from '@/lib/negocios-api';
 import { plantillasServicioApi } from '@/lib/plantillas-servicio-api';
 import { serviciosApi } from '@/lib/servicios-api';
 import { ApiError } from '@/lib/api';
-import { ETIQUETA_TIPO_NEGOCIO } from '@/lib/tipo-negocio';
+import { crearEtiquetaTipoNegocio } from '@/lib/tipo-negocio';
 
 /**
  * Precio sugerido de arranque para los servicios creados desde una
@@ -24,6 +25,7 @@ const PRECIO_SUGERIDO_DEFECTO = 5000;
  * completarla, el usuario simplemente no vuelve a navegar aquí.
  */
 export default function OnboardingPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const mostrarToast = useToast();
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
@@ -57,14 +59,14 @@ export default function OnboardingPage() {
         variante: 'exito',
         titulo:
           seleccionados.size > 0
-            ? `${seleccionados.size} servicio(s) creados`
-            : 'Listo para empezar',
+            ? t('onboarding.serviciosCreados', { n: seleccionados.size })
+            : t('onboarding.listoParaEmpezar'),
       });
       navigate('/', { replace: true });
     },
     onError: (error) => {
       const mensaje =
-        error instanceof ApiError ? error.message : 'No se pudieron crear los servicios';
+        error instanceof ApiError ? error.message : t('onboarding.errorCrearServicios');
       mostrarToast({ variante: 'error', titulo: mensaje });
     },
   });
@@ -82,20 +84,20 @@ export default function OnboardingPage() {
   const sinPlantillas = negocio?.tipoNegocio === 'otro' || (!cargando && plantillas.length === 0);
 
   const etiquetaVertical = useMemo(
-    () => (negocio ? ETIQUETA_TIPO_NEGOCIO[negocio.tipoNegocio] : ''),
-    [negocio],
+    () => (negocio ? crearEtiquetaTipoNegocio(t)[negocio.tipoNegocio] : ''),
+    [negocio, t],
   );
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10 dark:bg-slate-900">
       <div className="w-full max-w-lg rounded-xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <h1 className="text-2xl font-semibold text-primary-600 dark:text-primary-400">
-          ¿Qué servicios ofreces?
+          {t('onboarding.titulo')}
         </h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           {negocio
-            ? `Estas son sugerencias comunes para ${etiquetaVertical}. Puedes agregar más después.`
-            : 'Cargando tu negocio…'}
+            ? t('onboarding.subtituloConNegocio', { vertical: etiquetaVertical })
+            : t('onboarding.cargandoNegocio')}
         </p>
 
         <div className="mt-6">
@@ -103,8 +105,7 @@ export default function OnboardingPage() {
 
           {!cargando && sinPlantillas && (
             <p className="rounded-md bg-slate-50 p-4 text-sm text-slate-600 dark:bg-slate-900/50 dark:text-slate-300">
-              No hay plantillas sugeridas para tu tipo de negocio — puedes crear tus servicios desde
-              cero cuando quieras.
+              {t('onboarding.sinPlantillas')}
             </p>
           )}
 
@@ -123,7 +124,7 @@ export default function OnboardingPage() {
                       {plantilla.nombre}
                     </span>
                     <span className="text-xs text-slate-400 dark:text-slate-500">
-                      {plantilla.duracionMinutosSugerida} min
+                      {t('onboarding.minutos', { n: plantilla.duracionMinutosSugerida })}
                     </span>
                   </label>
                 </li>
@@ -139,8 +140,8 @@ export default function OnboardingPage() {
           onClick={() => crearSeleccionados.mutate()}
         >
           {sinPlantillas || seleccionados.size === 0
-            ? 'Continuar'
-            : `Crear ${seleccionados.size} servicio(s) y continuar`}
+            ? t('onboarding.continuar')
+            : t('onboarding.crearYContinuar', { n: seleccionados.size })}
         </Boton>
       </div>
     </div>

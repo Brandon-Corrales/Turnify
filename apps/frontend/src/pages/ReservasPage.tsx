@@ -1,22 +1,20 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { CalendarX2, Ban, User } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Boton, ConfirmDialog, Select, ToggleVista, useToast } from '@/components/ui';
 import { SkeletonCard, SkeletonTable } from '@/components/ui/Skeleton';
 import { useVistaPreferida } from '@/lib/vista-preferida';
 import { ApiError } from '@/lib/api';
-import { reservasApi, type EstadoReserva, type Reserva } from '@/lib/reservas-api';
+import {
+  crearEtiquetaEstadoReserva,
+  reservasApi,
+  type EstadoReserva,
+  type Reserva,
+} from '@/lib/reservas-api';
 
 const LIMITE = 12;
-
-const OPCIONES_ESTADO: { value: EstadoReserva | ''; label: string }[] = [
-  { value: '', label: 'Todos los estados' },
-  { value: 'pendiente', label: 'Pendiente' },
-  { value: 'confirmada', label: 'Confirmada' },
-  { value: 'cancelada', label: 'Cancelada' },
-  { value: 'ausente', label: 'Ausente' },
-];
 
 const ESTILO_ESTADO: Record<EstadoReserva, string> = {
   pendiente: 'bg-amber-50 text-warning dark:bg-amber-900/30 dark:text-amber-400',
@@ -25,15 +23,8 @@ const ESTILO_ESTADO: Record<EstadoReserva, string> = {
   ausente: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
 };
 
-const ETIQUETA_ESTADO: Record<EstadoReserva, string> = {
-  pendiente: 'Pendiente',
-  confirmada: 'Confirmada',
-  cancelada: 'Cancelada',
-  ausente: 'Ausente',
-};
-
-function formatearFechaHora(iso: string): string {
-  return new Date(iso).toLocaleString('es-CR', {
+function formatearFechaHora(iso: string, idioma: string): string {
+  return new Date(iso).toLocaleString(idioma.startsWith('en') ? 'en-US' : 'es-CR', {
     timeZone: 'America/Costa_Rica',
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -41,6 +32,7 @@ function formatearFechaHora(iso: string): string {
 }
 
 export default function ReservasPage() {
+  const { t, i18n } = useTranslation();
   const [pagina, setPagina] = useState(1);
   const [estado, setEstado] = useState<EstadoReserva | ''>('');
   const [vista, setVista] = useVistaPreferida('reservas');
@@ -48,6 +40,18 @@ export default function ReservasPage() {
 
   const mostrarToast = useToast();
   const queryClient = useQueryClient();
+
+  const etiquetaEstado = useMemo(() => crearEtiquetaEstadoReserva(t), [t]);
+  const opcionesEstado = useMemo(
+    () => [
+      { value: '', label: t('reservas.todosLosEstados') },
+      { value: 'pendiente', label: etiquetaEstado.pendiente },
+      { value: 'confirmada', label: etiquetaEstado.confirmada },
+      { value: 'cancelada', label: etiquetaEstado.cancelada },
+      { value: 'ausente', label: etiquetaEstado.ausente },
+    ],
+    [t, etiquetaEstado],
+  );
 
   const reservasQuery = useQuery({
     queryKey: ['reservas-admin', pagina, estado],
@@ -58,13 +62,13 @@ export default function ReservasPage() {
     mutationFn: (idReserva: string) => reservasApi.cancelar(idReserva),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['reservas-admin'] });
-      mostrarToast({ variante: 'exito', titulo: 'Reserva cancelada' });
+      mostrarToast({ variante: 'exito', titulo: t('reservas.reservaCancelada') });
       setReservaACancelar(null);
     },
     onError: (error) => {
       mostrarToast({
         variante: 'error',
-        titulo: error instanceof ApiError ? error.message : 'No se pudo cancelar la reserva',
+        titulo: error instanceof ApiError ? error.message : t('reservas.errorCancelar'),
       });
     },
   });
@@ -78,16 +82,17 @@ export default function ReservasPage() {
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Reservas</h1>
+            <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">
+              {t('comun.reservas')}
+            </h1>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Vista administrativa de todas las reservas. Para agendar o mover horarios, usa el
-              Calendario.
+              {t('reservas.subtitulo')}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Select
-              label="Estado"
-              opciones={OPCIONES_ESTADO}
+              label={t('reservas.estado')}
+              opciones={opcionesEstado}
               defaultValue={estado}
               onChange={(e) => {
                 setPagina(1);
@@ -111,9 +116,7 @@ export default function ReservasPage() {
               <SkeletonTable filas={6} columnas={5} />
             ))}
 
-          {reservasQuery.isError && (
-            <p className="text-sm text-danger">No se pudo cargar la lista de reservas.</p>
-          )}
+          {reservasQuery.isError && <p className="text-sm text-danger">{t('reservas.error')}</p>}
 
           {reservasQuery.data?.data.length === 0 && (
             <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-300 py-12 text-center dark:border-slate-700">
@@ -121,9 +124,7 @@ export default function ReservasPage() {
                 className="h-8 w-8 text-slate-300 dark:text-slate-600"
                 aria-hidden="true"
               />
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                No hay reservas para este filtro.
-              </p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{t('reservas.vacio')}</p>
             </div>
           )}
 
@@ -144,11 +145,13 @@ export default function ReservasPage() {
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400">
                   <tr>
-                    <th className="px-4 py-2 font-medium">Cliente</th>
-                    <th className="px-4 py-2 font-medium">Servicio</th>
-                    <th className="px-4 py-2 font-medium">Fecha</th>
-                    <th className="px-4 py-2 font-medium">Estado</th>
-                    <th className="px-4 py-2 font-medium text-right">Acciones</th>
+                    <th className="px-4 py-2 font-medium">{t('notificaciones.columnaCliente')}</th>
+                    <th className="px-4 py-2 font-medium">{t('reservas.columnaServicio')}</th>
+                    <th className="px-4 py-2 font-medium">{t('notificaciones.columnaFecha')}</th>
+                    <th className="px-4 py-2 font-medium">{t('notificaciones.columnaEstado')}</th>
+                    <th className="px-4 py-2 font-medium text-right">
+                      {t('reservas.columnaAcciones')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -161,13 +164,13 @@ export default function ReservasPage() {
                         {reserva.servicio?.nombre ?? '—'}
                       </td>
                       <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                        {formatearFechaHora(reserva.fechaHoraInicio)}
+                        {formatearFechaHora(reserva.fechaHoraInicio, i18n.language)}
                       </td>
                       <td className="px-4 py-3">
                         <span
                           className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${ESTILO_ESTADO[reserva.estado]}`}
                         >
-                          {ETIQUETA_ESTADO[reserva.estado]}
+                          {etiquetaEstado[reserva.estado]}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -176,7 +179,9 @@ export default function ReservasPage() {
                             <button
                               type="button"
                               onClick={() => setReservaACancelar(reserva)}
-                              aria-label={`Cancelar reserva de ${reserva.cliente?.nombreCompleto ?? ''}`}
+                              aria-label={t('reservas.cancelarAriaLabel', {
+                                nombre: reserva.cliente?.nombreCompleto ?? '',
+                              })}
                               className="rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-danger dark:text-slate-400 dark:hover:bg-slate-700"
                             >
                               <Ban className="h-4 w-4" aria-hidden="true" />
@@ -199,10 +204,10 @@ export default function ReservasPage() {
                 disabled={pagina === 1}
                 onClick={() => setPagina((p) => p - 1)}
               >
-                Anterior
+                {t('comun.anterior')}
               </Boton>
               <span className="text-sm text-slate-500 dark:text-slate-400">
-                Página {pagina} de {totalPaginas}
+                {t('comun.paginaDe', { actual: pagina, total: totalPaginas })}
               </span>
               <Boton
                 variante="secundario"
@@ -210,7 +215,7 @@ export default function ReservasPage() {
                 disabled={pagina === totalPaginas}
                 onClick={() => setPagina((p) => p + 1)}
               >
-                Siguiente
+                {t('comun.siguiente')}
               </Boton>
             </div>
           )}
@@ -219,8 +224,10 @@ export default function ReservasPage() {
 
       <ConfirmDialog
         abierto={reservaACancelar !== null}
-        titulo="Cancelar reserva"
-        descripcion={`¿Seguro que deseas cancelar la reserva de "${reservaACancelar?.cliente?.nombreCompleto ?? ''}"? Se notificará al cliente.`}
+        titulo={t('reservas.cancelarReserva')}
+        descripcion={t('reservas.confirmarCancelarDescripcion', {
+          nombre: reservaACancelar?.cliente?.nombreCompleto ?? '',
+        })}
         onCancelar={() => setReservaACancelar(null)}
         onConfirmar={() => reservaACancelar && cancelarMutation.mutate(reservaACancelar.idReserva)}
         cargando={cancelarMutation.isPending}
@@ -230,6 +237,8 @@ export default function ReservasPage() {
 }
 
 function ReservaCard({ reserva, onCancelar }: { reserva: Reserva; onCancelar: () => void }) {
+  const { t, i18n } = useTranslation();
+  const etiquetaEstado = useMemo(() => crearEtiquetaEstadoReserva(t), [t]);
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
       <div className="flex items-start justify-between gap-2">
@@ -245,7 +254,9 @@ function ReservaCard({ reserva, onCancelar }: { reserva: Reserva; onCancelar: ()
           <button
             type="button"
             onClick={onCancelar}
-            aria-label={`Cancelar reserva de ${reserva.cliente?.nombreCompleto ?? ''}`}
+            aria-label={t('reservas.cancelarAriaLabel', {
+              nombre: reserva.cliente?.nombreCompleto ?? '',
+            })}
             className="shrink-0 rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-danger dark:text-slate-400 dark:hover:bg-slate-700"
           >
             <Ban className="h-4 w-4" aria-hidden="true" />
@@ -253,13 +264,13 @@ function ReservaCard({ reserva, onCancelar }: { reserva: Reserva; onCancelar: ()
         )}
       </div>
       <p className="text-sm text-slate-500 dark:text-slate-400">
-        {formatearFechaHora(reserva.fechaHoraInicio)}
+        {formatearFechaHora(reserva.fechaHoraInicio, i18n.language)}
       </p>
       <div className="flex flex-wrap items-center gap-2">
         <span
           className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${ESTILO_ESTADO[reserva.estado]}`}
         >
-          {ETIQUETA_ESTADO[reserva.estado]}
+          {etiquetaEstado[reserva.estado]}
         </span>
         <span className="inline-flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
           <User className="h-3 w-3" aria-hidden="true" />

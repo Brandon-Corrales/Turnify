@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import {
   Bar,
   BarChart,
@@ -19,22 +21,17 @@ import { Boton } from '@/components/ui';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { negociosApi } from '@/lib/negocios-api';
 import { reportesApi, type ResumenReportes } from '@/lib/reportes-api';
-import type { EstadoReserva } from '@/lib/reservas-api';
+import { crearEtiquetaEstadoReserva, type EstadoReserva } from '@/lib/reservas-api';
 
 type Periodo = 'esteMes' | 'mesPasado' | 'ultimos3Meses';
 
-const ETIQUETA_PERIODO: Record<Periodo, string> = {
-  esteMes: 'Este mes',
-  mesPasado: 'Mes pasado',
-  ultimos3Meses: 'Últimos 3 meses',
-};
-
-const ETIQUETA_ESTADO: Record<EstadoReserva, string> = {
-  pendiente: 'Pendiente',
-  confirmada: 'Confirmada',
-  cancelada: 'Cancelada',
-  ausente: 'Ausente',
-};
+function crearEtiquetaPeriodo(t: TFunction): Record<Periodo, string> {
+  return {
+    esteMes: t('reportes.periodoEsteMes'),
+    mesPasado: t('reportes.periodoMesPasado'),
+    ultimos3Meses: t('reportes.periodoUltimos3Meses'),
+  };
+}
 
 const COLOR_ESTADO: Record<EstadoReserva, string> = {
   pendiente: '#d97706',
@@ -73,13 +70,16 @@ function formatearColones(monto: number): string {
   }).format(monto);
 }
 
-function formatearDiaCorto(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-CR', { day: 'numeric', month: 'short' });
+function formatearDiaCorto(iso: string, idioma: string): string {
+  return new Date(iso).toLocaleDateString(idioma.startsWith('en') ? 'en-US' : 'es-CR', {
+    day: 'numeric',
+    month: 'short',
+  });
 }
 
-function descargarCsv(resumen: ResumenReportes): void {
+function descargarCsv(resumen: ResumenReportes, t: TFunction): void {
   const filas = [
-    ['Fecha', 'Reservas'],
+    [t('reportes.csvColumnaFecha'), t('comun.reservas')],
     ...resumen.reservasPorDia.map((d) => [d.fecha, String(d.cantidad)]),
   ];
   const csv = filas.map((fila) => fila.join(',')).join('\n');
@@ -93,8 +93,11 @@ function descargarCsv(resumen: ResumenReportes): void {
 }
 
 export default function ReportesPage() {
+  const { t, i18n } = useTranslation();
   const [periodo, setPeriodo] = useState<Periodo>('esteMes');
   const { desde, hasta } = rangoDe(periodo);
+  const etiquetaPeriodo = useMemo(() => crearEtiquetaPeriodo(t), [t]);
+  const etiquetaEstado = useMemo(() => crearEtiquetaEstadoReserva(t), [t]);
 
   const negocioQuery = useQuery({
     queryKey: ['negocios', 'mi-negocio'],
@@ -110,10 +113,10 @@ export default function ReportesPage() {
   const datosBarras = useMemo(
     () =>
       resumenQuery.data?.reservasPorDia.map((d) => ({
-        fecha: formatearDiaCorto(d.fecha),
+        fecha: formatearDiaCorto(d.fecha, i18n.language),
         reservas: d.cantidad,
       })) ?? [],
-    [resumenQuery.data],
+    [resumenQuery.data, i18n.language],
   );
 
   const datosPastel = useMemo(() => {
@@ -121,11 +124,11 @@ export default function ReportesPage() {
     return (Object.entries(resumenQuery.data.reservasPorEstado) as [EstadoReserva, number][])
       .filter(([, cantidad]) => cantidad > 0)
       .map(([estado, cantidad]) => ({
-        estado: ETIQUETA_ESTADO[estado],
+        estado: etiquetaEstado[estado],
         cantidad,
         color: COLOR_ESTADO[estado],
       }));
-  }, [resumenQuery.data]);
+  }, [resumenQuery.data, etiquetaEstado]);
 
   const total = resumenQuery.data
     ? Object.values(resumenQuery.data.reservasPorEstado).reduce((a, b) => a + b, 0)
@@ -138,14 +141,16 @@ export default function ReportesPage() {
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Reportes</h1>
+            <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">
+              {t('reportes.titulo')}
+            </h1>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Reservas e ingresos estimados, calculados desde tus datos reales.
+              {t('reportes.subtitulo')}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex flex-wrap rounded-lg border border-slate-200 p-1 dark:border-slate-700">
-              {(Object.keys(ETIQUETA_PERIODO) as Periodo[]).map((p) => (
+              {(Object.keys(etiquetaPeriodo) as Periodo[]).map((p) => (
                 <button
                   key={p}
                   type="button"
@@ -156,7 +161,7 @@ export default function ReportesPage() {
                       : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
                   }`}
                 >
-                  {ETIQUETA_PERIODO[p]}
+                  {etiquetaPeriodo[p]}
                 </button>
               ))}
             </div>
@@ -166,21 +171,20 @@ export default function ReportesPage() {
               disabled={!exportacionHabilitada || !resumenQuery.data}
               title={
                 exportacionHabilitada
-                  ? 'Exportar reservas por día a CSV'
-                  : 'Exportar datos está disponible en el Plan de Pago'
+                  ? t('reportes.exportarTooltipHabilitado')
+                  : t('reportes.exportarTooltipDeshabilitado')
               }
-              onClick={() => resumenQuery.data && descargarCsv(resumenQuery.data)}
+              onClick={() => resumenQuery.data && descargarCsv(resumenQuery.data, t)}
             >
               <Download className="h-4 w-4" aria-hidden="true" />
-              Exportar
+              {t('reportes.exportar')}
             </Boton>
           </div>
         </div>
 
         {!exportacionHabilitada && (
           <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
-            La exportación de datos está disponible en el Plan de Pago — tu negocio está en el Plan
-            Gratis.
+            {t('reportes.avisoExportacionDeshabilitada')}
           </p>
         )}
 
@@ -192,9 +196,7 @@ export default function ReportesPage() {
           </div>
         )}
 
-        {resumenQuery.isError && (
-          <p className="mt-6 text-sm text-danger">No se pudo cargar el reporte de este período.</p>
-        )}
+        {resumenQuery.isError && <p className="mt-6 text-sm text-danger">{t('reportes.error')}</p>}
 
         {resumenQuery.data && (
           <>
@@ -206,7 +208,9 @@ export default function ReportesPage() {
                 <p className="mt-3 text-2xl font-semibold text-slate-900 dark:text-white">
                   {total}
                 </p>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Reservas totales</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  {t('reportes.reservasTotales')}
+                </p>
               </div>
               <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-warning dark:bg-amber-900/30">
@@ -215,7 +219,9 @@ export default function ReportesPage() {
                 <p className="mt-3 text-2xl font-semibold text-slate-900 dark:text-white">
                   {formatearColones(resumenQuery.data.ingresosEstimados)}
                 </p>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Ingresos estimados</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  {t('dashboard.ingresosEstimados')}
+                </p>
               </div>
               <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50 text-danger dark:bg-red-900/30">
@@ -224,7 +230,9 @@ export default function ReportesPage() {
                 <p className="mt-3 text-2xl font-semibold text-slate-900 dark:text-white">
                   {tasaCancelacion}%
                 </p>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Tasa de cancelación</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  {t('reportes.tasaCancelacion')}
+                </p>
               </div>
             </div>
 
@@ -235,11 +243,11 @@ export default function ReportesPage() {
                     className="h-4 w-4 text-primary-600 dark:text-primary-400"
                     aria-hidden="true"
                   />
-                  Reservas por día
+                  {t('dashboard.reservasPorDia')}
                 </div>
                 {total === 0 ? (
                   <p className="mt-8 text-center text-sm text-slate-500 dark:text-slate-400">
-                    No hay reservas en este período.
+                    {t('reportes.sinReservasPeriodo')}
                   </p>
                 ) : (
                   <div className="mt-4 h-64">
@@ -265,11 +273,11 @@ export default function ReportesPage() {
 
               <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
                 <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                  Reservas por estado
+                  {t('reportes.reservasPorEstado')}
                 </p>
                 {datosPastel.length === 0 ? (
                   <p className="mt-8 text-center text-sm text-slate-500 dark:text-slate-400">
-                    Sin datos todavía.
+                    {t('reportes.sinDatos')}
                   </p>
                 ) : (
                   <div className="mt-4 h-64">

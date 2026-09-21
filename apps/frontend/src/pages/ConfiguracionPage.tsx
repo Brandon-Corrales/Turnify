@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { Clock } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Select, useToast } from '@/components/ui';
@@ -9,15 +11,19 @@ import { ApiError } from '@/lib/api';
 import { disponibilidadApi, type Disponibilidad } from '@/lib/disponibilidad-api';
 import { usuariosApi } from '@/lib/usuarios-api';
 
-const DIAS = [
-  { valor: 0, etiqueta: 'Domingo' },
-  { valor: 1, etiqueta: 'Lunes' },
-  { valor: 2, etiqueta: 'Martes' },
-  { valor: 3, etiqueta: 'Miércoles' },
-  { valor: 4, etiqueta: 'Jueves' },
-  { valor: 5, etiqueta: 'Viernes' },
-  { valor: 6, etiqueta: 'Sábado' },
+const DIAS_CLAVE = [
+  { valor: 0, clave: 'domingo' },
+  { valor: 1, clave: 'lunes' },
+  { valor: 2, clave: 'martes' },
+  { valor: 3, clave: 'miercoles' },
+  { valor: 4, clave: 'jueves' },
+  { valor: 5, clave: 'viernes' },
+  { valor: 6, clave: 'sabado' },
 ] as const;
+
+function crearDias(t: TFunction) {
+  return DIAS_CLAVE.map(({ valor, clave }) => ({ valor, etiqueta: t(`diaSemana.${clave}`) }));
+}
 
 const HORA_INICIO_DEFECTO = '09:00';
 const HORA_FIN_DEFECTO = '18:00';
@@ -31,7 +37,7 @@ interface FilaDia {
 }
 
 function filasIniciales(disponibilidad: Disponibilidad[]): FilaDia[] {
-  return DIAS.map(({ valor }) => {
+  return DIAS_CLAVE.map(({ valor }) => {
     // Un mismo día puede tener varias franjas (ej. mañana y tarde) — la
     // pantalla maneja UNA franja por día (el caso común); si hay más de
     // una, se muestra/edita la primera activa (o la primera que exista).
@@ -64,10 +70,12 @@ function filasIniciales(disponibilidad: Disponibilidad[]): FilaDia[] {
  * grande.
  */
 export default function ConfiguracionPage() {
+  const { t } = useTranslation();
   const { usuario } = useAuth();
   const mostrarToast = useToast();
   const queryClient = useQueryClient();
 
+  const dias = useMemo(() => crearDias(t), [t]);
   const usuariosQuery = useQuery({ queryKey: ['usuarios'], queryFn: usuariosApi.listar });
   const empleadosActivos = useMemo(
     () => usuariosQuery.data?.data.filter((u) => u.activo) ?? [],
@@ -114,9 +122,9 @@ export default function ConfiguracionPage() {
     mutationFn: disponibilidadApi.crear,
     onSuccess: () => {
       invalidar();
-      mostrarToast({ variante: 'exito', titulo: 'Horario activado' });
+      mostrarToast({ variante: 'exito', titulo: t('configuracion.horarioActivado') });
     },
-    onError: (error) => manejarError(error, 'No se pudo activar ese día'),
+    onError: (error) => manejarError(error, t('configuracion.errorActivar')),
   });
 
   const actualizarMutation = useMutation({
@@ -128,16 +136,16 @@ export default function ConfiguracionPage() {
       payload: Parameters<typeof disponibilidadApi.actualizar>[1];
     }) => disponibilidadApi.actualizar(id, payload),
     onSuccess: () => invalidar(),
-    onError: (error) => manejarError(error, 'No se pudo actualizar ese horario'),
+    onError: (error) => manejarError(error, t('configuracion.errorActualizar')),
   });
 
   const desactivarMutation = useMutation({
     mutationFn: disponibilidadApi.eliminar,
     onSuccess: () => {
       invalidar();
-      mostrarToast({ variante: 'exito', titulo: 'Horario desactivado' });
+      mostrarToast({ variante: 'exito', titulo: t('configuracion.horarioDesactivado') });
     },
-    onError: (error) => manejarError(error, 'No se pudo desactivar ese día'),
+    onError: (error) => manejarError(error, t('configuracion.errorDesactivar')),
   });
 
   const alCambiarActivo = (fila: FilaDia, activo: boolean) => {
@@ -185,16 +193,17 @@ export default function ConfiguracionPage() {
   return (
     <AppLayout>
       <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Configuración</h1>
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">
+          {t('comun.configuracion')}
+        </h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Definí el horario laboral de tu negocio — las reservas (propias y las que hagan tus
-          clientes por el enlace público) solo se pueden agendar dentro de estos horarios.
+          {t('configuracion.subtitulo')}
         </p>
 
         {empleadosActivos.length > 1 && (
           <div className="mt-6 max-w-xs">
             <Select
-              label="Empleado"
+              label={t('configuracion.empleado')}
               opciones={empleadosActivos.map((e) => ({
                 value: e.idUsuario,
                 label: e.nombreCompleto,
@@ -209,7 +218,7 @@ export default function ConfiguracionPage() {
           <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-3 dark:border-slate-700">
             <Clock className="h-4 w-4 text-primary-600 dark:text-primary-400" aria-hidden="true" />
             <h2 className="text-sm font-medium text-slate-700 dark:text-slate-200">
-              Horario laboral semanal
+              {t('configuracion.horarioSemanal')}
             </h2>
           </div>
 
@@ -232,7 +241,7 @@ export default function ConfiguracionPage() {
                       className="h-5 w-5 shrink-0 rounded border-slate-300 text-primary-600 focus:ring-primary-500 dark:border-slate-600"
                     />
                     <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                      {DIAS.find((d) => d.valor === fila.diaSemana)?.etiqueta}
+                      {dias.find((d) => d.valor === fila.diaSemana)?.etiqueta}
                     </span>
                   </label>
 
@@ -243,21 +252,29 @@ export default function ConfiguracionPage() {
                         value={fila.horaInicio}
                         onChange={(e) => alCambiarHora(fila, 'horaInicio', e.target.value)}
                         onBlur={() => alGuardarHora(fila)}
-                        aria-label={`Hora de inicio, ${DIAS.find((d) => d.valor === fila.diaSemana)?.etiqueta}`}
+                        aria-label={t('configuracion.horaInicioAriaLabel', {
+                          dia: dias.find((d) => d.valor === fila.diaSemana)?.etiqueta,
+                        })}
                         className="h-10 rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-900 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 focus:outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                       />
-                      <span className="text-sm text-slate-400">a</span>
+                      <span className="text-sm text-slate-400">
+                        {t('configuracion.separadorHoras')}
+                      </span>
                       <input
                         type="time"
                         value={fila.horaFin}
                         onChange={(e) => alCambiarHora(fila, 'horaFin', e.target.value)}
                         onBlur={() => alGuardarHora(fila)}
-                        aria-label={`Hora de fin, ${DIAS.find((d) => d.valor === fila.diaSemana)?.etiqueta}`}
+                        aria-label={t('configuracion.horaFinAriaLabel', {
+                          dia: dias.find((d) => d.valor === fila.diaSemana)?.etiqueta,
+                        })}
                         className="h-10 rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-900 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 focus:outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                       />
                     </div>
                   ) : (
-                    <span className="text-sm text-slate-400 dark:text-slate-500">Cerrado</span>
+                    <span className="text-sm text-slate-400 dark:text-slate-500">
+                      {t('configuracion.cerrado')}
+                    </span>
                   )}
                 </li>
               ))}
