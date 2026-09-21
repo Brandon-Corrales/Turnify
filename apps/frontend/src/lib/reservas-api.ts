@@ -41,6 +41,14 @@ export interface ReprogramarPayload {
   fechaHoraInicio: string;
 }
 
+export interface CrearReservaPayload {
+  idCliente: string;
+  idServicio: string;
+  idUsuario: string;
+  fechaHoraInicio: string;
+  notas?: string;
+}
+
 function construirQuery(params: Record<string, string | number | undefined>): string {
   const busqueda = new URLSearchParams();
   for (const [clave, valor] of Object.entries(params)) {
@@ -54,6 +62,10 @@ function construirQuery(params: Record<string, string | number | undefined>): st
 const LIMITE_MAXIMO_BACKEND = 100;
 
 export const reservasApi = {
+  /** Sin `origen`: el backend lo defaultea a ADMIN (CrearReservaDto), que es justo lo que corresponde para una reserva creada por el propio negocio desde el Calendario. */
+  crear: (payload: CrearReservaPayload) =>
+    apiFetch<Reserva>('/reservas', { method: 'POST', body: payload }),
+
   listar: ({
     desde,
     hasta,
