@@ -1,0 +1,26 @@
+{
+  "name": "turnify",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Plataforma de reservas y turnos con notificaciones automatizadas — EIF409, UNA Costa Rica",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "backend:dev": "npm run start:dev --workspace=apps/backend",
+    "backend:migrate": "npm run migration:run --workspace=apps/backend",
+    "backend:seed": "npm run seed --workspace=apps/backend",
+    "frontend:dev": "npm run dev --workspace=apps/frontend",
+    "lint": "npm run lint --workspace=apps/backend && npm run lint --workspace=apps/frontend",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "^3.9.8"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
