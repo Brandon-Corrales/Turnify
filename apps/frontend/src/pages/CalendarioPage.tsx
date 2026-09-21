@@ -2,17 +2,35 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
-import interactionPlugin from '@fullcalendar/interaction';
+import interactionPlugin, { type DateClickArg } from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
 import esLocale from '@fullcalendar/core/locales/es';
 import type { DatesSetArg, EventClickArg, EventDropArg } from '@fullcalendar/core';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Boton, ConfirmDialog, Modal, useToast } from '@/components/ui';
+import { Boton, ConfirmDialog, Input, Modal, Select, useToast } from '@/components/ui';
 import { reservasApi, type Reserva } from '@/lib/reservas-api';
 import { disponibilidadApi } from '@/lib/disponibilidad-api';
 import { usuariosApi } from '@/lib/usuarios-api';
+import { clientesApi } from '@/lib/clientes-api';
+import { serviciosApi } from '@/lib/servicios-api';
 import { ApiError } from '@/lib/api';
+import { nuevaReservaSchema, type NuevaReservaFormValues } from '@/lib/validation';
+
+function formatearFechaLocal(fecha: Date): string {
+  const año = fecha.getFullYear();
+  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+  const dia = String(fecha.getDate()).padStart(2, '0');
+  return `${año}-${mes}-${dia}`;
+}
+
+function formatearHoraLocal(fecha: Date): string {
+  return `${String(fecha.getHours()).padStart(2, '0')}:${String(fecha.getMinutes()).padStart(2, '0')}`;
+}
+
+const HORA_DEFECTO_CLIC_EN_DIA = '09:00';
 
 const PUNTO_QUIEBRE_MOBILE = 768;
 const VISTAS_LISTA = new Set(['listWeek', 'listDay']);
@@ -35,10 +53,12 @@ interface RangoVisible {
 }
 
 /**
- * Alcance de esta tarjeta: mostrar reservas + disponibilidad, cancelar y
- * reprogramar (arrastrar un evento). Crear una reserva nueva desde el
- * calendario es del wizard de reserva (tarjeta de frontend de después del
- * Seguimiento #2) — no se adelanta aquí.
+ * Muestra reservas + disponibilidad, cancela y reprograma (arrastrar un
+ * evento), y permite crear una reserva manualmente haciendo clic en un
+ * espacio del calendario — para llamadas telefónicas o clientes que llegan
+ * sin haber reservado antes por el enlace público. Reutiliza el mismo
+ * `POST /reservas` del staff (ya valida disponibilidad, traslapes y el
+ * límite de 20/mes del Plan Gratis), solo le falta la UI hasta ahora.
  */
 export default function CalendarioPage() {
   const calendarRef = useRef<FullCalendar>(null);
@@ -46,6 +66,7 @@ export default function CalendarioPage() {
   const [idUsuarioFiltro, setIdUsuarioFiltro] = useState('');
   const [reservaSeleccionada, setReservaSeleccionada] = useState<Reserva | null>(null);
   const [confirmandoCancelar, setConfirmandoCancelar] = useState(false);
+  const [modalNuevaReservaAbierto, setModalNuevaReservaAbierto] = useState(false);
   const mostrarToast = useToast();
   const queryClient = useQueryClient();
 
@@ -68,7 +89,28 @@ export default function CalendarioPage() {
   }, []);
 
   const { data: usuariosData } = useQuery({ queryKey: ['usuarios'], queryFn: usuariosApi.listar });
-  const empleados = usuariosData?.data ?? [];
+  const empleados = useMemo(() => usuariosData?.data ?? [], [usuariosData]);
+  const empleadosActivos = useMemo(() => empleados.filter((e) => e.activo), [empleados]);
+
+  // limit=100 alcanza para el <select> de la reserva manual, mismo criterio
+  // que usuariosApi.listar() — no hace falta paginación completa aquí.
+  const { data: clientesData } = useQuery({
+    queryKey: ['clientes', 'para-select'],
+    queryFn: () => clientesApi.listar(1, 100),
+  });
+  const clientesActivos = useMemo(
+    () => (clientesData?.data ?? []).filter((c) => c.activo),
+    [clientesData],
+  );
+
+  const { data: serviciosData } = useQuery({
+    queryKey: ['servicios', 'para-select'],
+    queryFn: () => serviciosApi.listar(1, 100),
+  });
+  const serviciosActivos = useMemo(
+    () => (serviciosData?.data ?? []).filter((s) => s.activo),
+    [serviciosData],
+  );
 
   const { data: disponibilidad = [] } = useQuery({
     queryKey: ['disponibilidad'],
@@ -142,6 +184,79 @@ export default function CalendarioPage() {
     setReservaSeleccionada(info.event.extendedProps.reserva as Reserva);
   }, []);
 
+  const {
+    register: registerNuevaReserva,
+    handleSubmit: handleSubmitNuevaReserva,
+    reset: resetNuevaReserva,
+    setError: setErrorNuevaReserva,
+    formState: { errors: erroresNuevaReserva, isSubmitting: enviandoNuevaReserva },
+  } = useForm<NuevaReservaFormValues>({
+    resolver: zodResolver(nuevaReservaSchema),
+    defaultValues: {
+      idCliente: '',
+      idServicio: '',
+      idUsuario: '',
+      fecha: '',
+      hora: HORA_DEFECTO_CLIC_EN_DIA,
+      notas: '',
+    },
+  });
+
+  // Abre el formulario de reserva manual precargado con una fecha/hora —
+  // bug real reportado probando la app: "no me deja seleccionar dentro del
+  // calendario para reservar". Se dispara tanto al hacer clic en un espacio
+  // vacío del calendario (día del mes o franja de semana/día) como desde el
+  // botón "Nueva reserva". En vista de mes o desde el botón no hay una hora
+  // útil que precargar (allDay), así que se usa la hora por defecto y el
+  // usuario la ajusta en el formulario.
+  const abrirModalNuevaReserva = useCallback(
+    (fecha: Date, allDay: boolean) => {
+      resetNuevaReserva({
+        idCliente: '',
+        idServicio: '',
+        idUsuario: idUsuarioFiltro || empleadosActivos[0]?.idUsuario || '',
+        fecha: formatearFechaLocal(fecha),
+        hora: allDay ? HORA_DEFECTO_CLIC_EN_DIA : formatearHoraLocal(fecha),
+        notas: '',
+      });
+      setModalNuevaReservaAbierto(true);
+    },
+    [resetNuevaReserva, idUsuarioFiltro, empleadosActivos],
+  );
+
+  const alHacerClicEnFecha = useCallback(
+    (info: DateClickArg) => abrirModalNuevaReserva(info.date, info.allDay),
+    [abrirModalNuevaReserva],
+  );
+
+  const crearReservaMutation = useMutation({
+    mutationFn: (valores: NuevaReservaFormValues) =>
+      reservasApi.crear({
+        idCliente: valores.idCliente,
+        idServicio: valores.idServicio,
+        idUsuario: valores.idUsuario,
+        fechaHoraInicio: new Date(`${valores.fecha}T${valores.hora}`).toISOString(),
+        notas: valores.notas || undefined,
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['reservas'] });
+      mostrarToast({ variante: 'exito', titulo: 'Reserva creada' });
+      setModalNuevaReservaAbierto(false);
+    },
+    onError: (error) => {
+      if (error instanceof ApiError && error.field) {
+        setErrorNuevaReserva(error.field as keyof NuevaReservaFormValues, {
+          message: error.message,
+        });
+        return;
+      }
+      mostrarToast({
+        variante: 'error',
+        titulo: error instanceof ApiError ? error.message : 'No se pudo crear la reserva',
+      });
+    },
+  });
+
   const alArrastrarEvento = useCallback(
     async (info: EventDropArg) => {
       const reserva = info.event.extendedProps.reserva as Reserva;
@@ -185,19 +300,22 @@ export default function CalendarioPage() {
       <div className="mx-auto max-w-6xl p-4 sm:p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Calendario</h1>
-          <select
-            value={idUsuarioFiltro}
-            onChange={(evento) => setIdUsuarioFiltro(evento.target.value)}
-            aria-label="Filtrar por empleado"
-            className="h-11 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-          >
-            <option value="">Todos los empleados</option>
-            {empleados.map((empleado) => (
-              <option key={empleado.idUsuario} value={empleado.idUsuario}>
-                {empleado.nombreCompleto}
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-wrap items-center gap-3">
+            <select
+              value={idUsuarioFiltro}
+              onChange={(evento) => setIdUsuarioFiltro(evento.target.value)}
+              aria-label="Filtrar por empleado"
+              className="h-11 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+            >
+              <option value="">Todos los empleados</option>
+              {empleados.map((empleado) => (
+                <option key={empleado.idUsuario} value={empleado.idUsuario}>
+                  {empleado.nombreCompleto}
+                </option>
+              ))}
+            </select>
+            <Boton onClick={() => abrirModalNuevaReserva(new Date(), true)}>Nueva reserva</Boton>
+          </div>
         </div>
 
         {/*
@@ -238,6 +356,7 @@ export default function CalendarioPage() {
               info.el.title = info.event.title;
             }}
             datesSet={alCambiarRangoVisible}
+            dateClick={alHacerClicEnFecha}
             eventClick={alHacerClicEnEvento}
             eventDrop={alArrastrarEvento}
           />
@@ -293,6 +412,87 @@ export default function CalendarioPage() {
         onConfirmar={confirmarCancelacion}
         onCancelar={() => setConfirmandoCancelar(false)}
       />
+
+      <Modal
+        abierto={modalNuevaReservaAbierto}
+        onCerrar={() => setModalNuevaReservaAbierto(false)}
+        titulo="Nueva reserva"
+      >
+        <form
+          onSubmit={handleSubmitNuevaReserva((valores) => crearReservaMutation.mutate(valores))}
+          noValidate
+          className="flex flex-col gap-4"
+        >
+          <Select
+            label="Cliente"
+            variante="crear"
+            requerido
+            placeholder="Selecciona un cliente"
+            opciones={clientesActivos.map((c) => ({ value: c.idCliente, label: c.nombreCompleto }))}
+            error={erroresNuevaReserva.idCliente?.message}
+            {...registerNuevaReserva('idCliente')}
+          />
+          <Select
+            label="Servicio"
+            variante="crear"
+            requerido
+            placeholder="Selecciona un servicio"
+            opciones={serviciosActivos.map((s) => ({ value: s.idServicio, label: s.nombre }))}
+            error={erroresNuevaReserva.idServicio?.message}
+            {...registerNuevaReserva('idServicio')}
+          />
+          <Select
+            label="Atiende"
+            variante="crear"
+            requerido
+            placeholder="Selecciona quién atiende"
+            opciones={empleadosActivos.map((e) => ({
+              value: e.idUsuario,
+              label: e.nombreCompleto,
+            }))}
+            error={erroresNuevaReserva.idUsuario?.message}
+            {...registerNuevaReserva('idUsuario')}
+          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              label="Fecha"
+              type="date"
+              variante="crear"
+              requerido
+              error={erroresNuevaReserva.fecha?.message}
+              {...registerNuevaReserva('fecha')}
+            />
+            <Input
+              label="Hora"
+              type="time"
+              variante="crear"
+              requerido
+              error={erroresNuevaReserva.hora?.message}
+              {...registerNuevaReserva('hora')}
+            />
+          </div>
+          <Input
+            label="Notas"
+            variante="crear"
+            hint="Opcional"
+            error={erroresNuevaReserva.notas?.message}
+            {...registerNuevaReserva('notas')}
+          />
+
+          <div className="mt-2 flex justify-end gap-3">
+            <Boton
+              variante="secundario"
+              type="button"
+              onClick={() => setModalNuevaReservaAbierto(false)}
+            >
+              Cancelar
+            </Boton>
+            <Boton type="submit" cargando={enviandoNuevaReserva || crearReservaMutation.isPending}>
+              Crear reserva
+            </Boton>
+          </div>
+        </form>
+      </Modal>
     </AppLayout>
   );
 }

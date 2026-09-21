@@ -76,3 +76,14 @@ export const servicioSchema = z.object({
 });
 
 export type ServicioFormValues = z.infer<typeof servicioSchema>;
+
+export const nuevaReservaSchema = z.object({
+  idCliente: z.string().min(1, 'Selecciona un cliente'),
+  idServicio: z.string().min(1, 'Selecciona un servicio'),
+  idUsuario: z.string().min(1, 'Selecciona quién atiende'),
+  fecha: z.string().min(1, 'La fecha es obligatoria'),
+  hora: z.string().min(1, 'La hora es obligatoria'),
+  notas: z.string().max(500).optional().or(z.literal('')),
+});
+
+export type NuevaReservaFormValues = z.infer<typeof nuevaReservaSchema>;
