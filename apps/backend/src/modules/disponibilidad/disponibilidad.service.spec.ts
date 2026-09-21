@@ -134,6 +134,22 @@ describe('DisponibilidadService', () => {
     ).rejects.toThrow(ForbiddenException);
   });
 
+  it('actualizar() puede reactivar un día apagado (activo: true) sin necesidad de borrar y recrear', async () => {
+    dispRepo.findOne.mockResolvedValue({
+      idDisponibilidad: 'disp-1',
+      idUsuario: EMPLEADO_ID,
+      diaSemana: 1,
+      horaInicio: '09:00',
+      horaFin: '12:00',
+      activo: false,
+    } as Disponibilidad);
+    await comoAdmin(() => service.actualizar('disp-1', { activo: true }));
+    expect(dispRepo.update).toHaveBeenCalledWith(
+      { idDisponibilidad: 'disp-1' },
+      { activo: true },
+    );
+  });
+
   it('desactivar() marca activo=false sin tocar otras columnas', async () => {
     dispRepo.findOne.mockResolvedValue({
       idDisponibilidad: 'disp-1',
