@@ -1,32 +1,18 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { Mail, MessageCircle, Pencil, Plus, Trash2, UserRound, UserRoundX } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Boton, ConfirmDialog, Input, Modal, Select, ToggleVista, useToast } from '@/components/ui';
 import { SkeletonCard, SkeletonTable } from '@/components/ui/Skeleton';
 import { useVistaPreferida } from '@/lib/vista-preferida';
 import { ApiError } from '@/lib/api';
-import { clienteSchema, type ClienteFormValues } from '@/lib/validation';
+import { crearClienteSchema, type ClienteFormValues } from '@/lib/validation';
 import { clientesApi, type Cliente } from '@/lib/clientes-api';
 
 const LIMITE = 12;
-
-const OPCIONES_CANAL = [
-  { value: 'email', label: 'Correo electrónico' },
-  { value: 'whatsapp', label: 'WhatsApp' },
-];
-
-const OPCIONES_IDIOMA = [
-  { value: 'es', label: 'Español' },
-  { value: 'en', label: 'Inglés' },
-];
-
-const OPCIONES_NIVEL = [
-  { value: 'gratis', label: 'Gratis' },
-  { value: 'premium', label: 'Premium' },
-];
 
 const VALORES_VACIOS: ClienteFormValues = {
   nombreCompleto: '',
@@ -39,6 +25,7 @@ const VALORES_VACIOS: ClienteFormValues = {
 };
 
 export default function ClientesPage() {
+  const { t } = useTranslation();
   const [pagina, setPagina] = useState(1);
   const [vista, setVista] = useVistaPreferida('clientes');
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -48,11 +35,34 @@ export default function ClientesPage() {
   const mostrarToast = useToast();
   const queryClient = useQueryClient();
 
+  const opcionesCanal = useMemo(
+    () => [
+      { value: 'email', label: t('clientes.opcionCanalEmail') },
+      { value: 'whatsapp', label: t('clientes.opcionCanalWhatsapp') },
+    ],
+    [t],
+  );
+  const opcionesIdioma = useMemo(
+    () => [
+      { value: 'es', label: t('clientes.opcionIdiomaEs') },
+      { value: 'en', label: t('clientes.opcionIdiomaEn') },
+    ],
+    [t],
+  );
+  const opcionesNivel = useMemo(
+    () => [
+      { value: 'gratis', label: t('clientes.opcionNivelGratis') },
+      { value: 'premium', label: t('clientes.opcionNivelPremium') },
+    ],
+    [t],
+  );
+
   const clientesQuery = useQuery({
     queryKey: ['clientes', pagina],
     queryFn: () => clientesApi.listar(pagina, LIMITE),
   });
 
+  const clienteSchema = useMemo(() => crearClienteSchema(t), [t]);
   const {
     register,
     handleSubmit,
@@ -99,7 +109,7 @@ export default function ClientesPage() {
       await queryClient.invalidateQueries({ queryKey: ['clientes'] });
       mostrarToast({
         variante: 'exito',
-        titulo: clienteEditando ? 'Cliente actualizado' : 'Cliente creado',
+        titulo: clienteEditando ? t('clientes.clienteActualizado') : t('clientes.clienteCreado'),
       });
       setModalAbierto(false);
     },
@@ -110,7 +120,7 @@ export default function ClientesPage() {
       }
       mostrarToast({
         variante: 'error',
-        titulo: error instanceof ApiError ? error.message : 'No se pudo guardar el cliente',
+        titulo: error instanceof ApiError ? error.message : t('clientes.errorGuardar'),
       });
     },
   });
@@ -119,13 +129,13 @@ export default function ClientesPage() {
     mutationFn: (idCliente: string) => clientesApi.desactivar(idCliente),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['clientes'] });
-      mostrarToast({ variante: 'exito', titulo: 'Cliente desactivado' });
+      mostrarToast({ variante: 'exito', titulo: t('clientes.clienteDesactivado') });
       setClienteADesactivar(null);
     },
     onError: (error) => {
       mostrarToast({
         variante: 'error',
-        titulo: error instanceof ApiError ? error.message : 'No se pudo desactivar el cliente',
+        titulo: error instanceof ApiError ? error.message : t('clientes.errorDesactivar'),
       });
     },
   });
@@ -139,16 +149,18 @@ export default function ClientesPage() {
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Clientes</h1>
+            <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">
+              {t('comun.clientes')}
+            </h1>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Gestiona la base de clientes de tu negocio.
+              {t('clientes.subtitulo')}
             </p>
           </div>
           <div className="flex items-center gap-3">
             <ToggleVista vista={vista} onCambiar={setVista} />
             <Boton onClick={abrirCrear}>
               <Plus className="h-4 w-4" aria-hidden="true" />
-              Nuevo cliente
+              {t('clientes.nuevoCliente')}
             </Boton>
           </div>
         </div>
@@ -165,9 +177,7 @@ export default function ClientesPage() {
               <SkeletonTable filas={6} columnas={5} />
             ))}
 
-          {clientesQuery.isError && (
-            <p className="text-sm text-danger">No se pudo cargar la lista de clientes.</p>
-          )}
+          {clientesQuery.isError && <p className="text-sm text-danger">{t('clientes.error')}</p>}
 
           {clientesQuery.data?.data.length === 0 && (
             <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-300 py-12 text-center dark:border-slate-700">
@@ -175,9 +185,7 @@ export default function ClientesPage() {
                 className="h-8 w-8 text-slate-300 dark:text-slate-600"
                 aria-hidden="true"
               />
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Todavía no tienes clientes registrados.
-              </p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{t('clientes.vacio')}</p>
             </div>
           )}
 
@@ -199,12 +207,14 @@ export default function ClientesPage() {
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400">
                   <tr>
-                    <th className="px-4 py-2 font-medium">Nombre</th>
-                    <th className="px-4 py-2 font-medium">Correo</th>
-                    <th className="px-4 py-2 font-medium">Canal</th>
-                    <th className="px-4 py-2 font-medium">Nivel</th>
-                    <th className="px-4 py-2 font-medium">Estado</th>
-                    <th className="px-4 py-2 font-medium text-right">Acciones</th>
+                    <th className="px-4 py-2 font-medium">{t('clientes.columnaNombre')}</th>
+                    <th className="px-4 py-2 font-medium">{t('clientes.columnaCorreo')}</th>
+                    <th className="px-4 py-2 font-medium">{t('notificaciones.columnaCanal')}</th>
+                    <th className="px-4 py-2 font-medium">{t('clientes.columnaNivel')}</th>
+                    <th className="px-4 py-2 font-medium">{t('notificaciones.columnaEstado')}</th>
+                    <th className="px-4 py-2 font-medium text-right">
+                      {t('reservas.columnaAcciones')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -230,7 +240,9 @@ export default function ClientesPage() {
                           <button
                             type="button"
                             onClick={() => abrirEditar(cliente)}
-                            aria-label={`Editar ${cliente.nombreCompleto}`}
+                            aria-label={t('comun.editarAriaLabel', {
+                              nombre: cliente.nombreCompleto,
+                            })}
                             className="rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-primary-600 dark:text-slate-400 dark:hover:bg-slate-700"
                           >
                             <Pencil className="h-4 w-4" aria-hidden="true" />
@@ -239,7 +251,9 @@ export default function ClientesPage() {
                             <button
                               type="button"
                               onClick={() => setClienteADesactivar(cliente)}
-                              aria-label={`Desactivar ${cliente.nombreCompleto}`}
+                              aria-label={t('comun.desactivarAriaLabel', {
+                                nombre: cliente.nombreCompleto,
+                              })}
                               className="rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-danger dark:text-slate-400 dark:hover:bg-slate-700"
                             >
                               <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -262,10 +276,10 @@ export default function ClientesPage() {
                 disabled={pagina === 1}
                 onClick={() => setPagina((p) => p - 1)}
               >
-                Anterior
+                {t('comun.anterior')}
               </Boton>
               <span className="text-sm text-slate-500 dark:text-slate-400">
-                Página {pagina} de {totalPaginas}
+                {t('comun.paginaDe', { actual: pagina, total: totalPaginas })}
               </span>
               <Boton
                 variante="secundario"
@@ -273,7 +287,7 @@ export default function ClientesPage() {
                 disabled={pagina === totalPaginas}
                 onClick={() => setPagina((p) => p + 1)}
               >
-                Siguiente
+                {t('comun.siguiente')}
               </Boton>
             </div>
           )}
@@ -283,7 +297,7 @@ export default function ClientesPage() {
       <Modal
         abierto={modalAbierto}
         onCerrar={() => setModalAbierto(false)}
-        titulo={clienteEditando ? 'Editar cliente' : 'Nuevo cliente'}
+        titulo={clienteEditando ? t('clientes.tituloEditar') : t('clientes.tituloNuevo')}
       >
         <form
           onSubmit={handleSubmit((valores) => guardarMutation.mutate(valores))}
@@ -291,14 +305,14 @@ export default function ClientesPage() {
           className="flex flex-col gap-4"
         >
           <Input
-            label="Nombre completo"
+            label={t('clientes.nombreCompleto')}
             variante={clienteEditando ? 'editar' : 'crear'}
             requerido
             error={errors.nombreCompleto?.message}
             {...register('nombreCompleto')}
           />
           <Input
-            label="Correo electrónico"
+            label={t('comun.correoElectronico')}
             type="email"
             variante={clienteEditando ? 'editar' : 'crear'}
             requerido
@@ -306,51 +320,51 @@ export default function ClientesPage() {
             {...register('correoElectronico')}
           />
           <Input
-            label="Teléfono"
+            label={t('clientes.telefono')}
             type="tel"
             variante={clienteEditando ? 'editar' : 'crear'}
-            hint="Opcional"
+            hint={t('comun.opcional')}
             error={errors.telefono?.message}
             {...register('telefono')}
           />
           <div className="grid gap-4 sm:grid-cols-2">
             <Select
-              label="Canal preferido"
+              label={t('clientes.canalPreferido')}
               variante={clienteEditando ? 'editar' : 'crear'}
-              opciones={OPCIONES_CANAL}
-              hint="WhatsApp requiere cliente Premium y Plan de Pago"
+              opciones={opcionesCanal}
+              hint={t('clientes.hintCanalPreferido')}
               error={errors.canalPreferido?.message}
               {...register('canalPreferido')}
             />
             <Select
-              label="Idioma preferido"
+              label={t('clientes.idiomaPreferido')}
               variante={clienteEditando ? 'editar' : 'crear'}
-              opciones={OPCIONES_IDIOMA}
+              opciones={opcionesIdioma}
               error={errors.idiomaPreferido?.message}
               {...register('idiomaPreferido')}
             />
           </div>
           <Select
-            label="Nivel de cliente"
+            label={t('clientes.nivelCliente')}
             variante={clienteEditando ? 'editar' : 'crear'}
-            opciones={OPCIONES_NIVEL}
+            opciones={opcionesNivel}
             error={errors.nivelCliente?.message}
             {...register('nivelCliente')}
           />
           <Input
-            label="Notas"
+            label={t('clientes.notas')}
             variante={clienteEditando ? 'editar' : 'crear'}
-            hint="Opcional"
+            hint={t('comun.opcional')}
             error={errors.notas?.message}
             {...register('notas')}
           />
 
           <div className="mt-2 flex justify-end gap-3">
             <Boton variante="secundario" type="button" onClick={() => setModalAbierto(false)}>
-              Cancelar
+              {t('comun.cancelar')}
             </Boton>
             <Boton type="submit" cargando={isSubmitting || guardarMutation.isPending}>
-              {clienteEditando ? 'Guardar cambios' : 'Crear cliente'}
+              {clienteEditando ? t('servicios.guardarCambios') : t('clientes.crearCliente')}
             </Boton>
           </div>
         </form>
@@ -358,8 +372,10 @@ export default function ClientesPage() {
 
       <ConfirmDialog
         abierto={clienteADesactivar !== null}
-        titulo="Desactivar cliente"
-        descripcion={`¿Seguro que deseas desactivar a "${clienteADesactivar?.nombreCompleto}"? Su historial de reservas se conserva.`}
+        titulo={t('clientes.confirmarDesactivarTitulo')}
+        descripcion={t('clientes.confirmarDesactivarDescripcion', {
+          nombre: clienteADesactivar?.nombreCompleto ?? '',
+        })}
         onCancelar={() => setClienteADesactivar(null)}
         onConfirmar={() =>
           clienteADesactivar && desactivarMutation.mutate(clienteADesactivar.idCliente)
@@ -371,16 +387,20 @@ export default function ClientesPage() {
 }
 
 function BadgeCanal({ canal }: { canal: Cliente['canalPreferido'] }) {
+  const { t } = useTranslation();
   const Icono = canal === 'whatsapp' ? MessageCircle : Mail;
   return (
     <span className="inline-flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300">
       <Icono className="h-3.5 w-3.5" aria-hidden="true" />
-      {canal === 'whatsapp' ? 'WhatsApp' : 'Correo'}
+      {canal === 'whatsapp'
+        ? t('notificaciones.canalWhatsappCorto')
+        : t('clientes.badgeCanalCorreo')}
     </span>
   );
 }
 
 function BadgeNivel({ nivel }: { nivel: Cliente['nivelCliente'] }) {
+  const { t } = useTranslation();
   return (
     <span
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -389,12 +409,13 @@ function BadgeNivel({ nivel }: { nivel: Cliente['nivelCliente'] }) {
           : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
       }`}
     >
-      {nivel === 'premium' ? 'Premium' : 'Gratis'}
+      {nivel === 'premium' ? t('clientes.opcionNivelPremium') : t('clientes.opcionNivelGratis')}
     </span>
   );
 }
 
 function BadgeEstado({ activo }: { activo: boolean }) {
+  const { t } = useTranslation();
   return (
     <span
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -403,7 +424,7 @@ function BadgeEstado({ activo }: { activo: boolean }) {
           : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-500'
       }`}
     >
-      {activo ? 'Activo' : 'Inactivo'}
+      {activo ? t('comun.activo') : t('comun.inactivo')}
     </span>
   );
 }
@@ -417,6 +438,7 @@ function ClienteCard({
   onEditar: () => void;
   onDesactivar: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
       <div className="flex items-start justify-between gap-2">
@@ -432,7 +454,7 @@ function ClienteCard({
           <button
             type="button"
             onClick={onEditar}
-            aria-label={`Editar ${cliente.nombreCompleto}`}
+            aria-label={t('comun.editarAriaLabel', { nombre: cliente.nombreCompleto })}
             className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-primary-600 dark:text-slate-400 dark:hover:bg-slate-700"
           >
             <Pencil className="h-4 w-4" aria-hidden="true" />
@@ -441,7 +463,7 @@ function ClienteCard({
             <button
               type="button"
               onClick={onDesactivar}
-              aria-label={`Desactivar ${cliente.nombreCompleto}`}
+              aria-label={t('comun.desactivarAriaLabel', { nombre: cliente.nombreCompleto })}
               className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-danger dark:text-slate-400 dark:hover:bg-slate-700"
             >
               <UserRoundX className="h-4 w-4" aria-hidden="true" />

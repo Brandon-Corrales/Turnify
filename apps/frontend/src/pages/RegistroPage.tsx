@@ -1,22 +1,26 @@
+import { useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Boton, Input, Select, useToast } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/lib/api';
-import { registroSchema, type RegistroFormValues } from '@/lib/validation';
-import { ETIQUETA_TIPO_NEGOCIO, TIPOS_NEGOCIO } from '@/lib/tipo-negocio';
-
-const OPCIONES_TIPO_NEGOCIO = TIPOS_NEGOCIO.map((valor) => ({
-  value: valor,
-  label: ETIQUETA_TIPO_NEGOCIO[valor],
-}));
+import { crearRegistroSchema, type RegistroFormValues } from '@/lib/validation';
+import { crearEtiquetaTipoNegocio, TIPOS_NEGOCIO } from '@/lib/tipo-negocio';
 
 export default function RegistroPage() {
+  const { t } = useTranslation();
   const { registrar } = useAuth();
   const navigate = useNavigate();
   const mostrarToast = useToast();
 
+  const opcionesTipoNegocio = useMemo(() => {
+    const etiqueta = crearEtiquetaTipoNegocio(t);
+    return TIPOS_NEGOCIO.map((valor) => ({ value: valor, label: etiqueta[valor] }));
+  }, [t]);
+
+  const registroSchema = useMemo(() => crearRegistroSchema(t), [t]);
   const {
     register,
     handleSubmit,
@@ -29,8 +33,8 @@ export default function RegistroPage() {
       await registrar({ ...valores, telefonoNegocio: valores.telefonoNegocio || undefined });
       mostrarToast({
         variante: 'exito',
-        titulo: 'Negocio registrado',
-        descripcion: 'Ya puedes empezar a usar Turnify',
+        titulo: t('registro.exitoTitulo'),
+        descripcion: t('registro.exitoDescripcion'),
       });
       navigate('/onboarding', { replace: true });
     } catch (error) {
@@ -38,8 +42,7 @@ export default function RegistroPage() {
         setError('correoAdmin', { message: error.message });
         return;
       }
-      const mensaje =
-        error instanceof ApiError ? error.message : 'No se pudo completar el registro';
+      const mensaje = error instanceof ApiError ? error.message : t('registro.errorGenerico');
       mostrarToast({ variante: 'error', titulo: mensaje });
     }
   };
@@ -48,33 +51,33 @@ export default function RegistroPage() {
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10 dark:bg-slate-900">
       <div className="w-full max-w-lg rounded-xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <h1 className="text-center text-2xl font-semibold text-primary-600 dark:text-primary-400">
-          Turnify
+          {t('comun.turnify')}
         </h1>
         <p className="mt-1 text-center text-sm text-slate-500 dark:text-slate-400">
-          Registra tu negocio y su administrador
+          {t('registro.subtitulo')}
         </p>
 
         <form onSubmit={handleSubmit(alEnviar)} noValidate className="mt-6 flex flex-col gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
-              label="Nombre del negocio"
+              label={t('registro.nombreNegocio')}
               variante="crear"
               requerido
               error={errors.nombreNegocio?.message}
               {...register('nombreNegocio')}
             />
             <Select
-              label="Tipo de negocio"
+              label={t('registro.tipoNegocio')}
               variante="crear"
-              placeholder="Selecciona uno"
+              placeholder={t('registro.seleccionaUno')}
               requerido
-              opciones={OPCIONES_TIPO_NEGOCIO}
+              opciones={opcionesTipoNegocio}
               error={errors.tipoNegocio?.message}
               {...register('tipoNegocio')}
             />
           </div>
           <Input
-            label="Correo del negocio"
+            label={t('registro.correoNegocio')}
             type="email"
             variante="crear"
             requerido
@@ -82,10 +85,10 @@ export default function RegistroPage() {
             {...register('correoNegocio')}
           />
           <Input
-            label="Teléfono del negocio"
+            label={t('registro.telefonoNegocio')}
             type="tel"
             variante="crear"
-            hint="Opcional"
+            hint={t('comun.opcional')}
             error={errors.telefonoNegocio?.message}
             {...register('telefonoNegocio')}
           />
@@ -93,14 +96,14 @@ export default function RegistroPage() {
           <hr className="my-2 border-slate-200 dark:border-slate-700" />
 
           <Input
-            label="Nombre completo del administrador"
+            label={t('registro.nombreCompletoAdmin')}
             variante="crear"
             requerido
             error={errors.nombreCompletoAdmin?.message}
             {...register('nombreCompletoAdmin')}
           />
           <Input
-            label="Correo del administrador"
+            label={t('registro.correoAdmin')}
             type="email"
             autoComplete="email"
             variante="crear"
@@ -109,28 +112,28 @@ export default function RegistroPage() {
             {...register('correoAdmin')}
           />
           <Input
-            label="Contraseña"
+            label={t('comun.contrasena')}
             type="password"
             autoComplete="new-password"
             variante="crear"
             requerido
-            hint="Mínimo 8 caracteres, con al menos una letra y un número"
+            hint={t('registro.hintContrasena')}
             error={errors.contrasena?.message}
             {...register('contrasena')}
           />
 
           <Boton type="submit" cargando={isSubmitting} className="mt-2 w-full">
-            Crear cuenta
+            {t('registro.crearCuenta')}
           </Boton>
         </form>
 
         <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
-          ¿Ya tienes cuenta?{' '}
+          {t('registro.yaTienesCuenta')}{' '}
           <Link
             to="/login"
             className="font-medium text-primary-600 hover:underline dark:text-primary-400"
           >
-            Inicia sesión
+            {t('comun.iniciarSesion')}
           </Link>
         </p>
       </div>

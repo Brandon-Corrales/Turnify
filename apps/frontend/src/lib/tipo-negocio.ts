@@ -1,3 +1,5 @@
+import type { TFunction } from 'i18next';
+
 /** Espejo del enum TipoNegocio del backend (database/entities/enums.ts) — mismo orden y valores. */
 export const TIPOS_NEGOCIO = [
   'barberia',
@@ -14,15 +16,18 @@ export const TIPOS_NEGOCIO = [
 
 export type TipoNegocio = (typeof TIPOS_NEGOCIO)[number];
 
-export const ETIQUETA_TIPO_NEGOCIO: Record<TipoNegocio, string> = {
-  barberia: 'Barbería',
-  salon_belleza: 'Salón de belleza',
-  clinica: 'Clínica (consulta general/médica)',
-  clinica_dental: 'Clínica dental',
-  spa: 'Spa',
-  estudio_tatuajes: 'Estudio de tatuajes',
-  entrenamiento_personal: 'Entrenamiento personal',
-  estetica: 'Estética',
-  veterinaria_grooming: 'Veterinaria / grooming',
-  otro: 'Otro',
-};
+/** Función en vez de constante (igual que los schemas de validation.ts) para que la etiqueta cambie de idioma al vuelo. */
+export function crearEtiquetaTipoNegocio(t: TFunction): Record<TipoNegocio, string> {
+  return {
+    barberia: t('tipoNegocio.barberia'),
+    salon_belleza: t('tipoNegocio.salonBelleza'),
+    clinica: t('tipoNegocio.clinica'),
+    clinica_dental: t('tipoNegocio.clinicaDental'),
+    spa: t('tipoNegocio.spa'),
+    estudio_tatuajes: t('tipoNegocio.estudioTatuajes'),
+    entrenamiento_personal: t('tipoNegocio.entrenamientoPersonal'),
+    estetica: t('tipoNegocio.estetica'),
+    veterinaria_grooming: t('tipoNegocio.veterinariaGrooming'),
+    otro: t('tipoNegocio.otro'),
+  };
+}

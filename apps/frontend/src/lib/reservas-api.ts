@@ -1,7 +1,18 @@
+import type { TFunction } from 'i18next';
 import { apiFetch } from './api';
 
 export type EstadoReserva = 'pendiente' | 'confirmada' | 'cancelada' | 'ausente';
 export type OrigenReserva = 'online' | 'admin';
+
+/** Compartida por Reportes, Reservas y Calendario — mismo enum, misma traducción en los tres. */
+export function crearEtiquetaEstadoReserva(t: TFunction): Record<EstadoReserva, string> {
+  return {
+    pendiente: t('estadoReserva.pendiente'),
+    confirmada: t('estadoReserva.confirmada'),
+    cancelada: t('estadoReserva.cancelada'),
+    ausente: t('estadoReserva.ausente'),
+  };
+}
 
 export interface Reserva {
   idReserva: string;

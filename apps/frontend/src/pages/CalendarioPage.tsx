@@ -9,15 +9,16 @@ import type { DatesSetArg, EventClickArg, EventDropArg } from '@fullcalendar/cor
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Boton, ConfirmDialog, Input, Modal, Select, useToast } from '@/components/ui';
-import { reservasApi, type Reserva } from '@/lib/reservas-api';
+import { crearEtiquetaEstadoReserva, reservasApi, type Reserva } from '@/lib/reservas-api';
 import { disponibilidadApi } from '@/lib/disponibilidad-api';
 import { usuariosApi } from '@/lib/usuarios-api';
 import { clientesApi } from '@/lib/clientes-api';
 import { serviciosApi } from '@/lib/servicios-api';
 import { ApiError } from '@/lib/api';
-import { nuevaReservaSchema, type NuevaReservaFormValues } from '@/lib/validation';
+import { crearNuevaReservaSchema, type NuevaReservaFormValues } from '@/lib/validation';
 
 function formatearFechaLocal(fecha: Date): string {
   const año = fecha.getFullYear();
@@ -61,6 +62,7 @@ interface RangoVisible {
  * límite de 20/mes del Plan Gratis), solo le falta la UI hasta ahora.
  */
 export default function CalendarioPage() {
+  const { t, i18n } = useTranslation();
   const calendarRef = useRef<FullCalendar>(null);
   const [rango, setRango] = useState<RangoVisible | null>(null);
   const [idUsuarioFiltro, setIdUsuarioFiltro] = useState('');
@@ -132,6 +134,8 @@ export default function CalendarioPage() {
     enabled: rango !== null,
   });
 
+  const etiquetaEstadoReserva = useMemo(() => crearEtiquetaEstadoReserva(t), [t]);
+
   const eventos = useMemo(
     () =>
       (reservasData?.data ?? []).map((reserva) => {
@@ -150,7 +154,7 @@ export default function CalendarioPage() {
           // angosta del mes es "quién reservó", no el servicio) — bug real
           // reportado probando la app: con varias reservas el mismo día, el
           // título se veía cortado a la mitad ("3 Corte Clásico - cliet").
-          title: `${reserva.cliente?.nombreCompleto ?? 'Cliente eliminado'} · ${reserva.servicio?.nombre ?? 'Servicio eliminado'}${cancelada ? ' (cancelada)' : ''}`,
+          title: `${reserva.cliente?.nombreCompleto ?? t('calendario.clienteEliminado')} · ${reserva.servicio?.nombre ?? t('calendario.servicioEliminado')}${cancelada ? ` (${t('calendario.sufijoCancelada')})` : ''}`,
           start: reserva.fechaHoraInicio,
           end: reserva.fechaHoraFin,
           backgroundColor: cancelada ? '#94a3b8' : (reserva.servicio?.colorCalendario ?? '#4f46e5'),
@@ -161,7 +165,7 @@ export default function CalendarioPage() {
           extendedProps: { reserva },
         };
       }),
-    [reservasData],
+    [reservasData, t],
   );
 
   const businessHours = useMemo(
@@ -184,6 +188,7 @@ export default function CalendarioPage() {
     setReservaSeleccionada(info.event.extendedProps.reserva as Reserva);
   }, []);
 
+  const nuevaReservaSchema = useMemo(() => crearNuevaReservaSchema(t), [t]);
   const {
     register: registerNuevaReserva,
     handleSubmit: handleSubmitNuevaReserva,
@@ -240,7 +245,7 @@ export default function CalendarioPage() {
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['reservas'] });
-      mostrarToast({ variante: 'exito', titulo: 'Reserva creada' });
+      mostrarToast({ variante: 'exito', titulo: t('calendario.reservaCreada') });
       setModalNuevaReservaAbierto(false);
     },
     onError: (error) => {
@@ -252,7 +257,7 @@ export default function CalendarioPage() {
       }
       mostrarToast({
         variante: 'error',
-        titulo: error instanceof ApiError ? error.message : 'No se pudo crear la reserva',
+        titulo: error instanceof ApiError ? error.message : t('calendario.errorCrear'),
       });
     },
   });
@@ -269,28 +274,28 @@ export default function CalendarioPage() {
         await reservasApi.reprogramar(reserva.idReserva, {
           fechaHoraInicio: nuevoInicio.toISOString(),
         });
-        mostrarToast({ variante: 'exito', titulo: 'Reserva reprogramada' });
+        mostrarToast({ variante: 'exito', titulo: t('calendario.reservaReprogramada') });
         queryClient.invalidateQueries({ queryKey: ['reservas'] });
       } catch (error) {
         info.revert();
         const mensaje =
-          error instanceof ApiError ? error.message : 'No se pudo reprogramar la reserva';
+          error instanceof ApiError ? error.message : t('calendario.errorReprogramar');
         mostrarToast({ variante: 'error', titulo: mensaje });
       }
     },
-    [mostrarToast, queryClient],
+    [mostrarToast, queryClient, t],
   );
 
   const confirmarCancelacion = async () => {
     if (!reservaSeleccionada) return;
     try {
       await reservasApi.cancelar(reservaSeleccionada.idReserva);
-      mostrarToast({ variante: 'exito', titulo: 'Reserva cancelada' });
+      mostrarToast({ variante: 'exito', titulo: t('reservas.reservaCancelada') });
       await queryClient.invalidateQueries({ queryKey: ['reservas'] });
       setConfirmandoCancelar(false);
       setReservaSeleccionada(null);
     } catch (error) {
-      const mensaje = error instanceof ApiError ? error.message : 'No se pudo cancelar la reserva';
+      const mensaje = error instanceof ApiError ? error.message : t('reservas.errorCancelar');
       mostrarToast({ variante: 'error', titulo: mensaje });
     }
   };
@@ -299,22 +304,26 @@ export default function CalendarioPage() {
     <AppLayout>
       <div className="mx-auto max-w-6xl p-4 sm:p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Calendario</h1>
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+            {t('comun.calendario')}
+          </h1>
           <div className="flex flex-wrap items-center gap-3">
             <select
               value={idUsuarioFiltro}
               onChange={(evento) => setIdUsuarioFiltro(evento.target.value)}
-              aria-label="Filtrar por empleado"
+              aria-label={t('calendario.filtrarPorEmpleado')}
               className="h-11 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
             >
-              <option value="">Todos los empleados</option>
+              <option value="">{t('calendario.todosLosEmpleados')}</option>
               {empleados.map((empleado) => (
                 <option key={empleado.idUsuario} value={empleado.idUsuario}>
                   {empleado.nombreCompleto}
                 </option>
               ))}
             </select>
-            <Boton onClick={() => abrirModalNuevaReserva(new Date(), true)}>Nueva reserva</Boton>
+            <Boton onClick={() => abrirModalNuevaReserva(new Date(), true)}>
+              {t('calendario.nuevaReserva')}
+            </Boton>
           </div>
         </div>
 
@@ -328,7 +337,9 @@ export default function CalendarioPage() {
         */}
         <div className="rounded-xl border border-slate-200 bg-white p-2 shadow-sm sm:p-4 dark:border-slate-700 dark:bg-slate-800">
           {(isLoading || isFetching) && (
-            <p className="mb-2 text-xs text-slate-400 dark:text-slate-500">Actualizando…</p>
+            <p className="mb-2 text-xs text-slate-400 dark:text-slate-500">
+              {t('calendario.actualizando')}
+            </p>
           )}
           <FullCalendar
             ref={calendarRef}
@@ -337,7 +348,11 @@ export default function CalendarioPage() {
             headerToolbar={
               window.innerWidth < PUNTO_QUIEBRE_MOBILE ? TOOLBAR_MOBILE : TOOLBAR_DESKTOP
             }
-            locale={esLocale}
+            // El propio chrome de FullCalendar (nombres de mes/día, botón
+            // "Hoy", el popover "+N más") también es "contenido" — bug real
+            // reportado probando la app (punto 4): sin esto quedaba en
+            // español fijo aunque el resto del sistema cambiara a inglés.
+            locale={i18n.language.startsWith('en') ? undefined : esLocale}
             height="auto"
             editable
             eventStartEditable
@@ -366,31 +381,32 @@ export default function CalendarioPage() {
       <Modal
         abierto={reservaSeleccionada !== null && !confirmandoCancelar}
         onCerrar={() => setReservaSeleccionada(null)}
-        titulo="Detalle de la reserva"
+        titulo={t('calendario.detalleTitulo')}
       >
         {reservaSeleccionada && (
           <div className="flex flex-col gap-2 text-sm text-slate-700 dark:text-slate-300">
             <p>
-              <span className="font-medium">Cliente:</span>{' '}
-              {reservaSeleccionada.cliente?.nombreCompleto ?? 'Cliente eliminado'}
+              <span className="font-medium">{t('calendario.detalleCliente')}</span>{' '}
+              {reservaSeleccionada.cliente?.nombreCompleto ?? t('calendario.clienteEliminado')}
             </p>
             <p>
-              <span className="font-medium">Servicio:</span>{' '}
-              {reservaSeleccionada.servicio?.nombre ?? 'Servicio eliminado'}
+              <span className="font-medium">{t('calendario.detalleServicio')}</span>{' '}
+              {reservaSeleccionada.servicio?.nombre ?? t('calendario.servicioEliminado')}
             </p>
             <p>
-              <span className="font-medium">Atiende:</span>{' '}
-              {reservaSeleccionada.usuario?.nombreCompleto ?? 'Usuario eliminado'}
+              <span className="font-medium">{t('calendario.detalleAtiende')}</span>{' '}
+              {reservaSeleccionada.usuario?.nombreCompleto ?? t('calendario.usuarioEliminado')}
             </p>
             <p>
-              <span className="font-medium">Horario:</span>{' '}
-              {new Date(reservaSeleccionada.fechaHoraInicio).toLocaleString('es-CR', {
-                dateStyle: 'medium',
-                timeStyle: 'short',
-              })}
+              <span className="font-medium">{t('calendario.detalleHorario')}</span>{' '}
+              {new Date(reservaSeleccionada.fechaHoraInicio).toLocaleString(
+                i18n.language.startsWith('en') ? 'en-US' : 'es-CR',
+                { dateStyle: 'medium', timeStyle: 'short' },
+              )}
             </p>
             <p>
-              <span className="font-medium">Estado:</span> {reservaSeleccionada.estado}
+              <span className="font-medium">{t('calendario.detalleEstado')}</span>{' '}
+              {etiquetaEstadoReserva[reservaSeleccionada.estado]}
             </p>
             {reservaSeleccionada.estado !== 'cancelada' && (
               <Boton
@@ -398,7 +414,7 @@ export default function CalendarioPage() {
                 className="mt-4"
                 onClick={() => setConfirmandoCancelar(true)}
               >
-                Cancelar reserva
+                {t('reservas.cancelarReserva')}
               </Boton>
             )}
           </div>
@@ -407,8 +423,8 @@ export default function CalendarioPage() {
 
       <ConfirmDialog
         abierto={confirmandoCancelar}
-        titulo="¿Cancelar esta reserva?"
-        descripcion="Esta acción no se puede deshacer."
+        titulo={t('calendario.confirmarCancelarTitulo')}
+        descripcion={t('calendario.confirmarCancelarDescripcion')}
         onConfirmar={confirmarCancelacion}
         onCancelar={() => setConfirmandoCancelar(false)}
       />
@@ -416,7 +432,7 @@ export default function CalendarioPage() {
       <Modal
         abierto={modalNuevaReservaAbierto}
         onCerrar={() => setModalNuevaReservaAbierto(false)}
-        titulo="Nueva reserva"
+        titulo={t('calendario.nuevaReserva')}
       >
         <form
           onSubmit={handleSubmitNuevaReserva((valores) => crearReservaMutation.mutate(valores))}
@@ -424,28 +440,28 @@ export default function CalendarioPage() {
           className="flex flex-col gap-4"
         >
           <Select
-            label="Cliente"
+            label={t('calendario.campoCliente')}
             variante="crear"
             requerido
-            placeholder="Selecciona un cliente"
+            placeholder={t('validacion.seleccionaCliente')}
             opciones={clientesActivos.map((c) => ({ value: c.idCliente, label: c.nombreCompleto }))}
             error={erroresNuevaReserva.idCliente?.message}
             {...registerNuevaReserva('idCliente')}
           />
           <Select
-            label="Servicio"
+            label={t('calendario.campoServicio')}
             variante="crear"
             requerido
-            placeholder="Selecciona un servicio"
+            placeholder={t('validacion.seleccionaServicio')}
             opciones={serviciosActivos.map((s) => ({ value: s.idServicio, label: s.nombre }))}
             error={erroresNuevaReserva.idServicio?.message}
             {...registerNuevaReserva('idServicio')}
           />
           <Select
-            label="Atiende"
+            label={t('calendario.campoAtiende')}
             variante="crear"
             requerido
-            placeholder="Selecciona quién atiende"
+            placeholder={t('validacion.seleccionaEmpleado')}
             opciones={empleadosActivos.map((e) => ({
               value: e.idUsuario,
               label: e.nombreCompleto,
@@ -455,7 +471,7 @@ export default function CalendarioPage() {
           />
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
-              label="Fecha"
+              label={t('calendario.campoFecha')}
               type="date"
               variante="crear"
               requerido
@@ -463,7 +479,7 @@ export default function CalendarioPage() {
               {...registerNuevaReserva('fecha')}
             />
             <Input
-              label="Hora"
+              label={t('calendario.campoHora')}
               type="time"
               variante="crear"
               requerido
@@ -472,9 +488,9 @@ export default function CalendarioPage() {
             />
           </div>
           <Input
-            label="Notas"
+            label={t('clientes.notas')}
             variante="crear"
-            hint="Opcional"
+            hint={t('comun.opcional')}
             error={erroresNuevaReserva.notas?.message}
             {...registerNuevaReserva('notas')}
           />
@@ -485,10 +501,10 @@ export default function CalendarioPage() {
               type="button"
               onClick={() => setModalNuevaReservaAbierto(false)}
             >
-              Cancelar
+              {t('comun.cancelar')}
             </Boton>
             <Boton type="submit" cargando={enviandoNuevaReserva || crearReservaMutation.isPending}>
-              Crear reserva
+              {t('calendario.crearReserva')}
             </Boton>
           </div>
         </form>
