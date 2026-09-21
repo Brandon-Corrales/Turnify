@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Modal } from './Modal';
 import { Boton } from './Button';
 
@@ -27,15 +28,16 @@ export function ConfirmDialog({
   cargando = false,
   variante = 'destructivo',
 }: ConfirmDialogProps) {
+  const { t } = useTranslation();
   return (
     <Modal abierto={abierto} onCerrar={onCancelar} titulo={titulo}>
       {descripcion && <p className="text-sm text-slate-600 dark:text-slate-400">{descripcion}</p>}
       <div className="mt-6 flex justify-end gap-3">
         <Boton variante="secundario" onClick={onCancelar} disabled={cargando}>
-          Cancelar
+          {t('comun.cancelar')}
         </Boton>
         <Boton variante={variante} onClick={onConfirmar} cargando={cargando}>
-          Confirmar
+          {t('comun.confirmar')}
         </Boton>
       </div>
     </Modal>

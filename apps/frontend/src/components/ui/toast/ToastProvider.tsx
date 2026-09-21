@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { CONFIG_VARIANTE, type VarianteFeedback } from '../feedback-variants';
@@ -58,6 +59,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 
 function ToastCard({ toast, onCerrar }: { toast: ToastItem; onCerrar: () => void }) {
+  const { t } = useTranslation();
   const { icon: Icon, claseTexto, claseFondo, claseBorde } = CONFIG_VARIANTE[toast.variante];
 
   return (
@@ -84,7 +86,7 @@ function ToastCard({ toast, onCerrar }: { toast: ToastItem; onCerrar: () => void
       <button
         type="button"
         onClick={onCerrar}
-        aria-label="Cerrar notificación"
+        aria-label={t('comun.cerrarNotificacion')}
         className="shrink-0 rounded-md p-1 text-slate-400 hover:bg-black/5 hover:text-slate-600 dark:hover:bg-white/10 dark:hover:text-slate-300"
       >
         <X className="h-4 w-4" aria-hidden="true" />

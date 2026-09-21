@@ -41,7 +41,7 @@ export function ControlesGlobales() {
       </button>
       <div
         role="group"
-        aria-label="Idioma"
+        aria-label={t('comun.idioma')}
         className="flex items-center rounded-full border border-slate-200 p-0.5 dark:border-slate-700"
       >
         {IDIOMAS.map(({ codigo, etiqueta }) => (

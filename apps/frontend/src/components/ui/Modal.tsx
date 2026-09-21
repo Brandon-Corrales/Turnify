@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
@@ -22,6 +23,7 @@ const SELECTOR_ENFOCABLE =
  * específico de confirmar una acción destructiva.
  */
 export function Modal({ abierto, onCerrar, titulo, children, className }: ModalProps) {
+  const { t } = useTranslation();
   const panelRef = useRef<HTMLDivElement>(null);
   const disparadorRef = useRef<HTMLElement | null>(null);
 
@@ -97,7 +99,7 @@ export function Modal({ abierto, onCerrar, titulo, children, className }: ModalP
               <button
                 type="button"
                 onClick={onCerrar}
-                aria-label="Cerrar"
+                aria-label={t('comun.cerrar')}
                 className="shrink-0 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300"
               >
                 <X className="h-5 w-5" aria-hidden="true" />

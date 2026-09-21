@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { LayoutGrid, List } from 'lucide-react';
 import type { Vista } from '@/lib/vista-preferida';
 
@@ -13,17 +14,18 @@ export interface ToggleVistaProps {
  * Servicios, Reservas), nunca reinventado por pantalla.
  */
 export function ToggleVista({ vista, onCambiar }: ToggleVistaProps) {
+  const { t } = useTranslation();
   return (
     <div
       role="group"
-      aria-label="Vista"
+      aria-label={t('comun.vista')}
       className="flex items-center rounded-full border border-slate-200 p-0.5 dark:border-slate-700"
     >
       <button
         type="button"
         onClick={() => onCambiar('cuadricula')}
         aria-pressed={vista === 'cuadricula'}
-        aria-label="Vista de cuadrícula"
+        aria-label={t('comun.vistaCuadricula')}
         className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
           vista === 'cuadricula'
             ? 'bg-primary-600 text-white'
@@ -36,7 +38,7 @@ export function ToggleVista({ vista, onCambiar }: ToggleVistaProps) {
         type="button"
         onClick={() => onCambiar('lista')}
         aria-pressed={vista === 'lista'}
-        aria-label="Vista de lista"
+        aria-label={t('comun.vistaLista')}
         className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
           vista === 'lista'
             ? 'bg-primary-600 text-white'
