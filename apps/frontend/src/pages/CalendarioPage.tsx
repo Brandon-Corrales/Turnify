@@ -104,7 +104,11 @@ export default function CalendarioPage() {
           // El backend ya incluye clientes/servicios desactivados en el
           // historial (withDeleted), pero el fallback se deja igual —
           // nunca romper el calendario entero por un dato faltante.
-          title: `${reserva.servicio?.nombre ?? 'Servicio eliminado'} · ${reserva.cliente?.nombreCompleto ?? 'Cliente eliminado'}${cancelada ? ' (cancelada)' : ''}`,
+          // Cliente primero (punto 6: lo más útil de un vistazo en la celda
+          // angosta del mes es "quién reservó", no el servicio) — bug real
+          // reportado probando la app: con varias reservas el mismo día, el
+          // título se veía cortado a la mitad ("3 Corte Clásico - cliet").
+          title: `${reserva.cliente?.nombreCompleto ?? 'Cliente eliminado'} · ${reserva.servicio?.nombre ?? 'Servicio eliminado'}${cancelada ? ' (cancelada)' : ''}`,
           start: reserva.fechaHoraInicio,
           end: reserva.fechaHoraFin,
           backgroundColor: cancelada ? '#94a3b8' : (reserva.servicio?.colorCalendario ?? '#4f46e5'),
@@ -222,6 +226,17 @@ export default function CalendarioPage() {
             eventDurationEditable={false}
             businessHours={businessHours.length > 0 ? businessHours : undefined}
             events={eventos}
+            // Con varias reservas el mismo día, el mes ya no las apila todas
+            // (se veían con el texto cortado a la mitad) — se limita a 3 y
+            // el resto queda detrás de un enlace "+N más" nativo de
+            // FullCalendar, que al abrirse muestra cada evento completo.
+            dayMaxEvents={3}
+            eventDidMount={(info) => {
+              // Tooltip nativo del navegador con el título completo — red
+              // de seguridad adicional para cuando el texto sí se corta
+              // visualmente en la celda (nombres largos, mes muy angosto).
+              info.el.title = info.event.title;
+            }}
             datesSet={alCambiarRangoVisible}
             eventClick={alHacerClicEnEvento}
             eventDrop={alArrastrarEvento}

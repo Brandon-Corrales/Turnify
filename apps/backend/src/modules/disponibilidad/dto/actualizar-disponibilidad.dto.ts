@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsOptional, Matches, Max, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, Matches, Max, Min } from 'class-validator';
 
 const HORA_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
 const HORA_MENSAJE = 'Formato de hora inválido, debe ser HH:mm (24 horas)';
@@ -22,4 +22,16 @@ export class ActualizarDisponibilidadDto {
   @IsOptional()
   @Matches(HORA_REGEX, { message: HORA_MENSAJE })
   horaFin?: string;
+
+  /**
+   * Permite reactivar un día apagado con `DELETE /disponibilidad/:id`
+   * (que solo pone `activo:false`, ver `desactivar()`) sin tener que
+   * borrar y recrear la franja completa — necesario para la pantalla de
+   * Configuración de horario laboral (un toggle por día debe poder
+   * prenderse de nuevo).
+   */
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsBoolean()
+  activo?: boolean;
 }
