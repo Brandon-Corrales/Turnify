@@ -588,7 +588,7 @@ flujo de reserva básico.
 --- (lo de abajo va DESPUÉS del Seguimiento #2, no antes) ---
 
 - Backend: Worker de Notificaciones — integración Resend (email)
-- Backend: Worker de Notificaciones — integración Meta WhatsApp Cloud API (modo sandbox de prueba)
+- Backend: Worker de Notificaciones — integración Meta WhatsApp Cloud API (número de prueba, destinatarios verificados)
 - Backend: Módulo Suscripciones — Stripe Test Mode + webhook + guard de límites del plan gratis
 - Backend: Módulo Reportes — agregaciones (reservas por período, ingresos estimados)
 - Backend: Documentación Swagger/OpenAPI en todos los endpoints
