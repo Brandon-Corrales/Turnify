@@ -544,8 +544,6 @@ turnify/
 │   │       │                     redefine sus propios botones ni alertas)
 │   │       └── i18n/
 │   └── backend/        (NestJS+TS)
-├── packages/
-│   └── shared-types/   (interfaces/DTOs compartidos)
 ├── .github/workflows/ci.yml
 ├── docker-compose.yml  (Postgres local)
 ├── .env.example
