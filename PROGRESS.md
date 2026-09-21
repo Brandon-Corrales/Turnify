@@ -10,6 +10,15 @@ Calendario en frontend). Freemium, chatbot, notificaciones, pagos, dark
 mode, i18n completo y responsive quedan para DESPUÉS — no adelantar esas
 tareas a costa del flujo mínimo.
 
+**Nota (actualizado tras probar la app en vivo)**: pese a esta
+prioridad original, freemium, chatbot, notificaciones, dark mode, i18n
+completo y responsive en dispositivos reales **ya se completaron todos**
+a pedido explícito del usuario en sesiones posteriores (ver secciones
+correspondientes más abajo) — no quedan pendientes, esta nota queda
+solo como contexto histórico de la priorización inicial. Pagos/Stripe
+es la única excepción real, y no por prioridad sino por la limitación
+geográfica de Costa Rica (ver tarjeta de Suscripciones).
+
 ## Última tarea completada
 - Categoría **Base de Datos** completa (6/6 tarjetas, ver detalle abajo).
 - **Backend: Setup del proyecto NestJS + estructura de módulos** ✅
@@ -2322,20 +2331,196 @@ que debería recompilar solo con este cambio sin que él tenga que hacer
 nada más que confirmar que el error deja de repetirse en el próximo
 tick del minuto.
 
-Pendientes menores sin resolver, ninguno bloqueante (heredados de la
-tarjeta de responsive, siguen igual): (1) el onboarding del frontend
-puede chocar con el límite de 3 servicios del plan gratis si una
-plantilla de vertical sugiere más de 3; (2) la mayoría de los mensajes
-de validación de los DTOs (fuera de la contraseña) todavía no usan
-claves de i18n en el backend; (3) solo Landing/Dashboard/navbar/
-Suscripción/Notificaciones están traducidos de verdad, el resto
-(Calendario, Clientes, Servicios, Reservas, Reportes, wizard público)
-sigue en español fijo; (4) el link real del wizard
-(`/reservar/:idNegocio`) todavía no está enlazado desde ninguna pantalla
-del admin; (5) un cron real de `RECORDATORIO` sigue sin construirse;
-(6) la auditoría responsive es por código + verificación de escritorio,
-no una captura de pantalla real en 390px (limitación de la herramienta
-de automatización del navegador, no del código).
+Pendientes menores sin resolver, ninguno bloqueante: (1) el onboarding
+del frontend puede chocar con el límite de 3 servicios del plan gratis
+si una plantilla de vertical sugiere más de 3 (ver nota de producto en
+la tarjeta de Suscripciones); (2) la mayoría de los mensajes de
+validación de los DTOs (fuera de la contraseña) todavía no usan claves
+de i18n en el backend — es mecánico, no se hizo completo a propósito
+(ver tarjeta de i18n backend); (3) **el link real del wizard
+(`/reservar/:idNegocio`) todavía no está enlazado ni mostrado en
+ninguna pantalla del admin** — un dueño de negocio no tiene forma de
+encontrar/copiar su propio link para compartirlo con clientes, es el
+gap más visible de producto que queda; (4) un cron real de
+`RECORDATORIO` sigue sin construirse (solo existen CONFIRMACION y
+CANCELACION).
+
+Resueltos desde que se escribió esta lista por primera vez (no
+repetirlos como pendientes): la traducción i18n completa de
+Calendario/Clientes/Servicios/Reservas/Reportes/Login/Registro/
+Onboarding/Configuración/wizard público (ver sección de i18n más
+abajo) y la auditoría responsive con captura de pantalla real en
+viewport angosto (ver "QA: responsive en dispositivos reales" arriba,
+técnica del iframe).
+
+## Feedback de QA probando la app en vivo (4 puntos reportados por el usuario) ✅
+Con el proyecto ya corriendo localmente, el usuario probó la app él mismo
+en el navegador y reportó 4 problemas reales en un solo mensaje. Se
+resolvieron los 4, en este orden:
+
+### 1 y 3. Configuración de horario laboral + texto cortado en el Calendario ✅
+La API de `Disponibilidad` ya existía completa en el backend, pero no
+tenía **ninguna** pantalla en el frontend — sin esto, un negocio nuevo
+no tenía ningún horario cargado y ni el wizard público ni el propio
+Calendario podían ofrecer un turno válido. Esto explicaba a la vez el
+reporte del usuario de "no me deja seleccionar dentro del calendario
+para reservar" (sin horario configurado, no hay nada que ofrecer).
+
+- **Backend**: `ActualizarDisponibilidadDto` ahora acepta `activo?:
+  boolean` — antes reactivar un día apagado (`DELETE
+  /disponibilidad/:id` solo pone `activo:false`) exigía borrar y crear
+  de nuevo la franja completa.
+- **Frontend**: nueva `ConfiguracionPage.tsx` (`/configuracion`,
+  agregada al navbar) — un negocio define su horario semanal (checkbox
+  activa/desactiva por día + hora inicio/fin), con auto-guardado por
+  campo en vez de un botón "Guardar todo" (7 registros independientes
+  en el backend, más simple que rastrear qué filas quedaron "sucias").
+  **Gotcha real de React encontrado y arreglado dos veces** (mismo
+  patrón que `chatbot-socket.ts` de una tarjeta anterior):
+  `react-hooks/set-state-in-effect` — `setState` síncrono dentro de un
+  `useEffect` dispara renders en cascada. Se resolvió derivando todo en
+  el render (`idUsuarioSeleccionado` = elegido manualmente ||
+  usuario || primer empleado activo, sin efecto) y con un `borrador`
+  de estado local separado de la query para los campos de hora en
+  edición, en vez de sincronizar la query hacia un estado local vía
+  efecto.
+- **Bug real de UX encontrado verificando en vivo contra el backend
+  real**: al tildar el checkbox de un día, se veía destildar solo un
+  instante antes de quedar bien — el checkbox es controlado
+  (`checked={fila.activo}`) y no hay actualización optimista, así que
+  refleja el valor viejo del servidor hasta que el `POST`+refetch
+  completa (unos cientos de ms). Confirmado con logs de red reales que
+  el `POST /disponibilidad` sí se disparaba y devolvía `201` incluso
+  cuando el parpadeo hacía parecer que el clic no había hecho nada — no
+  es un bug funcional, es una oportunidad de mejora (actualización
+  optimista) anotada para después, no bloqueante.
+- **Calendario**: el título de cada evento ahora empieza con el nombre
+  del cliente en vez del servicio (bug real reportado: con varias
+  reservas el mismo día se veía cortado a la mitad, ej. "3 Corte
+  Clásico - cliet" — lo más útil de un vistazo en una celda angosta es
+  "quién reservó", no el servicio). Se agregó `dayMaxEvents={3}` (el
+  resto queda detrás de un "+N más" nativo de FullCalendar) y
+  `eventDidMount` pone el título completo como tooltip nativo del
+  navegador. Confirmado por DOM real que la truncación ahora es
+  elipsis CSS limpio, no el texto crudo cortado a la mitad de antes.
+- **Verificado en vivo contra el backend real**: se configuró
+  lunes-viernes con el admin demo, se recargó la página y se confirmó
+  por API que el horario persiste; una reserva a las 15:00 un lunes
+  configurado hasta las 13:30 fue rechazada por el backend con `409
+  FUERA_DE_DISPONIBILIDAD`, y una a las 10:00 (dentro de horario) se
+  creó sin problema.
+
+### 2. Creación manual de reservas desde el Calendario ✅
+Para llamadas telefónicas o clientes que llegan sin haber reservado
+antes por el enlace público. Reutiliza el mismo `POST /reservas` que ya
+usa el staff autenticado (ya validaba disponibilidad, traslapes y el
+límite de 20/mes del Plan Gratis) — solo le faltaba la UI. Un clic en
+un día (vista de mes) o una franja (vista de semana/día) del Calendario,
+o el nuevo botón "Nueva reserva", abre un modal (cliente, servicio,
+quién atiende, fecha, hora, notas) precargado con la fecha/hora del
+clic.
+
+**Verificado en vivo contra el backend real**: una reserva creada así
+desde el Calendario y otra creada por el wizard público el mismo día
+aparecen en el Calendario con el formato exacto (`Cliente · Servicio`),
+sin ninguna distinción visual por origen (`admin` vs `online`) — ambas
+pasan por la misma validación de disponibilidad.
+
+### 4. Traducción i18n completa del sistema autenticado + wizard público ✅
+El botón de cambio de idioma solo traducía el header — Landing,
+Dashboard, Notificaciones y Suscripción ya estaban traducidos de una
+tarjeta anterior, pero Calendario, Clientes, Servicios, Reservas,
+Reportes, Login, Registro, Onboarding y el wizard público seguían en
+español fijo (ver "Pendientes menores" más arriba, ahora resuelto).
+
+Se agregaron los namespaces correspondientes en
+`i18n/locales/{es,en}.json` (349 claves en cada idioma, mismo conteo
+exacto verificado con un script) y se conectó cada pantalla a
+`useTranslation()`. Dos ajustes estructurales fueron necesarios para
+que el cambio de idioma llegara a TODO el contenido, no solo a los
+labels visibles en el momento de traducir:
+
+- **Los schemas de validación (`lib/validation.ts`) pasan de constantes
+  a funciones que reciben `t()`** (`crearLoginSchema(t)`,
+  `crearClienteSchema(t)`, etc.), reconstruidas con `useMemo(() =>
+  crearXSchema(t), [t])` en cada formulario — si no, los mensajes de
+  error de campo (ej. "El correo es obligatorio") quedaban fijos en
+  español aunque el resto de la pantalla cambiara a inglés. Mismo
+  patrón aplicado a `ETIQUETA_TIPO_NEGOCIO` (ahora
+  `crearEtiquetaTipoNegocio(t)` en `tipo-negocio.ts`) y a la etiqueta
+  de estado de reserva (`crearEtiquetaEstadoReserva(t)` en
+  `reservas-api.ts`, antes duplicada por separado en Reportes y
+  Reservas).
+- **El locale interno de FullCalendar** (nombres de mes/día, botón
+  "Hoy") ahora sigue el idioma activo (`locale={i18n.language.startsWith('en')
+  ? undefined : esLocale}`) en vez de quedar fijo en `esLocale` — antes
+  el chrome propio del calendario nunca cambiaba de idioma aunque el
+  resto de la pantalla sí.
+
+**Verificando en vivo con el navegador cambiado a inglés se
+encontraron y arreglaron 8 strings sueltos en componentes
+COMPARTIDOS** que ninguna traducción por pantalla cubría (porque viven
+fuera de `pages/`): el botón de cerrar de `Modal` ("Cerrar"→"Close"),
+los botones de `ConfirmDialog` ("Cancelar"/"Confirmar"), el aria-label
+de cerrar de `Banner`, los 3 aria-label de `ToggleVista` (usado en
+Clientes/Servicios/Reservas), `Skeleton`, `PantallaCargando`,
+`ToastProvider`, el aria-label de idioma en `ControlesGlobales`, y el
+gráfico de reservas por día del Dashboard (aria-label + tooltip).
+
+### Bug de UX real encontrado y NO arreglado (anotado, no bloqueante)
+El checkbox de "activo" en `ConfiguracionPage` parpadea a des-marcado
+por una fracción de segundo antes de confirmarse (ver arriba, punto
+1/3) — mismo patrón en cualquier checkbox controlado sin actualización
+optimista. Candidato para una futura mejora de UX, no es un bug
+funcional (los datos sí se guardan correctamente).
+
+## Limpieza pre-PR (auditoría de archivos sensibles + código muerto) ✅
+Antes de abrir el Pull Request, auditoría en dos partes, ambas sin
+encontrar nada crítico:
+
+- **Archivos sensibles**: `.gitignore` correcto y suficiente (`.env`,
+  `node_modules`, `dist`, logs, coverage, `*.tsbuildinfo`). `git status`
+  + `git ls-files` limpios — nada sensible trackeado. **Se revisó el
+  historial completo de git (60 commits, diffs completos, no solo
+  nombres de archivo)** buscando patrones de API keys reales
+  (`sk-`/`AIza`/`whsec_`/`gsk_`/claves privadas) y cualquier `.env` real
+  alguna vez agregado — **nunca se comiteó un secreto real**, ni
+  siquiera de forma transitoria.
+- **Código muerto encontrado y borrado**:
+  - `apps/backend/src/config/plan-limits.config.ts` — 0 imports en todo
+    el repo, su propio comentario decía "aún no implementados". La
+    implementación real de los límites del Plan Gratis vive duplicada
+    en `LimitesPlanService` (mismos 4 números), que es la que de
+    verdad usa el guard. Borrado.
+  - `packages/shared-types/` — solo tenía un `.gitkeep`, nunca se llegó
+    a usar (frontend y backend duplican sus propios tipos, aceptable
+    para el alcance de este proyecto). Borrado junto con `"packages/*"`
+    de `workspaces` en el `package.json` raíz, y se actualizó la
+    estructura de repositorio en `docs/spec.md`.
+  - `WHATSAPP_BUSINESS_ACCOUNT_ID` en `.env.example` — no se usa en
+    ningún lado del código (ni siquiera en `env.schema.ts`). Quitado.
+- **`@nestjs/platform-socket.io` se queda — verificado de verdad, no
+  solo por grep**: no aparece importado por nombre en ningún archivo
+  propio, pero se comprobó sacándolo físicamente de `node_modules` y
+  corriendo la suite completa antes de decidir. Sin el paquete,
+  cualquier bootstrap completo de Nest revienta con `process.exit(1)`
+  dentro de `SocketModule.initializeAdapter` (3 archivos de test de
+  integración fallaron) porque `@nestjs/websockets` lo requiere en
+  tiempo de ejecución para el adapter de WebSocket del Gateway del
+  chatbot — es un peer dependency opcional que Nest resuelve por
+  inyección interna, no por import explícito. Restaurado y confirmado
+  que la suite vuelve a 207/207.
+- **Regresión real encontrada corriendo la suite completa de Playwright**
+  (no se había vuelto a correr desde que se tradujo el wizard público
+  en la tarjeta anterior): `e2e/reserva-publica.spec.ts` asume texto
+  fijo en español, pero el wizard ahora sigue el idioma detectado del
+  navegador (`i18next-browser-languagedetector` cae a
+  `navigator.language` sin `localStorage`), y el Chromium de Playwright
+  no tiene locale español por defecto — el test fallaba porque la
+  página renderizaba en inglés, no por un bug de la app. Se fijó
+  `locale: 'es-CR'` en `playwright.config.ts`.
+- Un solo commit `chore: limpieza pre-PR`, con build + lint + Vitest
+  (207/207) + Playwright e2e (1/1) confirmados en verde antes y después.
 
 ## Cómo probar lo que ya existe
 ```bash
@@ -2438,3 +2623,12 @@ Ver reglas de commit/pausa en el prompt original de arquitectura (punto 18
 del brief del equipo). Resumen: terminar hasta que compile, commitear con
 mensaje honesto, actualizar este archivo, nunca reiniciar un módulo con
 avance ya commiteado.
+
+**Primera tarea a retomar la próxima sesión**: exponer el link real del
+wizard público (`/reservar/:idNegocio`) en alguna pantalla del admin
+(ej. Configuración o Dashboard, con un botón de copiar) — hoy un dueño
+de negocio no tiene ninguna forma de encontrar ni compartir su propio
+link con clientes, es el gap de producto más visible que queda (ver
+"Pendientes menores" arriba, punto 3). El resto de pendientes (límite
+de 3 servicios del onboarding, i18n de validación de DTOs del backend,
+cron de RECORDATORIO) son menores y no bloquean nada.
