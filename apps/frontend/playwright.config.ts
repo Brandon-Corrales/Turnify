@@ -18,6 +18,13 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
+    // Ancla el locale del navegador a español: el wizard público ahora
+    // sigue el idioma detectado (i18next-browser-languagedetector cae a
+    // navigator.language sin preferencia guardada en localStorage), y
+    // este spec verifica el texto en español. Sin esto, el locale por
+    // defecto del Chromium de CI puede no ser 'es' y el test falla no
+    // por un bug real sino porque la página renderiza en inglés.
+    locale: 'es-CR',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: [
