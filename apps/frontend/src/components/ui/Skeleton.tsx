@@ -1,12 +1,14 @@
 import type { HTMLAttributes } from 'react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/cn';
 
 /** Bloque base: todo skeleton del sistema se compone a partir de este mismo átomo (punto 7). */
 export function Skeleton({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  const { t } = useTranslation();
   return (
     <div
       role="status"
-      aria-label="Cargando"
+      aria-label={t('comun.cargando')}
       className={cn('animate-pulse rounded-md bg-slate-200 dark:bg-slate-700', className)}
       {...props}
     />

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { CONFIG_VARIANTE, type VarianteFeedback } from './feedback-variants';
@@ -26,6 +27,7 @@ export function Banner({
   onCerrar,
   className,
 }: BannerProps) {
+  const { t } = useTranslation();
   const { icon: Icon, claseTexto, claseFondo, claseBorde } = CONFIG_VARIANTE[variante];
 
   return (
@@ -50,7 +52,7 @@ export function Banner({
         <button
           type="button"
           onClick={onCerrar}
-          aria-label="Cerrar aviso"
+          aria-label={t('comun.cerrarAviso')}
           className="shrink-0 rounded-md p-1 text-slate-400 hover:bg-black/5 hover:text-slate-600 dark:hover:bg-white/10 dark:hover:text-slate-300"
         >
           <X className="h-4 w-4" aria-hidden="true" />

@@ -52,13 +52,14 @@ function TarjetaKpi({ icono: Icono, etiqueta, valor, claseIcono }: TarjetaKpiPro
 
 /** Barras simples (sin librería de gráficos, reservada para la pantalla de Reportes) escaladas por el día con más reservas del mes. */
 function GraficoReservasPorDia({ datos }: { datos: ResumenReportes['reservasPorDia'] }) {
+  const { t, i18n } = useTranslation();
   const maximo = Math.max(1, ...datos.map((d) => d.cantidad));
 
   return (
     <div
       className="flex h-32 items-end justify-start gap-1"
       role="img"
-      aria-label="Reservas por día del mes"
+      aria-label={t('dashboard.graficoAriaLabel')}
     >
       {datos.map((dia, i) => (
         <motion.div
@@ -67,7 +68,13 @@ function GraficoReservasPorDia({ datos }: { datos: ResumenReportes['reservasPorD
           animate={{ height: `${Math.max(4, (dia.cantidad / maximo) * 100)}%` }}
           transition={{ duration: 0.4, delay: i * 0.01 }}
           className="w-3 max-w-6 min-w-[3px] shrink-0 rounded-t bg-primary-500 dark:bg-primary-400"
-          title={`${new Date(dia.fecha).toLocaleDateString('es-CR', { day: 'numeric', month: 'short' })}: ${dia.cantidad} reserva(s)`}
+          title={t('dashboard.tooltipDia', {
+            fecha: new Date(dia.fecha).toLocaleDateString(
+              i18n.language.startsWith('en') ? 'en-US' : 'es-CR',
+              { day: 'numeric', month: 'short' },
+            ),
+            n: dia.cantidad,
+          })}
         />
       ))}
     </div>
