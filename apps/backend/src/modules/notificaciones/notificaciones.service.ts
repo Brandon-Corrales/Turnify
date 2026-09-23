@@ -2,13 +2,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { I18nService } from 'nestjs-i18n';
-import { LessThanOrEqual, Repository } from 'typeorm';
+import { Between, In, LessThanOrEqual, Repository } from 'typeorm';
 import { PaginatedResult, PaginationQueryDto } from '../../common/pagination';
 import {
   CanalNotificacion,
   CanalPreferido,
   Cliente,
   EstadoNotificacion,
+  EstadoReserva,
   Notificacion,
   Reserva,
   Servicio,
@@ -21,6 +22,9 @@ import { WhatsappCloudApiService } from './providers/whatsapp-cloud-api.service'
 
 /** Después de este número de reintentos fallidos, la notificación se marca FALLIDA en vez de reintentar por siempre. */
 const MAX_REINTENTOS = 3;
+
+/** Con cuánta anticipación se programa el recordatorio antes de la hora de la cita. */
+const HORAS_ANTES_RECORDATORIO = 24;
 
 const CANAL_POR_PREFERENCIA: Record<CanalPreferido, CanalNotificacion> = {
   [CanalPreferido.EMAIL]: CanalNotificacion.EMAIL,
@@ -43,6 +47,7 @@ export class NotificacionesService {
 
   constructor(
     @InjectRepository(Notificacion) private readonly notificacionRepo: Repository<Notificacion>,
+    @InjectRepository(Reserva) private readonly reservaRepo: Repository<Reserva>,
     private readonly resend: ResendService,
     private readonly whatsapp: WhatsappCloudApiService,
     private readonly i18n: I18nService,
@@ -65,7 +70,8 @@ export class NotificacionesService {
   }
 
   private async programar(
-    tipo: TipoNotificacion.CONFIRMACION | TipoNotificacion.CANCELACION,
+    tipo:
+      TipoNotificacion.CONFIRMACION | TipoNotificacion.CANCELACION | TipoNotificacion.RECORDATORIO,
     reserva: Reserva,
     cliente: Cliente,
     servicio: Servicio,
@@ -146,6 +152,47 @@ export class NotificacionesService {
           { estado: EstadoNotificacion.FALLIDA },
         );
       }
+    }
+  }
+
+  /**
+   * Cron de RECORDATORIO
+   * Corre cada 10 minutos y programa el recordatorio de toda reserva
+   * confirmada cuya hora de inicio cae dentro de las próximas
+   * `HORAS_ANTES_RECORDATORIO` horas. Es idempotente por diseño, no por la
+   * ventana de tiempo: antes de programar, se descarta cualquier reserva
+   * que YA tenga una notificación tipo RECORDATORIO (sin importar su
+   * estado — incluso una que falló ya se marca como "intentada" para no
+   * reencolarla en cada corrida), así que un cron cada 10 minutos con una
+   * ventana de 24h nunca duplica el recordatorio de una misma reserva.
+   */
+  @Cron(CronExpression.EVERY_10_MINUTES)
+  async programarRecordatorios(): Promise<void> {
+    const ahora = new Date();
+    const limite = new Date(ahora.getTime() + HORAS_ANTES_RECORDATORIO * 60 * 60 * 1000);
+
+    const proximas = await this.reservaRepo.find({
+      where: { estado: EstadoReserva.CONFIRMADA, fechaHoraInicio: Between(ahora, limite) },
+      relations: { cliente: true, servicio: true },
+    });
+    if (proximas.length === 0) return;
+
+    const yaProgramadas = await this.notificacionRepo.find({
+      where: {
+        idReserva: In(proximas.map((r) => r.idReserva)),
+        tipo: TipoNotificacion.RECORDATORIO,
+      },
+    });
+    const idsYaProgramados = new Set(yaProgramadas.map((n) => n.idReserva));
+
+    for (const reserva of proximas) {
+      if (idsYaProgramados.has(reserva.idReserva)) continue;
+      await this.programar(
+        TipoNotificacion.RECORDATORIO,
+        reserva,
+        reserva.cliente,
+        reserva.servicio,
+      );
     }
   }
 

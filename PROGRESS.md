@@ -2337,21 +2337,17 @@ si una plantilla de vertical sugiere más de 3 (ver nota de producto en
 la tarjeta de Suscripciones); (2) la mayoría de los mensajes de
 validación de los DTOs (fuera de la contraseña) todavía no usan claves
 de i18n en el backend — es mecánico, no se hizo completo a propósito
-(ver tarjeta de i18n backend); (3) **el link real del wizard
-(`/reservar/:idNegocio`) todavía no está enlazado ni mostrado en
-ninguna pantalla del admin** — un dueño de negocio no tiene forma de
-encontrar/copiar su propio link para compartirlo con clientes, es el
-gap más visible de producto que queda; (4) un cron real de
-`RECORDATORIO` sigue sin construirse (solo existen CONFIRMACION y
-CANCELACION).
+(ver tarjeta de i18n backend).
 
 Resueltos desde que se escribió esta lista por primera vez (no
 repetirlos como pendientes): la traducción i18n completa de
 Calendario/Clientes/Servicios/Reservas/Reportes/Login/Registro/
 Onboarding/Configuración/wizard público (ver sección de i18n más
-abajo) y la auditoría responsive con captura de pantalla real en
+abajo), la auditoría responsive con captura de pantalla real en
 viewport angosto (ver "QA: responsive en dispositivos reales" arriba,
-técnica del iframe).
+técnica del iframe), el link público del wizard mostrado en
+Configuración y el cron de RECORDATORIO (ver "Link público de reservas
++ cron de RECORDATORIO + fix de UX en Configuración" más abajo).
 
 ## Feedback de QA probando la app en vivo (4 puntos reportados por el usuario) ✅
 Con el proyecto ya corriendo localmente, el usuario probó la app él mismo
@@ -2618,17 +2614,39 @@ npm run dev       # http://localhost:5173
   `contrasena_hash` porque las contraseñas son cortas y sí necesitan el
   salteo lento contra fuerza bruta offline.
 
+## Link público de reservas + cron de RECORDATORIO + fix de UX en Configuración ✅
+Cierra 2 de los 4 pendientes menores (quedan: límite de 3 servicios del
+onboarding, i18n de validación de DTOs) más el bug de UX ya anotado.
+
+- **Link público visible en Configuración**: tarjeta nueva con el link
+  de `/reservar/:idNegocio` armado en el frontend + botón copiar. i18n
+  ES/EN agregado.
+- **Cron de `RECORDATORIO`** (`NotificacionesService`,
+  `EVERY_10_MINUTES`): programa recordatorio de toda reserva confirmada
+  con inicio dentro de 24h, idempotente por existencia (no duplica en
+  corridas sucesivas). 3 tests nuevos, suite en 210/210. Verificado en
+  vivo contra el servidor real.
+  - Nota operativa: durante la prueba había procesos `backend:dev`
+    duplicados peleando por el puerto 3000, y el que respondía era una
+    build vieja sin el cron — de ahí que "no apareciera" al principio.
+    Se mataron y se reinició limpio.
+- **Fix parpadeo del checkbox "activo"** en Configuración: overlay
+  optimista local, se limpia recién cuando la invalidación de la query
+  resuelve (no antes, para no reintroducir el mismo parpadeo).
+
+Todo verificado con `tsc`, `eslint`, `prettier` y build; sin cambios
+en `docs/spec.md`.
+
 ## Cómo continuar si se corta la sesión
 Ver reglas de commit/pausa en el prompt original de arquitectura (punto 18
 del brief del equipo). Resumen: terminar hasta que compile, commitear con
 mensaje honesto, actualizar este archivo, nunca reiniciar un módulo con
 avance ya commiteado.
 
-**Primera tarea a retomar la próxima sesión**: exponer el link real del
-wizard público (`/reservar/:idNegocio`) en alguna pantalla del admin
-(ej. Configuración o Dashboard, con un botón de copiar) — hoy un dueño
-de negocio no tiene ninguna forma de encontrar ni compartir su propio
-link con clientes, es el gap de producto más visible que queda (ver
-"Pendientes menores" arriba, punto 3). El resto de pendientes (límite
-de 3 servicios del onboarding, i18n de validación de DTOs del backend,
-cron de RECORDATORIO) son menores y no bloquean nada.
+**Primera tarea a retomar la próxima sesión**: de los 2 pendientes
+menores que quedan (ver "Pendientes menores" arriba), ninguno es
+urgente ni bloquea la demo del Seguimiento #2 (24/09/2026) — el link
+público de reservas y el cron de RECORDATORIO, que eran el gap más
+visible, ya están cerrados (ver sección de arriba). Si se retoma
+trabajo técnico, el más señalado por el equipo es el límite de 3
+servicios del plan gratis en el onboarding del frontend.

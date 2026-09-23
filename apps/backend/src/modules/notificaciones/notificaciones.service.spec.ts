@@ -4,6 +4,7 @@ import {
   CanalNotificacion,
   CanalPreferido,
   EstadoNotificacion,
+  EstadoReserva,
   Idioma,
   TipoNotificacion,
 } from '../../database/entities';
@@ -29,6 +30,10 @@ function crearNotificacionRepoMock() {
   };
 }
 
+function crearReservaRepoMock() {
+  return { find: vi.fn().mockResolvedValue([]) };
+}
+
 function crearProviderMock() {
   return { enviarCorreo: vi.fn(), enviarMensaje: vi.fn() };
 }
@@ -45,6 +50,14 @@ function crearI18nMock() {
     'notificaciones.CANCELACION_TEXTO': {
       es: 'Tu reserva de "{nombreServicio}" para el {fechaHoraTexto} fue cancelada.',
       en: 'Your "{nombreServicio}" appointment on {fechaHoraTexto} has been cancelled.',
+    },
+    'notificaciones.RECORDATORIO_ASUNTO': {
+      es: 'Recordatorio de tu cita',
+      en: 'Appointment reminder',
+    },
+    'notificaciones.RECORDATORIO_TEXTO': {
+      es: 'Te recordamos tu reserva de "{nombreServicio}" para el {fechaHoraTexto}.',
+      en: 'This is a reminder of your "{nombreServicio}" appointment on {fechaHoraTexto}.',
     },
   };
   return {
@@ -73,6 +86,7 @@ const SERVICIO = { idServicio: 'servicio-1', nombre: 'Corte de cabello' };
 
 describe('NotificacionesService', () => {
   let notificacionRepo: ReturnType<typeof crearNotificacionRepoMock>;
+  let reservaRepo: ReturnType<typeof crearReservaRepoMock>;
   let resend: ReturnType<typeof crearProviderMock>;
   let whatsapp: ReturnType<typeof crearProviderMock>;
   let i18n: ReturnType<typeof crearI18nMock>;
@@ -80,11 +94,13 @@ describe('NotificacionesService', () => {
 
   beforeEach(() => {
     notificacionRepo = crearNotificacionRepoMock();
+    reservaRepo = crearReservaRepoMock();
     resend = crearProviderMock();
     whatsapp = crearProviderMock();
     i18n = crearI18nMock();
     service = new NotificacionesService(
       notificacionRepo as any,
+      reservaRepo as any,
       resend as any,
       whatsapp as any,
       i18n as any,
@@ -243,6 +259,55 @@ describe('NotificacionesService', () => {
       { idNotificacion: 'notif-5' },
       expect.objectContaining({ estado: EstadoNotificacion.ENVIADA }),
     );
+  });
+
+  it('programarRecordatorios() programa un recordatorio para una reserva confirmada dentro de las próximas 24h', async () => {
+    const reserva = {
+      idReserva: 'reserva-2',
+      estado: EstadoReserva.CONFIRMADA,
+      fechaHoraInicio: new Date(Date.now() + 2 * 60 * 60 * 1000),
+      cliente: CLIENTE_EMAIL,
+      servicio: SERVICIO,
+    };
+    reservaRepo.find.mockResolvedValue([reserva]);
+    notificacionRepo.find.mockResolvedValue([]);
+
+    await service.programarRecordatorios();
+
+    expect(notificacionRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        idReserva: 'reserva-2',
+        idCliente: 'cliente-1',
+        tipo: TipoNotificacion.RECORDATORIO,
+        estado: EstadoNotificacion.PENDIENTE,
+      }),
+    );
+  });
+
+  it('programarRecordatorios() no duplica el recordatorio de una reserva que ya lo tiene programado', async () => {
+    const reserva = {
+      idReserva: 'reserva-3',
+      estado: EstadoReserva.CONFIRMADA,
+      fechaHoraInicio: new Date(Date.now() + 2 * 60 * 60 * 1000),
+      cliente: CLIENTE_EMAIL,
+      servicio: SERVICIO,
+    };
+    reservaRepo.find.mockResolvedValue([reserva]);
+    notificacionRepo.find.mockResolvedValue([
+      { idReserva: 'reserva-3', tipo: TipoNotificacion.RECORDATORIO },
+    ]);
+
+    await service.programarRecordatorios();
+
+    expect(notificacionRepo.save).not.toHaveBeenCalled();
+  });
+
+  it('programarRecordatorios() no consulta notificaciones existentes si no hay reservas próximas (evita un query vacío)', async () => {
+    reservaRepo.find.mockResolvedValue([]);
+
+    await service.programarRecordatorios();
+
+    expect(notificacionRepo.find).not.toHaveBeenCalled();
   });
 
   it('listar() filtra por el negocio actual vía join con Cliente y pagina el resultado', async () => {
