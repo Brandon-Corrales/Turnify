@@ -226,6 +226,13 @@
   "configuracion": {
     "subtitulo": "Definí el horario laboral de tu negocio — las reservas (propias y las que hagan tus clientes por el enlace público) solo se pueden agendar dentro de estos horarios.",
     "empleado": "Empleado",
+    "linkReservaTitulo": "Link público de reservas",
+    "linkReservaDescripcion": "Compartí este enlace con tus clientes (WhatsApp, redes sociales, etc.) para que reserven por su cuenta, sin necesidad de llamarte.",
+    "linkReservaAriaLabel": "Enlace público de reservas de tu negocio",
+    "copiarLink": "Copiar",
+    "copiado": "¡Copiado!",
+    "linkCopiado": "Enlace copiado al portapapeles",
+    "errorCopiarLink": "No se pudo copiar el enlace",
     "horarioSemanal": "Horario laboral semanal",
     "cerrado": "Cerrado",
     "horarioActivado": "Horario activado",

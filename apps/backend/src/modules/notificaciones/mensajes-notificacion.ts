@@ -6,10 +6,10 @@ export interface DatosMensajeReserva {
   fechaHoraTexto: string;
 }
 
-const CLAVES: Record<
-  TipoNotificacion.CONFIRMACION | TipoNotificacion.CANCELACION,
-  { asunto: string; texto: string }
-> = {
+type TipoMensajeReserva =
+  TipoNotificacion.CONFIRMACION | TipoNotificacion.CANCELACION | TipoNotificacion.RECORDATORIO;
+
+const CLAVES: Record<TipoMensajeReserva, { asunto: string; texto: string }> = {
   [TipoNotificacion.CONFIRMACION]: {
     asunto: 'notificaciones.CONFIRMACION_ASUNTO',
     texto: 'notificaciones.CONFIRMACION_TEXTO',
@@ -17,6 +17,10 @@ const CLAVES: Record<
   [TipoNotificacion.CANCELACION]: {
     asunto: 'notificaciones.CANCELACION_ASUNTO',
     texto: 'notificaciones.CANCELACION_TEXTO',
+  },
+  [TipoNotificacion.RECORDATORIO]: {
+    asunto: 'notificaciones.RECORDATORIO_ASUNTO',
+    texto: 'notificaciones.RECORDATORIO_TEXTO',
   },
 };
 
@@ -30,7 +34,7 @@ const CLAVES: Record<
  */
 export function construirMensaje(
   i18n: I18nService,
-  tipo: TipoNotificacion.CONFIRMACION | TipoNotificacion.CANCELACION,
+  tipo: TipoMensajeReserva,
   idioma: Idioma,
   datos: DatosMensajeReserva,
 ): { asunto: string; texto: string } {

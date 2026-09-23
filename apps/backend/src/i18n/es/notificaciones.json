@@ -2,5 +2,7 @@
   "CONFIRMACION_ASUNTO": "Reserva confirmada",
   "CONFIRMACION_TEXTO": "Tu reserva de \"{nombreServicio}\" para el {fechaHoraTexto} quedó confirmada.",
   "CANCELACION_ASUNTO": "Reserva cancelada",
-  "CANCELACION_TEXTO": "Tu reserva de \"{nombreServicio}\" para el {fechaHoraTexto} fue cancelada."
+  "CANCELACION_TEXTO": "Tu reserva de \"{nombreServicio}\" para el {fechaHoraTexto} fue cancelada.",
+  "RECORDATORIO_ASUNTO": "Recordatorio de tu cita",
+  "RECORDATORIO_TEXTO": "Te recordamos tu reserva de \"{nombreServicio}\" para el {fechaHoraTexto}."
 }
