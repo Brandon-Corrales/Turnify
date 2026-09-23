@@ -2,13 +2,14 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import { Clock } from 'lucide-react';
+import { Check, Clock, Copy, Link2 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Select, useToast } from '@/components/ui';
+import { Boton, Select, useToast } from '@/components/ui';
 import { SkeletonText } from '@/components/ui/Skeleton';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/lib/api';
 import { disponibilidadApi, type Disponibilidad } from '@/lib/disponibilidad-api';
+import { negociosApi } from '@/lib/negocios-api';
 import { usuariosApi } from '@/lib/usuarios-api';
 
 const DIAS_CLAVE = [
@@ -76,6 +77,10 @@ export default function ConfiguracionPage() {
   const queryClient = useQueryClient();
 
   const dias = useMemo(() => crearDias(t), [t]);
+  const negocioQuery = useQuery({
+    queryKey: ['negocios', 'mi-negocio'],
+    queryFn: negociosApi.obtenerMiNegocio,
+  });
   const usuariosQuery = useQuery({ queryKey: ['usuarios'], queryFn: usuariosApi.listar });
   const empleadosActivos = useMemo(
     () => usuariosQuery.data?.data.filter((u) => u.activo) ?? [],
@@ -106,7 +111,12 @@ export default function ConfiguracionPage() {
   const [borrador, setBorrador] = useState<
     Record<number, Partial<Pick<FilaDia, 'horaInicio' | 'horaFin'>>>
   >({});
-  const filas = filasServidor.map((fila) => ({ ...fila, ...borrador[fila.diaSemana] }));
+  const [activoOptimista, setActivoOptimista] = useState<Record<number, boolean>>({});
+  const filas = filasServidor.map((fila) => ({
+    ...fila,
+    ...borrador[fila.diaSemana],
+    activo: activoOptimista[fila.diaSemana] ?? fila.activo,
+  }));
 
   const invalidar = () =>
     queryClient.invalidateQueries({ queryKey: ['disponibilidad', idUsuarioSeleccionado] });
@@ -149,19 +159,40 @@ export default function ConfiguracionPage() {
   });
 
   const alCambiarActivo = (fila: FilaDia, activo: boolean) => {
-    if (activo && !fila.idDisponibilidad) {
-      crearMutation.mutate({
-        idUsuario: idUsuarioSeleccionado,
-        diaSemana: fila.diaSemana,
-        horaInicio: fila.horaInicio,
-        horaFin: fila.horaFin,
+    setActivoOptimista((actual) => ({ ...actual, [fila.diaSemana]: activo }));
+    const limpiarOptimista = () =>
+      setActivoOptimista((actual) => {
+        const resto = { ...actual };
+        delete resto[fila.diaSemana];
+        return resto;
       });
+    const alTerminar = {
+      onSuccess: async () => {
+        await invalidar();
+        limpiarOptimista();
+      },
+      onError: limpiarOptimista,
+    };
+
+    if (activo && !fila.idDisponibilidad) {
+      crearMutation.mutate(
+        {
+          idUsuario: idUsuarioSeleccionado,
+          diaSemana: fila.diaSemana,
+          horaInicio: fila.horaInicio,
+          horaFin: fila.horaFin,
+        },
+        alTerminar,
+      );
       return;
     }
     if (fila.idDisponibilidad) {
       if (activo)
-        actualizarMutation.mutate({ id: fila.idDisponibilidad, payload: { activo: true } });
-      else desactivarMutation.mutate(fila.idDisponibilidad);
+        actualizarMutation.mutate(
+          { id: fila.idDisponibilidad, payload: { activo: true } },
+          alTerminar,
+        );
+      else desactivarMutation.mutate(fila.idDisponibilidad, alTerminar);
     }
   };
 
@@ -190,6 +221,22 @@ export default function ConfiguracionPage() {
     );
   };
 
+  const [copiado, setCopiado] = useState(false);
+  const linkReservaPublica = negocioQuery.data
+    ? `${window.location.origin}/reservar/${negocioQuery.data.idNegocio}`
+    : '';
+
+  const copiarLinkReserva = async () => {
+    try {
+      await navigator.clipboard.writeText(linkReservaPublica);
+      setCopiado(true);
+      mostrarToast({ variante: 'exito', titulo: t('configuracion.linkCopiado') });
+      setTimeout(() => setCopiado(false), 2000);
+    } catch {
+      mostrarToast({ variante: 'error', titulo: t('configuracion.errorCopiarLink') });
+    }
+  };
+
   return (
     <AppLayout>
       <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
@@ -213,6 +260,49 @@ export default function ConfiguracionPage() {
             />
           </div>
         )}
+
+        <div className="mt-6 rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+          <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-3 dark:border-slate-700">
+            <Link2 className="h-4 w-4 text-primary-600 dark:text-primary-400" aria-hidden="true" />
+            <h2 className="text-sm font-medium text-slate-700 dark:text-slate-200">
+              {t('configuracion.linkReservaTitulo')}
+            </h2>
+          </div>
+          <div className="p-5">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {t('configuracion.linkReservaDescripcion')}
+            </p>
+            {negocioQuery.isPending ? (
+              <div className="mt-3">
+                <SkeletonText lineas={1} />
+              </div>
+            ) : (
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <input
+                  type="text"
+                  readOnly
+                  value={linkReservaPublica}
+                  onFocus={(e) => e.currentTarget.select()}
+                  aria-label={t('configuracion.linkReservaAriaLabel')}
+                  className="h-11 flex-1 rounded-md border border-slate-300 bg-slate-50 px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300"
+                />
+                <Boton
+                  variante="secundario"
+                  onClick={copiarLinkReserva}
+                  className="shrink-0"
+                  disabled={!linkReservaPublica}
+                >
+                  {copiado ? (
+                    <Check className="h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <Copy className="h-4 w-4" aria-hidden="true" />
+                  )}
+                  {copiado ? t('configuracion.copiado') : t('configuracion.copiarLink')}
+                </Boton>
+              </div>
+            )}
+          </div>
+        </div>
 
         <div className="mt-6 rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
           <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-3 dark:border-slate-700">

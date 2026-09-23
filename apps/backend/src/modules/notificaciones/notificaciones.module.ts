@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Notificacion } from '../../database/entities';
+import { Notificacion, Reserva } from '../../database/entities';
 import { NotificacionesController } from './notificaciones.controller';
 import { NotificacionesService } from './notificaciones.service';
 import { ResendService } from './providers/resend.service';
@@ -13,7 +13,7 @@ import { WhatsappCloudApiService } from './providers/whatsapp-cloud-api.service'
  * un Repository normal, no TenantScopedRepository (que exige la columna).
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([Notificacion])],
+  imports: [TypeOrmModule.forFeature([Notificacion, Reserva])],
   controllers: [NotificacionesController],
   providers: [NotificacionesService, ResendService, WhatsappCloudApiService],
   exports: [NotificacionesService],

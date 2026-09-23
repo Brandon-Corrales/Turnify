@@ -226,6 +226,13 @@
   "configuracion": {
     "subtitulo": "Set your business's working hours — bookings (your own and the ones your clients make through the public link) can only be scheduled within these hours.",
     "empleado": "Staff member",
+    "linkReservaTitulo": "Public booking link",
+    "linkReservaDescripcion": "Share this link with your clients (WhatsApp, social media, etc.) so they can book on their own, without having to call you.",
+    "linkReservaAriaLabel": "Your business's public booking link",
+    "copiarLink": "Copy",
+    "copiado": "Copied!",
+    "linkCopiado": "Link copied to clipboard",
+    "errorCopiarLink": "Couldn't copy the link",
     "horarioSemanal": "Weekly working hours",
     "cerrado": "Closed",
     "horarioActivado": "Hours enabled",
