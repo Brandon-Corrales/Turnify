@@ -69,9 +69,13 @@ function GraficoReservasPorDia({ datos }: { datos: ResumenReportes['reservasPorD
           transition={{ duration: 0.4, delay: i * 0.01 }}
           className="w-3 max-w-6 min-w-[3px] shrink-0 rounded-t bg-primary-500 dark:bg-primary-400"
           title={t('dashboard.tooltipDia', {
+            // Mismo bug que ReportesPage.formatearDiaCorto: `dia.fecha` es
+            // fecha-sin-hora ("2026-09-28"), se interpreta como medianoche
+            // UTC — sin timeZone: 'UTC' un navegador detrás de UTC (incluida
+            // Costa Rica) corre el día mostrado hacia atrás.
             fecha: new Date(dia.fecha).toLocaleDateString(
               i18n.language.startsWith('en') ? 'en-US' : 'es-CR',
-              { day: 'numeric', month: 'short' },
+              { day: 'numeric', month: 'short', timeZone: 'UTC' },
             ),
             n: dia.cantidad,
           })}

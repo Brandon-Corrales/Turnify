@@ -4,6 +4,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin, { type DateClickArg } from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
+import momentTimezonePlugin from '@fullcalendar/moment-timezone';
 import esLocale from '@fullcalendar/core/locales/es';
 import type { DatesSetArg, EventClickArg, EventContentArg, EventDropArg } from '@fullcalendar/core';
 import { useForm } from 'react-hook-form';
@@ -20,15 +21,57 @@ import { serviciosApi } from '@/lib/servicios-api';
 import { ApiError } from '@/lib/api';
 import { crearNuevaReservaSchema, type NuevaReservaFormValues } from '@/lib/validation';
 
-function formatearFechaLocal(fecha: Date): string {
-  const año = fecha.getFullYear();
-  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
-  const dia = String(fecha.getDate()).padStart(2, '0');
-  return `${año}-${mes}-${dia}`;
+// Turnify opera en hora de Costa Rica siempre, sin importar en qué huso
+// horario esté el navegador del admin — mismo criterio fijo (offset -6,
+// sin horario de verano) que usa el backend en zona-horaria-negocio.ts.
+// El propio <FullCalendar> también se configura con esta zona (más abajo,
+// vía @fullcalendar/moment-timezone) para que la posición del bloque en
+// las vistas de semana/día y la etiqueta de hora siempre coincidan, sin
+// importar el huso del navegador que mira la pantalla.
+const ZONA_HORARIA_NEGOCIO = 'America/Costa_Rica';
+
+// Formatea la hora GUARDADA de una reserva para mostrarla — debe ser
+// siempre la hora fija de Costa Rica (mismo criterio que el modal de
+// detalle), nunca la del navegador de quien mira la pantalla.
+function formatearHoraCR(fecha: Date): string {
+  return new Intl.DateTimeFormat('es-CR', {
+    timeZone: ZONA_HORARIA_NEGOCIO,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(fecha);
 }
 
-function formatearHoraLocal(fecha: Date): string {
-  return `${String(fecha.getHours()).padStart(2, '0')}:${String(fecha.getMinutes()).padStart(2, '0')}`;
+// Bug real corregido: antes se leía fecha/hora con getters LOCALES
+// (getFullYear/getHours...) del Date real que entrega FullCalendar al
+// hacer clic o al terminar un arrastre — con el navegador en un huso
+// distinto a Costa Rica, esto llenaba el formulario de "Nueva reserva"
+// con la fecha/hora equivocada. Ahora se extrae siempre en hora de Costa
+// Rica, consistente con el resto del sistema.
+function formatearFechaHoraCR(fecha: Date): { fecha: string; hora: string } {
+  const partes = new Intl.DateTimeFormat('en-CA', {
+    timeZone: ZONA_HORARIA_NEGOCIO,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(fecha);
+  const obtener = (tipo: string) => partes.find((p) => p.type === tipo)!.value;
+  return {
+    fecha: `${obtener('year')}-${obtener('month')}-${obtener('day')}`,
+    hora: `${obtener('hour')}:${obtener('minute')}`,
+  };
+}
+
+// Inverso de formatearFechaHoraCR: construye el instante UTC real a partir
+// de una fecha/hora en hora de Costa Rica (offset fijo +6h hacia UTC) —
+// usado al enviar el formulario de "Nueva reserva" al backend.
+function crLocalAFechaUtc(fecha: string, hora: string): Date {
+  const [anio, mes, dia] = fecha.split('-').map(Number);
+  const [horas, minutos] = hora.split(':').map(Number);
+  return new Date(Date.UTC(anio, mes - 1, dia, horas + 6, minutos));
 }
 
 const HORA_DEFECTO_CLIC_EN_DIA = '09:00';
@@ -139,8 +182,15 @@ export default function CalendarioPage() {
   const renderizarEvento = useCallback((info: EventContentArg) => {
     const reserva = info.event.extendedProps.reserva as Reserva;
     const cancelada = reserva.estado === 'cancelada';
-    const horaInicio = formatearHoraLocal(new Date(reserva.fechaHoraInicio));
-
+    // Bug real encontrado y arreglado: usaba formatearHoraLocal (huso del
+    // navegador) para la hora GUARDADA de la reserva — mismo tipo de
+    // inconsistencia ya corregida en el modal de detalle, ahora también acá.
+    const horaInicio = formatearHoraCR(new Date(reserva.fechaHoraInicio));
+    // info.event.title ya trae "Cliente · Servicio (cancelada)" (calculado
+    // en el useMemo de `eventos` de abajo) — reusarlo evita mostrar un
+    // texto genérico como "Cita programada" para toda reserva, y sirve de
+    // paso como tooltip nativo para cuando se corta visualmente (mismo rol
+    // que cumplía el eventDidMount que existía antes de este componente).
     return (
       <div
         className={`flex min-w-0 items-center gap-1.5 rounded-md border-l-2 px-2 py-1 text-xs leading-5 ${
@@ -149,12 +199,13 @@ export default function CalendarioPage() {
             : 'bg-violet-100 text-violet-900 dark:bg-violet-500/20 dark:text-violet-100'
         }`}
         style={{ borderLeftColor: cancelada ? '#94a3b8' : (reserva.servicio?.colorCalendario ?? '#8b5cf6') }}
+        title={info.event.title}
       >
         <span className="shrink-0 font-semibold">{horaInicio}</span>
-        <span className="min-w-0 truncate">{t('calendario.citaProgramada')}</span>
+        <span className="min-w-0 truncate">{info.event.title}</span>
       </div>
     );
-  }, [t]);
+  }, []);
 
   const eventos = useMemo(
     () =>
@@ -236,12 +287,13 @@ export default function CalendarioPage() {
   // usuario la ajusta en el formulario.
   const abrirModalNuevaReserva = useCallback(
     (fecha: Date, allDay: boolean) => {
+      const { fecha: fechaCR, hora: horaCR } = formatearFechaHoraCR(fecha);
       resetNuevaReserva({
         idCliente: '',
         idServicio: '',
         idUsuario: idUsuarioFiltro || empleadosActivos[0]?.idUsuario || '',
-        fecha: formatearFechaLocal(fecha),
-        hora: allDay ? HORA_DEFECTO_CLIC_EN_DIA : formatearHoraLocal(fecha),
+        fecha: fechaCR,
+        hora: allDay ? HORA_DEFECTO_CLIC_EN_DIA : horaCR,
         notas: '',
       });
       setModalNuevaReservaAbierto(true);
@@ -260,7 +312,7 @@ export default function CalendarioPage() {
         idCliente: valores.idCliente,
         idServicio: valores.idServicio,
         idUsuario: valores.idUsuario,
-        fechaHoraInicio: new Date(`${valores.fecha}T${valores.hora}`).toISOString(),
+        fechaHoraInicio: crLocalAFechaUtc(valores.fecha, valores.hora).toISOString(),
         notas: valores.notas || undefined,
       }),
     onSuccess: async () => {
@@ -363,7 +415,16 @@ export default function CalendarioPage() {
           )}
           <FullCalendar
             ref={calendarRef}
-            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin, momentTimezonePlugin]}
+            // Bug real corregido: sin esto, FullCalendar posiciona y rotula
+            // los eventos en el huso horario del navegador de quien mira la
+            // pantalla — un admin fuera de Costa Rica veía una reserva a una
+            // hora distinta a la que confirmó el cliente. Con el plugin de
+            // zona horaria, el bloque en las vistas de semana/día y todas
+            // las interacciones (clic para crear, arrastrar para
+            // reprogramar) quedan consistentes en hora de Costa Rica sin
+            // importar el huso del navegador.
+            timeZone={ZONA_HORARIA_NEGOCIO}
             initialView={window.innerWidth < PUNTO_QUIEBRE_MOBILE ? 'listWeek' : 'dayGridMonth'}
             headerToolbar={
               window.innerWidth < PUNTO_QUIEBRE_MOBILE ? TOOLBAR_MOBILE : TOOLBAR_DESKTOP
@@ -416,7 +477,7 @@ export default function CalendarioPage() {
               <span className="font-medium">{t('calendario.detalleHorario')}</span>{' '}
               {new Date(reservaSeleccionada.fechaHoraInicio).toLocaleString(
                 i18n.language.startsWith('en') ? 'en-US' : 'es-CR',
-                { dateStyle: 'medium', timeStyle: 'short' },
+                { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Costa_Rica' },
               )}
             </p>
             <p>
