@@ -5,7 +5,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin, { type DateClickArg } from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
 import esLocale from '@fullcalendar/core/locales/es';
-import type { DatesSetArg, EventClickArg, EventDropArg } from '@fullcalendar/core';
+import type { DatesSetArg, EventClickArg, EventContentArg, EventDropArg } from '@fullcalendar/core';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -135,6 +135,26 @@ export default function CalendarioPage() {
   });
 
   const etiquetaEstadoReserva = useMemo(() => crearEtiquetaEstadoReserva(t), [t]);
+
+  const renderizarEvento = useCallback((info: EventContentArg) => {
+    const reserva = info.event.extendedProps.reserva as Reserva;
+    const cancelada = reserva.estado === 'cancelada';
+    const horaInicio = formatearHoraLocal(new Date(reserva.fechaHoraInicio));
+
+    return (
+      <div
+        className={`flex min-w-0 items-center gap-1.5 rounded-md border-l-2 px-2 py-1 text-xs leading-5 ${
+          cancelada
+            ? 'bg-slate-100 text-slate-600 dark:bg-slate-700/70 dark:text-slate-300'
+            : 'bg-violet-100 text-violet-900 dark:bg-violet-500/20 dark:text-violet-100'
+        }`}
+        style={{ borderLeftColor: cancelada ? '#94a3b8' : (reserva.servicio?.colorCalendario ?? '#8b5cf6') }}
+      >
+        <span className="shrink-0 font-semibold">{horaInicio}</span>
+        <span className="min-w-0 truncate">{t('calendario.citaProgramada')}</span>
+      </div>
+    );
+  }, [t]);
 
   const eventos = useMemo(
     () =>
@@ -360,16 +380,11 @@ export default function CalendarioPage() {
             businessHours={businessHours.length > 0 ? businessHours : undefined}
             events={eventos}
             // Con varias reservas el mismo día, el mes ya no las apila todas
-            // (se veían con el texto cortado a la mitad) — se limita a 3 y
+            // (se veían con el texto cortado a la mitad) — se limita a 2 y
             // el resto queda detrás de un enlace "+N más" nativo de
             // FullCalendar, que al abrirse muestra cada evento completo.
-            dayMaxEvents={3}
-            eventDidMount={(info) => {
-              // Tooltip nativo del navegador con el título completo — red
-              // de seguridad adicional para cuando el texto sí se corta
-              // visualmente en la celda (nombres largos, mes muy angosto).
-              info.el.title = info.event.title;
-            }}
+            dayMaxEvents={2}
+            eventContent={renderizarEvento}
             datesSet={alCambiarRangoVisible}
             dateClick={alHacerClicEnFecha}
             eventClick={alHacerClicEnEvento}

@@ -271,6 +271,7 @@
     "confirmarReserva": "Confirm booking"
   },
   "calendario": {
+    "citaProgramada": "Scheduled appointment",
     "filtrarPorEmpleado": "Filter by staff",
     "todosLosEmpleados": "All staff",
     "nuevaReserva": "New booking",
