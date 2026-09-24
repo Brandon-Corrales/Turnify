@@ -186,11 +186,9 @@ export default function CalendarioPage() {
     // navegador) para la hora GUARDADA de la reserva — mismo tipo de
     // inconsistencia ya corregida en el modal de detalle, ahora también acá.
     const horaInicio = formatearHoraCR(new Date(reserva.fechaHoraInicio));
-    // info.event.title ya trae "Cliente · Servicio (cancelada)" (calculado
-    // en el useMemo de `eventos` de abajo) — reusarlo evita mostrar un
-    // texto genérico como "Cita programada" para toda reserva, y sirve de
-    // paso como tooltip nativo para cuando se corta visualmente (mismo rol
-    // que cumplía el eventDidMount que existía antes de este componente).
+    // La celda muestra solo "hora + Cita programada" (diseño de la vista
+    // interna del calendario); el detalle "Cliente · Servicio" que trae
+    // info.event.title queda como tooltip nativo y en el modal de detalle.
     return (
       <div
         className={`flex min-w-0 items-center gap-1.5 rounded-md border-l-2 px-2 py-1 text-xs leading-5 ${
@@ -202,10 +200,10 @@ export default function CalendarioPage() {
         title={info.event.title}
       >
         <span className="shrink-0 font-semibold">{horaInicio}</span>
-        <span className="min-w-0 truncate">{info.event.title}</span>
+        <span className="min-w-0 truncate">{t('calendario.citaProgramada')}</span>
       </div>
     );
-  }, []);
+  }, [t]);
 
   const eventos = useMemo(
     () =>
