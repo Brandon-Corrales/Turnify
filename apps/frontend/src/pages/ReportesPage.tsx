@@ -71,9 +71,14 @@ function formatearColones(monto: number): string {
 }
 
 function formatearDiaCorto(iso: string, idioma: string): string {
+  // `iso` es una fecha sin hora (ej. "2026-09-28") que devuelve el backend:
+  // `new Date(...)` la interpreta como medianoche UTC, así que hay que fijar
+  // timeZone: 'UTC' al formatear — si no, un navegador detrás de UTC
+  // (incluida Costa Rica) corre la fecha mostrada un día hacia atrás.
   return new Date(iso).toLocaleDateString(idioma.startsWith('en') ? 'en-US' : 'es-CR', {
     day: 'numeric',
     month: 'short',
+    timeZone: 'UTC',
   });
 }
 

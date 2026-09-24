@@ -416,7 +416,7 @@ export default function CalendarioPage() {
               <span className="font-medium">{t('calendario.detalleHorario')}</span>{' '}
               {new Date(reservaSeleccionada.fechaHoraInicio).toLocaleString(
                 i18n.language.startsWith('en') ? 'en-US' : 'es-CR',
-                { dateStyle: 'medium', timeStyle: 'short' },
+                { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Costa_Rica' },
               )}
             </p>
             <p>
