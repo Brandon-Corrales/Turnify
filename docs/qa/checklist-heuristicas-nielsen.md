@@ -168,22 +168,70 @@ consistente.
 **Nuevo hallazgo encontrado al reverificar (no incluido en el arreglo
 anterior)**: el propio **componente `<FullCalendar>`** — el número de
 hora que antecede al título del evento dentro de la celda del mes (ej.
-"**9** Cliente Prueba Nielsen") — sigue mostrando la hora en el huso
+"**9** Cliente Prueba Nielsen") — seguía mostrando la hora en el huso
 horario del navegador, no en la hora de Costa Rica, incluso después del
-fix del modal. Esto confirma que el "causa probable" original era
+fix del modal. Esto confirmó que el "causa probable" original era
 correcto: FullCalendar renderiza tiempos en el huso horario local del
 navegador por defecto, y el fix del modal (un `toLocaleString` aparte)
-no toca ese renderizado interno. Arreglarlo de forma robusta requiere
-pasarle a `<FullCalendar timeZone="...">` un huso horario fijo real
-(vía el plugin oficial `@fullcalendar/moment-timezone`, ya que sin un
-plugin el componente solo soporta `'local'` o `'UTC'` nativamente) y
-ajustar en consecuencia los tres puntos donde el código ya interpreta
-fechas del propio calendario (el feed de eventos, `dateClick` para crear
-una reserva manual, y `eventDrop` para reprogramar por arrastre) — un
-cambio más grande y con más superficie de riesgo que los dos anteriores
-(nueva dependencia + tres puntos de conversión a ajustar en conjunto),
-que se deja anotado como seguimiento en vez de aplicarse apurado dentro
-de esta misma corrección.
+no tocaba ese renderizado interno.
+
+### Actualización #2 — arreglado de raíz con el plugin oficial de zona horaria
+
+Mientras se investigaba este seguimiento, se sumó al archivo un cambio de
+otro miembro del equipo (rebase de `apps/frontend/src/pages/CalendarioPage.tsx`
+con la rama `dixon`, PR #4) que reescribió cómo se dibuja cada evento
+(`eventContent`) — y, sin saberlo, **reintrodujo exactamente este mismo
+bug** en la etiqueta de hora de la celda (usaba `formatearHoraLocal`,
+huso del navegador) y de paso perdió el nombre del cliente en el texto
+del evento (mostraba genérico "Cita programada" para toda reserva, y
+quitó el tooltip nativo que compensaba el texto cortado).
+
+Se corrigieron ambos problemas juntos, manteniendo el formato visual
+nuevo (tarjeta violeta con borde de color, la vista compacta que agregó
+ese cambio):
+
+- Se instaló `@fullcalendar/moment-timezone@6.1.21` +
+  `moment-timezone@0.5.48` (versión exacta que exige el peer dependency
+  de la 6.1.21, misma que ya usa el resto de paquetes de FullCalendar en
+  el proyecto) y se agregó `timeZone="America/Costa_Rica"` al componente
+  `<FullCalendar>` — con el plugin oficial, la posición del bloque en las
+  vistas de semana/día, la etiqueta de hora, `dateClick` (crear reserva
+  manual) y `eventDrop` (reprogramar por arrastre) quedan TODOS
+  consistentes en hora de Costa Rica, sin importar el huso del navegador
+  — ya no hace falta ningún cálculo manual de offset en el feed de
+  eventos ni en `eventDrop`.
+- `dateClick` sí necesitaba un ajuste propio: extraía fecha/hora del clic
+  con getters LOCALES del navegador (`getFullYear`/`getHours`...) para
+  precargar el formulario de "Nueva reserva" — con el navegador fuera de
+  Costa Rica, esto llenaba el formulario con la fecha/hora equivocada
+  aunque el bloque ya se dibujara bien. Se reemplazó por
+  `formatearFechaHoraCR()`/`crLocalAFechaUtc()`, que extraen y reconstruyen
+  siempre en hora de Costa Rica (mismo offset fijo -6h, sin horario de
+  verano, que ya usa `zona-horaria-negocio.ts` del backend).
+- La etiqueta de hora de la celda vuelve a mostrar `info.event.title`
+  ("Cliente · Servicio (cancelada)", el mismo texto ya calculado por el
+  `useMemo` de `eventos`) en vez del genérico "Cita programada", y ese
+  mismo texto queda como `title` del `<div>` — recupera el tooltip nativo
+  para cuando el texto se corta visualmente.
+
+**Verificado en Chrome real, navegador en `America/Los_Angeles`, misma
+reserva de 10:00 a.m. CR**: vista de Mes muestra "10:00 Cliente Pru...";
+vista de Semana posiciona el bloque exactamente en la fila "10" (antes
+"9"), con la misma etiqueta; clic en la franja de las 11:00 de otro día
+precargó el formulario de "Nueva reserva" con "11:30 a.m." — coincide con
+la posición visual exacta donde se hizo clic, confirmando que
+`dateClick` también quedó corregido; el modal de detalle sigue mostrando
+"10:00 a. m." sin regresión. `tsc -b` y `eslint` limpios.
+
+**No verificado de punta a punta por limitación de la herramienta de
+automatización** (ya documentado varias veces en `PROGRESS.md`: un
+arrastre real necesita una secuencia de eventos de mouse realista, no un
+solo salto): el flujo de `eventDrop` (reprogramar arrastrando un evento)
+no se probó con un arrastre real en esta sesión. Se confía en que
+funciona correctamente porque usa el mismo mecanismo interno de
+conversión de fechas del plugin oficial que `dateClick` (ya verificado
+arriba) — pero queda anotado como la única pieza de este arreglo sin
+verificación visual directa.
 
 ---
 
@@ -282,22 +330,23 @@ heurística para el tipo de producto).
 ## Hallazgos a corregir (priorizados)
 
 1. ~~**[Alta] Calendario: la hora de una reserva se muestra en el huso
-   horario del navegador del admin...**~~ **Arreglado y reverificado**
-   (ver "Actualización" en Heurística 4) — el modal de detalle ya muestra
-   la hora fija de Costa Rica. Queda un seguimiento más grande y de menor
-   prioridad: la propia celda del mes de FullCalendar sigue mostrando la
-   hora en el huso del navegador (ver punto 3 abajo).
+   horario del navegador del admin...**~~ **Arreglado y reverificado de
+   raíz** (ver "Actualización #2" en Heurística 4) — con
+   `@fullcalendar/moment-timezone` + `timeZone="America/Costa_Rica"`, el
+   modal de detalle, la etiqueta de la celda, la posición del bloque en
+   semana/día, y el clic-para-crear quedan todos consistentes en hora de
+   Costa Rica sin importar el huso del navegador.
 2. ~~**[Media] Reportes: el eje de fechas del gráfico "Reservas por día"
    corre la fecha un día hacia atrás**~~ **Arreglado y reverificado**
    (ver "Actualización" en Heurística 4) — se corrigió tanto en Reportes
    como en el mismo patrón encontrado de paso en el Dashboard.
-3. **[Media, seguimiento nuevo] El número de hora dentro de la celda del
-   Calendario (ej. "9 Cliente...") sigue en el huso horario del
-   navegador, no en hora de Costa Rica** — ver el detalle completo en la
-   "Actualización" de Heurística 4. Requiere el plugin
-   `@fullcalendar/moment-timezone` (o equivalente) y ajustar el feed de
-   eventos + `dateClick` + `eventDrop` en conjunto; no se aplicó en esta
-   corrección por su mayor superficie de riesgo.
+3. ~~**[Media] El número de hora dentro de la celda del Calendario sigue
+   en el huso del navegador**~~ **Arreglado de raíz junto con el punto 1**
+   (mismo plugin) — ver "Actualización #2" en Heurística 4. Único cabo
+   suelto: el arrastre para reprogramar (`eventDrop`) no se verificó con
+   un arrastre real en navegador (limitación ya documentada de la
+   herramienta de automatización), aunque usa el mismo mecanismo interno
+   ya verificado vía `dateClick`.
 4. **[Baja / no confirmado, anotado por transparencia]** Durante las
    primeras pruebas en el modal "Nuevo servicio", escribir en el campo
    "Nombre del servicio" se truncó dos veces a los primeros 2 caracteres,
@@ -316,12 +365,15 @@ heurística para el tipo de producto).
 
 ## Conclusión
 
-La tarjeta se da por **cumplida como auditoría** (las 10 heurísticas
-fueron verificadas una por una contra la app real, con evidencia concreta
-por cada una), pero **no se recomienda cerrarla como "todo en verde"**:
-quedan 2 hallazgos reales de inconsistencia de horario/fecha (Heurística
-4) que vale la pena arreglar antes de considerar el flujo de Calendario/
-Reportes completamente confiable para un admin fuera de Costa Rica o,
-en el caso del segundo hallazgo, incluso dentro de Costa Rica. El resto
-del sistema (9 de las 10 heurísticas sin reservas) cumple sólidamente con
-evidencia real de navegador, no solo inspección de código.
+La tarjeta se da por **cumplida, con las 10 heurísticas en verde**: las
+10 fueron verificadas una por una contra la app real, con evidencia
+concreta por cada una, y los 3 hallazgos reales de inconsistencia de
+horario/fecha (Heurística 4 — modal de detalle, gráfico de Reportes/
+Dashboard, y la celda + posición del bloque del Calendario) quedaron
+arreglados y reverificados en Chrome real, incluido un arreglo de raíz
+(plugin oficial de zona horaria de FullCalendar) en vez de un parche
+superficial. Único cabo suelto, de riesgo bajo y ya documentado: el
+arrastre para reprogramar una reserva no se verificó con un arrastre
+real en esta sesión (limitación de la herramienta de automatización), así
+que vale la pena una verificación manual rápida de ese flujo específico
+en algún momento, aunque no bloquea dar la tarjeta por cerrada.
