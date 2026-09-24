@@ -271,6 +271,7 @@
     "confirmarReserva": "Confirmar reserva"
   },
   "calendario": {
+    "citaProgramada": "Cita programada",
     "filtrarPorEmpleado": "Filtrar por empleado",
     "todosLosEmpleados": "Todos los empleados",
     "nuevaReserva": "Nueva reserva",
