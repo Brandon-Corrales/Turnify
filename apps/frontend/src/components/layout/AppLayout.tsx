@@ -19,6 +19,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { ChatbotWidget } from '@/components/chat/ChatbotWidget';
 import { ControlesGlobales } from './ControlesGlobales';
+import { useSincronizacionTiempoReal } from '@/lib/tiempo-real';
 
 /**
  * Barra superior de las pantallas autenticadas. El grupo de controles
@@ -31,6 +32,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [sidebarAbierto, setSidebarAbierto] = useState(false);
+  useSincronizacionTiempoReal(Boolean(usuario));
 
   const esAdmin = usuario?.rol === 'admin';
   const enlaces = [

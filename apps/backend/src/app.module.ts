@@ -23,6 +23,7 @@ import { SuscripcionesModule } from './modules/suscripciones/suscripciones.modul
 import { ReportesModule } from './modules/reportes/reportes.module';
 import { ChatbotModule } from './modules/chatbot/chatbot.module';
 import { ReservaPublicaModule } from './modules/reserva-publica/reserva-publica.module';
+import { TiempoRealModule } from './modules/tiempo-real/tiempo-real.module';
 import { AppThrottlerGuard } from './common/throttler/ws-aware-throttler.guard';
 
 @Module({
@@ -94,6 +95,9 @@ import { AppThrottlerGuard } from './common/throttler/ws-aware-throttler.guard';
     ReportesModule,
     ChatbotModule,
     ReservaPublicaModule,
+    // Sincronización en vivo del panel: avisa por WebSocket después de
+    // cada escritura para que ninguna pantalla necesite refrescarse.
+    TiempoRealModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: AppThrottlerGuard }],
 })
