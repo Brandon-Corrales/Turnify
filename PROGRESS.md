@@ -2714,16 +2714,96 @@ otros cambios de comportamiento.
   de 44px de alto, sin scroll horizontal.
 - `tsc -b` y `eslint` limpios.
 
+### QA: Prueba de humo completa del flujo de demo en local ✅
+Recorrido como usuario nuevo con backend + frontend reales (`npm run
+backend:dev` / `frontend:dev`, la misma BD de desarrollo del `.env`), en
+Chrome real, 2026-10-06 ~22:10–22:30 hora CR. **No se arregló nada en esta
+tarjeta** (instrucción del equipo): todo lo encontrado queda abajo con pasos
+para reproducir.
+
+| Paso | Resultado |
+|---|---|
+| Landing → "Crear cuenta gratis" → registro (barbería) | ✅ toast "Negocio registrado", entra a `/onboarding` |
+| Onboarding (7 plantillas de barbería, se marcaron 4) | ⚠️ crea los 4 (ver bug 1) |
+| Horario laboral en Configuración (lun–sáb) | ✅ 6 franjas 09:00–18:00 persistidas |
+| Reserva pública por el link de Configuración | ✅ 4 pasos, "¡Reserva confirmada!", `origen: online` (ver bug 2) |
+| Reserva manual desde Calendario ("Nueva reserva") | ✅ toast "Reserva creada", `origen: admin`, con notas |
+| Notificaciones | ✅ 2 confirmaciones registradas; quedan "pendiente" porque Resend sandbox rechaza destinatarios ajenos a la cuenta (limitación ya conocida) |
+| Chatbot | ✅ conecta y responde en streaming con datos reales ("4 servicios activos") (ver bug 4) |
+| Idioma EN + tema oscuro | ✅ todo el Dashboard cambia y persiste (ver bug 3) |
+| UserWay | ✅ visible en Landing, Login, Dashboard, Calendario, Configuración, Notificaciones y wizard |
+
+**Bugs (con pasos para reproducir):**
+1. **El límite de 3 servicios del Plan Gratis se puede saltar (condición de
+   carrera).** Registrar un negocio nuevo de tipo Barbería → en el
+   onboarding marcar 4 plantillas → "Continuar". Resultado: 4 servicios
+   activos en un negocio Plan Gratis (confirmado por `GET /servicios` y por
+   el log del backend: 4 × "Servicio … creado"). Causa:
+   `OnboardingPage.tsx:47` manda los `POST /servicios` en paralelo
+   (`Promise.all`) y `LimitePlanGratisGuard` (`limite-plan-gratis.guard.ts:65-66`)
+   cuenta y luego deja pasar sin bloqueo ni transacción: las 4 requests ven
+   menos de 3 a la vez. La nota anterior de este archivo ("los primeros 3
+   tienen éxito y el resto falla") no se cumple: pasan todos. Afecta
+   igual a cualquier `@LimitePlan` ante requests concurrentes (reservas,
+   usuarios), no solo al onboarding.
+2. **El wizard público calcula "hoy" en UTC.** Desde las 18:00 de Costa Rica
+   (00:00 UTC), `/reservar/:id` ya no deja elegir el día actual: el mínimo
+   y el valor por defecto del selector de fecha pasan a mañana. Reproducir:
+   abrir el link público después de las 18:00 CR → paso 2 → el `min` del
+   campo Fecha es la fecha de mañana. Causa: `hoyYYYYMMDD()` en
+   `ReservaPublicaPage.tsx:19` usa `toISOString()`. Un negocio que atienda
+   después de las 18:00 pierde esas reservas por el link.
+3. **`<html lang>` no sigue al idioma elegido.** Cambiar a EN → la UI pasa a
+   inglés pero `document.documentElement.lang` sigue en `"es"` (fijo en
+   `index.html`, nada lo actualiza). Consecuencias: el menú de UserWay se
+   queda en español con la app en inglés (verificado tras recargar:
+   "Menú de traducciones"), y un lector de pantalla leería el texto inglés
+   con pronunciación española.
+4. **El chatbot inventa funciones de la UI.** Preguntar "¿por qué mis
+   notificaciones siguen pendientes?" → sugiere un botón "Marcar todas como
+   leídas" y una sección "Configuración > Notificaciones", que no existen
+   ("pendiente" significa "todavía no enviada"). Además las respuestas
+   muestran Markdown crudo (`**4 servicios activos**` con asteriscos).
+
+**Fricciones (no son fallas, pero se notan en una demo):**
+- Negocio nuevo arranca con los 7 días "Cerrado" y nada (onboarding ni
+  Dashboard) le avisa que debe configurar el horario; sin eso el link
+  público no ofrece ningún horario.
+- "Nueva reserva" del Calendario solo permite clientes ya existentes; para
+  una llamada de un cliente nuevo hay que ir antes a Clientes.
+- En el Dashboard el subtítulo sale "Resumen De Octubre De 2026" (la clase
+  `capitalize` en `InicioPage.tsx:123` pone mayúscula a cada palabra; en
+  español debería ser "Resumen de octubre de 2026").
+- Notificaciones que fallan en Resend se ven como "pendiente" sin motivo
+  hasta agotar los 3 intentos; para la demo el correo del cliente debe ser
+  el de la cuenta de Resend.
+- Al abrir el chatbot, el botón de cerrar queda abajo a la izquierda del
+  panel en vez de en la esquina donde estaba el de abrir.
+- El botón de UserWay (abajo al centro) queda sobre una celda de la última
+  fila del calendario mensual (se puede hacer scroll; no tapa controles).
+
+**Descartado como bug de la app (artefactos de la herramienta de
+automatización, verificados):** recargas completas de página al ejecutar
+`fetch` desde la consola de la herramienta (0 recargas en 60 s sin tocar
+la pestaña y navegación SPA normal con y sin UserWay), y modales/paneles
+"pegados" abiertos: la pestaña reportaba `visibilityState: hidden`, Chrome
+pausa las animaciones de salida de Framer Motion ahí; al traerla al frente
+se cierran solos.
+
+**Datos de prueba que quedaron en la BD de desarrollo:** negocio "Barbería
+Humo 1791346399" (admin `humo.admin.1791346399@test.turnify.app`), 4
+servicios, 6 franjas de horario, 1 cliente y 2 reservas (7 y 8 oct). No se
+borró nada.
+
 ## Cómo continuar si se corta la sesión
 Ver reglas de commit/pausa en el prompt original de arquitectura (punto 18
 del brief del equipo). Resumen: terminar hasta que compile, commitear con
 mensaje honesto, actualizar este archivo, nunca reiniciar un módulo con
 avance ya commiteado.
 
-**Primera tarea a retomar la próxima sesión**: de los 2 pendientes
-menores que quedan (ver "Pendientes menores" arriba), ninguno es
-urgente ni bloquea la demo del Seguimiento #2 (24/09/2026) — el link
-público de reservas y el cron de RECORDATORIO, que eran el gap más
-visible, ya están cerrados (ver sección de arriba). Si se retoma
-trabajo técnico, el más señalado por el equipo es el límite de 3
-servicios del plan gratis en el onboarding del frontend.
+**Primera tarea a retomar la próxima sesión**: las 3 tarjetas del
+Seguimiento #3 están cerradas. Lo siguiente es decidir con el equipo cuáles
+de los 4 bugs de la prueba de humo se arreglan (ver "QA: Prueba de humo
+completa del flujo de demo en local" arriba). El más serio es el 1: el
+límite del Plan Gratis se salta con requests concurrentes. Ningún fix se
+empezó.
