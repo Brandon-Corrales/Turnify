@@ -2637,6 +2637,59 @@ onboarding, i18n de validación de DTOs) más el bug de UX ya anotado.
 Todo verificado con `tsc`, `eslint`, `prettier` y build; sin cambios
 en `docs/spec.md`.
 
+## Seguimiento #3 — 3 tarjetas nuevas (UserWay, enlace público, prueba de humo)
+El docente exige UserWay (accesibilidad) para el Seguimiento #3. El equipo
+agregó 3 tarjetas a la sección 18 de docs/spec.md (ahora 69), trabajadas
+una por una con su propio commit.
+
+### Frontend: Integración de UserWay (widget de accesibilidad) ✅
+- **Método de carga verificado en navegador real, no asumido.** La guía
+  oficial de UserWay para React pone el `<script>` dentro del JSX de un
+  componente. Probado así (temporalmente, sin comitear) en este proyecto
+  con React 19 + Vite: el `<script>` aparece en el DOM pero **el navegador
+  nunca lo descarga** (cero requests a userway.org, `window.UserWay`
+  indefinido, sin widget). React inserta los `<script>` síncronos
+  renderizados en el cliente sin ejecutarlos. Descartado.
+- **Método que sí funciona**: `<script src="https://cdn.userway.org/widget.js"
+  data-account="f0W3dnHKyc">` como **primera entrada del `<head>`** de
+  `apps/frontend/index.html`, tal como indica UserWay. Verificado: carga el
+  widget (8 recursos de userway.org, `window.UserWay` presente), el menú
+  sale en español, y Vite lo conserva en `dist/index.html`. Al estar en el
+  HTML base, aparece en TODA ruta de la SPA (Landing, Login, Dashboard,
+  wizard público y el resto) sin tocar ningún componente.
+- El `data-account` no es secreto (queda visible en cualquier página que
+  use el widget): no va en variables de entorno.
+- **Posición: `data-position="4"` (abajo al centro)**, elegida tras medir
+  superposiciones con `getBoundingClientRect()` en viewports reales (390px
+  mobile vía iframe y 1280/2048px desktop):
+  - Default (arriba a la derecha): cae en la franja del header — encima de
+    tema/idioma en el header mobile del admin y de "Registrar mi negocio"
+    en anchos intermedios; además ahí salen los toasts.
+  - Abajo a la derecha: el chatbot. Abajo a la izquierda: los controles de
+    tema/idioma y logout del sidebar del admin (desktop).
+  - Centro derecha (`2`, probada): no chocaba con chatbot ni controles,
+    pero en mobile tapaba el borde derecho del campo Contraseña (Login) y
+    de las tarjetas de servicio (wizard).
+  - Abajo al centro: cero superposiciones en Login, wizard y Dashboard; con
+    el panel del chatbot ABIERTO queda debajo del panel, al lado del botón
+    del chat, sin tapar el campo de pregunta (mobile y desktop).
+- **Modo oscuro**: el botón (azul con borde blanco) se ve bien sobre el
+  fondo oscuro del Dashboard; verificado con captura.
+- **Funciones probadas en vivo** sobre el Dashboard y el wizard público:
+  - *Contraste+* (nivel "Invertir"): `<html>` recibe `filter: invert(1)` y
+    la clase `userway-s3-1`.
+  - *Agrandar texto* (nivel 1): UserWay aplica `zoom: 1.2` a los
+    contenedores de la app (por eso `font-size` computado no cambia, pero
+    el texto se ve 20% más grande). Sin scroll horizontal en ninguna de las
+    dos pantallas.
+  - Ambas preferencias persisten al navegar (UserWay las guarda en
+    `localStorage`, claves `userway-s*`/`uw-*`); se limpiaron al terminar.
+- Sin errores de consola. `npm run build` OK; `eslint` sin errores nuevos.
+- Limitación de herramienta (no de la app): los clics por coordenadas
+  dentro del menú de UserWay (iframe de otro origen) se registraron con
+  retraso por el desfase de escala ya documentado arriba; el resultado se
+  confirmó leyendo el DOM, no solo por captura.
+
 ## Cómo continuar si se corta la sesión
 Ver reglas de commit/pausa en el prompt original de arquitectura (punto 18
 del brief del equipo). Resumen: terminar hasta que compile, commitear con

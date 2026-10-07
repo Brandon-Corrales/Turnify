@@ -555,7 +555,7 @@ decidió mantenerlo limpio, solo código. El pipeline de CI (.github/workflows/c
 debe correr en cada Pull Request: lint, tests, y build de ambos apps —
 fallar el pipeline si algo de esto falla, para no mezclar código roto con `develop`.
 
-## 18. ORDEN DE TRABAJO — TAREAS EXACTAS DEL BACKLOG DE TRELLO (66 TARJETAS)
+## 18. ORDEN DE TRABAJO — TAREAS EXACTAS DEL BACKLOG DE TRELLO (69 TARJETAS)
 
 El equipo tiene el Seguimiento #2 el 24/09/2026 (Avance funcional 30%, Gestión
 del proyecto 25%, Calidad técnica 25%, Evidencia/presentación 20%), así que
@@ -620,6 +620,8 @@ flujo de reserva básico.
 - Frontend: Widget de chatbot flotante (tiempo real, contextual, responsive)
 - Frontend: Paso de onboarding tras el registro — selección de tipo de negocio + plantilla de servicios sugeridos
 - Frontend: Componente Input compartido — variante crear (foco verde) vs editar (foco azul)
+- Frontend: Integración de UserWay (widget de accesibilidad)
+- Frontend: Exponer enlace público de reserva en el panel del administrador
 
 ### Seguridad — aplicar DESDE EL PRIMER MÓDULO (Auth), no al final
 - Seguridad: Hasheo de contraseñas (bcrypt) + política de contraseña mínima
@@ -646,6 +648,7 @@ flujo de reserva básico.
 - QA: Prueba de que el nivel del cliente nunca desbloquea una función que el plan del negocio tiene bloqueada
 - QA: Prueba responsive en dispositivos reales para todas las pantallas
 - QA: Verificar que el flujo de plantillas por vertical no rompe el registro/onboarding ya existente
+- QA: Prueba de humo completa del flujo de demo en local
 
 ## 19. CONTINUIDAD DEL TRABAJO ANTE INTERRUPCIONES (INTERNET / LÍMITE DE TOKENS)
 
