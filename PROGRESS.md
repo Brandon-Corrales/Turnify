@@ -2690,6 +2690,30 @@ una por una con su propio commit.
   retraso por el desfase de escala ya documentado arriba; el resultado se
   confirmó leyendo el DOM, no solo por captura.
 
+### Frontend: Exponer enlace público de reserva en el panel del administrador ✅
+**La funcionalidad ya existía** antes de esta tarjeta: el commit `bf693d8`
+("Recordatorio y link de reservas") agregó en Configuración
+(`/configuracion`, link del sidebar) una tarjeta "Link público de
+reservas" con el `/reservar/:idNegocio` del negocio, botón Copiar con
+toast de confirmación, y textos ES/EN. No se duplicó en el Dashboard.
+
+Revisada contra lo pedido, tenía una sola brecha real: el campo del enlace
+era un `<input>` crudo con estilos propios, no el `Input` compartido
+(punto 8 del brief). Se reemplazó por `Input` de `components/ui` (con su
+label visible, ya traducido en `configuracion.linkReservaAriaLabel`), sin
+otros cambios de comportamiento.
+
+**Verificado en Chrome real con la cuenta demo:**
+- Clic real en "Copiar": `navigator.clipboard.writeText` recibe
+  exactamente `http://localhost:5173/reservar/<idNegocio>` (interceptado
+  para leer el argumento; no se lee el portapapeles porque Chrome abre un
+  prompt de permiso que bloquea la pestaña), sale el toast "Enlace copiado
+  al portapapeles" y el botón pasa a "¡Copiado!".
+- En inglés + modo oscuro + 390px (iframe): "Public booking link", label y
+  botón "Copy" traducidos; campo y botón apilados a todo el ancho, botón
+  de 44px de alto, sin scroll horizontal.
+- `tsc -b` y `eslint` limpios.
+
 ## Cómo continuar si se corta la sesión
 Ver reglas de commit/pausa en el prompt original de arquitectura (punto 18
 del brief del equipo). Resumen: terminar hasta que compile, commitear con
