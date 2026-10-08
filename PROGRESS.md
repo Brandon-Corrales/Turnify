@@ -3282,8 +3282,21 @@ se hace en Chrome real, usando el frontend.
   | Tema oscuro en vivo (persiste en `turnify_tema`) | OK (ver hallazgo 4) |
   | 3 preguntas al chatbot sobre el negocio | **pendiente (Groq 429)** |
   | Pago (Stripe) | no probable (limitación geográfica) |
-- **Negocios 2, 3 y 4:** sin crear. **Siguiente tarea exacta:** registrar
-  "Clínica Dental Sonrisa Pampeña" (Liberia).
+- **Frente 3, negocio 2 "Clínica Dental Sonrisa Pampeña" (Liberia,
+  clínica dental) ✅** (salvo chatbot: pendiente por Groq). Registro +
+  onboarding (3 de 8 plantillas: Consulta/valoración inicial, Limpieza
+  dental, Extracción), precios ₡15 000 / ₡25 000 / ₡30 000, horario L–V
+  07:30–17:00 con fin de semana cerrado (persiste tras recargar), 11
+  pacientes (2 en inglés, 3 Premium), 3 reservas por el link público (2
+  pacientes nuevos), 6 manuales (una con paciente nuevo creado en el
+  formulario y notas clínicas), cancelación desde Reservas, reprogramación
+  arrastrando (14/10 11:00 → 16/10 13:00, confirmado en Reservas),
+  Notificaciones (9 confirmaciones, 1 cancelación, 4 recordatorios, 0
+  correos visibles), Reportes (9 reservas, ₡180 000 = suma exacta de las 8
+  activas, 11 % cancelación), EN en 9 pantallas sin texto de interfaz en
+  español, tema oscuro (captura de Reportes). Todo OK salvo el hallazgo 5.
+- **Negocios 3 y 4:** sin crear. **Siguiente tarea exacta:** registrar
+  "Salón de Belleza Bella Santa Cruz" (Santa Cruz).
 - **Hallazgos del Frente 3** (A y B se corrigen por pedido explícito; el
   resto solo se registra para el tablero):
   1. **(A, corregido ✅)** Calendario: una reserva cancelada seguía
@@ -3305,6 +3318,18 @@ se hace en Chrome real, usando el frontend.
      backend, siempre en español). Verificado en Chrome llegando al
      límite real: reserva 21 → banner en ES y EN; al reabrir el
      formulario ya no está; 4.º servicio → mismo banner. Capturas.
+  5. **(nuevo, NO corregido) Recordatorios duplicados.** Notificaciones
+     (ES, clínica dental): Jorge Luis Álvarez y Gabriela Rojas tienen 2
+     recordatorios cada uno para la MISMA reserva (`idReserva` igual),
+     creados con ~0,5 s de diferencia en el tick del cron de las 9:00 del
+     08/10. Había un solo proceso de backend corriendo, y
+     `NotificacionesService` se registra una sola vez como provider.
+     Reproducir: tener reservas confirmadas dentro de las próximas 24 h y
+     esperar el tick de `programarRecordatorios` (cada 10 min); revisar
+     Notificaciones. Causa probable, no confirmada: el chequeo "ya existe
+     un recordatorio" + INSERT no es atómico ni tiene una restricción única
+     `(id_reserva, tipo)` que lo respalde, y en ese tick se ejecutó dos
+     veces de forma superpuesta. Efecto: el cliente recibiría 2 correos.
   4. **(nuevo, NO corregido, visual menor)** Calendario en tema oscuro
      (EN/ES, escritorio, vista Mes): los días fuera del horario laboral
      (ej. domingo cerrado) se sombrean con un gris claro que choca con el
