@@ -3329,11 +3329,20 @@ se hace en Chrome real, usando el frontend.
   per day (TPD): Limit 200000, Used 198565` del tier gratuito, con "try
   again in 19m38s". No se modificó límite, código ni proveedor para
   saltarlo.
-- **Pendiente aparte (pedido nuevo):** re-verificar con captura el menú de
-  UserWay en EN (sin recargar y tras recargar). **Bloqueado:** la ventana de
-  Chrome automatizada está oculta (`visibilityState: "hidden"`, también en
-  una pestaña nueva y tras `resize_window`). Hace falta que la ventana de
-  Chrome esté en primer plano en la pantalla del equipo.
+- **Re-verificación visual de UserWay (pedido aparte) ✅** — hecha el
+  08/10, con la ventana de Chrome visible (`visibilityState: "visible"`),
+  abriendo el menú con clic real sobre el botón de UserWay, desde el
+  Dashboard:
+  1. ES: el menú abre en español ("Menú De Accesibilidad", "Contraste +",
+     "Agrandar texto"). Captura.
+  2. Clic real en "EN" y menú abierto de nuevo SIN recargar (mismo
+     documento, confirmado con `performance.timeOrigin`): el menú sale en
+     inglés ("Accessibility Menu", "Bigger Text", "Contrast +"), iframe
+     `/en/index.html`, `lang="en"`. El `aria-label` del botón flotante
+     sigue en español ("Menú de Accesibilidad") hasta recargar
+     (limitación de UserWay, ya documentada). Captura.
+  3. Tras recargar: el menú sigue en inglés y el botón flotante ya dice
+     "Accessibility Menu" / "Translations Menu". Captura.
 
 ### Frente 1 — Chatbot (ronda en el widget, Chrome real)
 Las preguntas se escriben en el campo del widget y se envían con su botón
