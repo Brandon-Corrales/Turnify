@@ -159,6 +159,9 @@
     "sinReservas": "Todavía no tienes reservas este mes.",
     "verCalendario": "Ver calendario",
     "errorResumen": "No se pudo cargar el resumen del mes. Intenta de nuevo más tarde.",
+    "bannerSinHorarioTitulo": "Todavía no configuraste tu horario laboral",
+    "bannerSinHorarioDescripcion": "Sin horario, tus clientes no ven horarios disponibles en el link público y no se pueden crear reservas. Actívalo en Configuración.",
+    "bannerSinHorarioBoton": "Configurar horario",
     "bannerPlanGratisTitulo": "Estás en el Plan Gratis",
     "bannerPlanGratisDescripcion": "Actualiza para desbloquear usuarios ilimitados, WhatsApp y más.",
     "bannerPlanGratisBoton": "Ver planes",
@@ -297,7 +300,15 @@
     "campoAtiende": "Atiende",
     "campoFecha": "Fecha",
     "campoHora": "Hora",
-    "crearReserva": "Crear reserva"
+    "crearReserva": "Crear reserva",
+    "crearClienteNuevo": "Cliente nuevo",
+    "clienteNuevo": "Cliente nuevo",
+    "elegirClienteExistente": "Elegir un cliente existente",
+    "clienteYaExiste": "Ya existe un cliente con ese correo. Elígelo en la lista de clientes existentes.",
+    "clienteCreadoSinReserva": "El cliente se creó, pero la reserva no",
+    "errorCrearCliente": "No se pudo crear el cliente",
+    "limiteTitulo": "Llegaste al límite de reservas del mes del Plan Gratis",
+    "limiteDescripcion": "El Plan Gratis permite hasta 20 reservas por mes. Actualiza a un plan de pago para seguir reservando."
   },
   "clientes": {
     "subtitulo": "Gestiona la base de clientes de tu negocio.",
@@ -355,7 +366,9 @@
     "servicioDesactivado": "Servicio desactivado",
     "errorDesactivar": "No se pudo desactivar el servicio",
     "confirmarDesactivarTitulo": "Desactivar servicio",
-    "confirmarDesactivarDescripcion": "¿Seguro que deseas desactivar \"{{nombre}}\"? Ya no podrá reservarse, pero se conserva su historial."
+    "confirmarDesactivarDescripcion": "¿Seguro que deseas desactivar \"{{nombre}}\"? Ya no podrá reservarse, pero se conserva su historial.",
+    "limiteTitulo": "Llegaste al límite de servicios activos del Plan Gratis",
+    "limiteDescripcion": "El Plan Gratis permite hasta 3 servicios activos. Actualiza a un plan de pago para agregar más."
   },
   "reservas": {
     "subtitulo": "Vista administrativa de todas las reservas. Para agendar o mover horarios, usa el Calendario.",
@@ -393,7 +406,21 @@
     "canalWhatsappCorto": "WhatsApp",
     "canalSms": "SMS",
     "estadoEnviada": "enviada",
+    "estadoEntregada": "entregada",
     "estadoPendiente": "pendiente",
-    "estadoFallida": "fallida"
+    "estadoFallida": "fallida",
+    "intentos": "Intentos: {{n}}",
+    "ayudaDominioSinVerificar": "Mientras el correo se envíe con el remitente de prueba del proveedor (Resend, sin dominio propio verificado), solo se entrega a la dirección dueña de esa cuenta. A cualquier otro destinatario el proveedor lo rechaza: la notificación queda pendiente, se reintenta hasta 3 veces y el motivo aparece en el historial.",
+    "motivo": "Motivo:",
+    "motivos": {
+      "DESTINATARIO_NO_HABILITADO": "destinatario no habilitado en el entorno de prueba del proveedor",
+      "CREDENCIALES_FALTANTES": "faltan las credenciales del proveedor en el servidor",
+      "CANAL_SIN_PROVEEDOR": "este canal no tiene proveedor configurado",
+      "RECHAZADO_POR_PROVEEDOR": "rechazado por el proveedor",
+      "REBOTE_PERMANENTE": "la dirección de correo rechazó el mensaje (rebote permanente)",
+      "REBOTE_TEMPORAL": "el servidor del destinatario rechazó el mensaje temporalmente (rebote)",
+      "ENTREGA_DEMORADA": "entrega demorada; el proveedor sigue intentando",
+      "MARCADO_COMO_SPAM": "el destinatario lo marcó como spam"
+    }
   }
 }

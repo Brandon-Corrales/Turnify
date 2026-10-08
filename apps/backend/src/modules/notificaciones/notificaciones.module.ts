@@ -5,6 +5,8 @@ import { NotificacionesController } from './notificaciones.controller';
 import { NotificacionesService } from './notificaciones.service';
 import { ResendService } from './providers/resend.service';
 import { WhatsappCloudApiService } from './providers/whatsapp-cloud-api.service';
+import { WebhookResendController } from './webhook-resend/webhook-resend.controller';
+import { WebhookResendService } from './webhook-resend/webhook-resend.service';
 
 /**
  * Notificacion no tiene id_negocio (no es dato de un tenant directo, se
@@ -14,8 +16,13 @@ import { WhatsappCloudApiService } from './providers/whatsapp-cloud-api.service'
  */
 @Module({
   imports: [TypeOrmModule.forFeature([Notificacion, Reserva])],
-  controllers: [NotificacionesController],
-  providers: [NotificacionesService, ResendService, WhatsappCloudApiService],
+  controllers: [NotificacionesController, WebhookResendController],
+  providers: [
+    NotificacionesService,
+    ResendService,
+    WhatsappCloudApiService,
+    WebhookResendService,
+  ],
   exports: [NotificacionesService],
 })
 export class NotificacionesModule {}

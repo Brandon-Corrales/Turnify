@@ -159,6 +159,9 @@
     "sinReservas": "You don't have any bookings this month yet.",
     "verCalendario": "View calendar",
     "errorResumen": "Couldn't load this month's summary. Please try again later.",
+    "bannerSinHorarioTitulo": "You haven't set your working hours yet",
+    "bannerSinHorarioDescripcion": "Without working hours, your clients see no available times on your public link and no bookings can be created. Set them up in Settings.",
+    "bannerSinHorarioBoton": "Set working hours",
     "bannerPlanGratisTitulo": "You're on the Free Plan",
     "bannerPlanGratisDescripcion": "Upgrade to unlock unlimited users, WhatsApp, and more.",
     "bannerPlanGratisBoton": "View plans",
@@ -297,7 +300,15 @@
     "campoAtiende": "Served by",
     "campoFecha": "Date",
     "campoHora": "Time",
-    "crearReserva": "Create booking"
+    "crearReserva": "Create booking",
+    "crearClienteNuevo": "New client",
+    "clienteNuevo": "New client",
+    "elegirClienteExistente": "Choose an existing client",
+    "clienteYaExiste": "A client with that email already exists. Choose them from the existing clients list.",
+    "clienteCreadoSinReserva": "The client was created, but the booking wasn't",
+    "errorCrearCliente": "Couldn't create the client",
+    "limiteTitulo": "You've reached the Free Plan's monthly bookings limit",
+    "limiteDescripcion": "The Free Plan allows up to 20 bookings per month. Upgrade to a paid plan to keep booking."
   },
   "clientes": {
     "subtitulo": "Manage your business's client base.",
@@ -355,7 +366,9 @@
     "servicioDesactivado": "Service deactivated",
     "errorDesactivar": "Couldn't deactivate the service",
     "confirmarDesactivarTitulo": "Deactivate service",
-    "confirmarDesactivarDescripcion": "Are you sure you want to deactivate \"{{nombre}}\"? It will no longer be bookable, but its history is kept."
+    "confirmarDesactivarDescripcion": "Are you sure you want to deactivate \"{{nombre}}\"? It will no longer be bookable, but its history is kept.",
+    "limiteTitulo": "You've reached the Free Plan's active services limit",
+    "limiteDescripcion": "The Free Plan allows up to 3 active services. Upgrade to a paid plan to add more."
   },
   "reservas": {
     "subtitulo": "Administrative view of all bookings. To schedule or move times, use the Calendar.",
@@ -393,7 +406,21 @@
     "canalWhatsappCorto": "WhatsApp",
     "canalSms": "SMS",
     "estadoEnviada": "sent",
+    "estadoEntregada": "delivered",
     "estadoPendiente": "pending",
-    "estadoFallida": "failed"
+    "estadoFallida": "failed",
+    "intentos": "Attempts: {{n}}",
+    "ayudaDominioSinVerificar": "While emails are sent with the provider's test sender (Resend, without your own verified domain), they're only delivered to the address that owns that account. The provider rejects any other recipient: the notification stays pending, is retried up to 3 times, and the reason shows up in the history.",
+    "motivo": "Reason:",
+    "motivos": {
+      "DESTINATARIO_NO_HABILITADO": "recipient not allowed in the provider's test environment",
+      "CREDENCIALES_FALTANTES": "the provider's credentials are missing on the server",
+      "CANAL_SIN_PROVEEDOR": "this channel has no provider configured",
+      "RECHAZADO_POR_PROVEEDOR": "rejected by the provider",
+      "REBOTE_PERMANENTE": "the email address rejected the message (permanent bounce)",
+      "REBOTE_TEMPORAL": "the recipient's server temporarily rejected the message (bounce)",
+      "ENTREGA_DEMORADA": "delivery delayed; the provider keeps trying",
+      "MARCADO_COMO_SPAM": "the recipient marked it as spam"
+    }
   }
 }

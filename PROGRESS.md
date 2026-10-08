@@ -2637,16 +2637,951 @@ onboarding, i18n de validación de DTOs) más el bug de UX ya anotado.
 Todo verificado con `tsc`, `eslint`, `prettier` y build; sin cambios
 en `docs/spec.md`.
 
+## Seguimiento #3 — 3 tarjetas nuevas (UserWay, enlace público, prueba de humo)
+El docente exige UserWay (accesibilidad) para el Seguimiento #3. El equipo
+agregó 3 tarjetas a la sección 18 de docs/spec.md (ahora 69), trabajadas
+una por una con su propio commit.
+
+### Frontend: Integración de UserWay (widget de accesibilidad) ✅
+- **Método de carga verificado en navegador real, no asumido.** La guía
+  oficial de UserWay para React pone el `<script>` dentro del JSX de un
+  componente. Probado así (temporalmente, sin comitear) en este proyecto
+  con React 19 + Vite: el `<script>` aparece en el DOM pero **el navegador
+  nunca lo descarga** (cero requests a userway.org, `window.UserWay`
+  indefinido, sin widget). React inserta los `<script>` síncronos
+  renderizados en el cliente sin ejecutarlos. Descartado.
+- **Método que sí funciona**: `<script src="https://cdn.userway.org/widget.js"
+  data-account="f0W3dnHKyc">` como **primera entrada del `<head>`** de
+  `apps/frontend/index.html`, tal como indica UserWay. Verificado: carga el
+  widget (8 recursos de userway.org, `window.UserWay` presente), el menú
+  sale en español, y Vite lo conserva en `dist/index.html`. Al estar en el
+  HTML base, aparece en TODA ruta de la SPA (Landing, Login, Dashboard,
+  wizard público y el resto) sin tocar ningún componente.
+- El `data-account` no es secreto (queda visible en cualquier página que
+  use el widget): no va en variables de entorno.
+- **Posición: `data-position="4"` (abajo al centro)**, elegida tras medir
+  superposiciones con `getBoundingClientRect()` en viewports reales (390px
+  mobile vía iframe y 1280/2048px desktop):
+  - Default (arriba a la derecha): cae en la franja del header — encima de
+    tema/idioma en el header mobile del admin y de "Registrar mi negocio"
+    en anchos intermedios; además ahí salen los toasts.
+  - Abajo a la derecha: el chatbot. Abajo a la izquierda: los controles de
+    tema/idioma y logout del sidebar del admin (desktop).
+  - Centro derecha (`2`, probada): no chocaba con chatbot ni controles,
+    pero en mobile tapaba el borde derecho del campo Contraseña (Login) y
+    de las tarjetas de servicio (wizard).
+  - Abajo al centro: cero superposiciones en Login, wizard y Dashboard; con
+    el panel del chatbot ABIERTO queda debajo del panel, al lado del botón
+    del chat, sin tapar el campo de pregunta (mobile y desktop).
+- **Modo oscuro**: el botón (azul con borde blanco) se ve bien sobre el
+  fondo oscuro del Dashboard; verificado con captura.
+- **Funciones probadas en vivo** sobre el Dashboard y el wizard público:
+  - *Contraste+* (nivel "Invertir"): `<html>` recibe `filter: invert(1)` y
+    la clase `userway-s3-1`.
+  - *Agrandar texto* (nivel 1): UserWay aplica `zoom: 1.2` a los
+    contenedores de la app (por eso `font-size` computado no cambia, pero
+    el texto se ve 20% más grande). Sin scroll horizontal en ninguna de las
+    dos pantallas.
+  - Ambas preferencias persisten al navegar (UserWay las guarda en
+    `localStorage`, claves `userway-s*`/`uw-*`); se limpiaron al terminar.
+- Sin errores de consola. `npm run build` OK; `eslint` sin errores nuevos.
+- Limitación de herramienta (no de la app): los clics por coordenadas
+  dentro del menú de UserWay (iframe de otro origen) se registraron con
+  retraso por el desfase de escala ya documentado arriba; el resultado se
+  confirmó leyendo el DOM, no solo por captura.
+
+### Frontend: Exponer enlace público de reserva en el panel del administrador ✅
+**La funcionalidad ya existía** antes de esta tarjeta: el commit `bf693d8`
+("Recordatorio y link de reservas") agregó en Configuración
+(`/configuracion`, link del sidebar) una tarjeta "Link público de
+reservas" con el `/reservar/:idNegocio` del negocio, botón Copiar con
+toast de confirmación, y textos ES/EN. No se duplicó en el Dashboard.
+
+Revisada contra lo pedido, tenía una sola brecha real: el campo del enlace
+era un `<input>` crudo con estilos propios, no el `Input` compartido
+(punto 8 del brief). Se reemplazó por `Input` de `components/ui` (con su
+label visible, ya traducido en `configuracion.linkReservaAriaLabel`), sin
+otros cambios de comportamiento.
+
+**Verificado en Chrome real con la cuenta demo:**
+- Clic real en "Copiar": `navigator.clipboard.writeText` recibe
+  exactamente `http://localhost:5173/reservar/<idNegocio>` (interceptado
+  para leer el argumento; no se lee el portapapeles porque Chrome abre un
+  prompt de permiso que bloquea la pestaña), sale el toast "Enlace copiado
+  al portapapeles" y el botón pasa a "¡Copiado!".
+- En inglés + modo oscuro + 390px (iframe): "Public booking link", label y
+  botón "Copy" traducidos; campo y botón apilados a todo el ancho, botón
+  de 44px de alto, sin scroll horizontal.
+- `tsc -b` y `eslint` limpios.
+
+### QA: Prueba de humo completa del flujo de demo en local ✅
+Recorrido como usuario nuevo con backend + frontend reales (`npm run
+backend:dev` / `frontend:dev`, la misma BD de desarrollo del `.env`), en
+Chrome real, 2026-10-06 ~22:10–22:30 hora CR. **No se arregló nada en esta
+tarjeta** (instrucción del equipo): todo lo encontrado queda abajo con pasos
+para reproducir.
+
+| Paso | Resultado |
+|---|---|
+| Landing → "Crear cuenta gratis" → registro (barbería) | ✅ toast "Negocio registrado", entra a `/onboarding` |
+| Onboarding (7 plantillas de barbería, se marcaron 4) | ⚠️ crea los 4 (ver bug 1) |
+| Horario laboral en Configuración (lun–sáb) | ✅ 6 franjas 09:00–18:00 persistidas |
+| Reserva pública por el link de Configuración | ✅ 4 pasos, "¡Reserva confirmada!", `origen: online` (ver bug 2) |
+| Reserva manual desde Calendario ("Nueva reserva") | ✅ toast "Reserva creada", `origen: admin`, con notas |
+| Notificaciones | ✅ 2 confirmaciones registradas; quedan "pendiente" porque Resend sandbox rechaza destinatarios ajenos a la cuenta (limitación ya conocida) |
+| Chatbot | ✅ conecta y responde en streaming con datos reales ("4 servicios activos") (ver bug 4) |
+| Idioma EN + tema oscuro | ✅ todo el Dashboard cambia y persiste (ver bug 3) |
+| UserWay | ✅ visible en Landing, Login, Dashboard, Calendario, Configuración, Notificaciones y wizard |
+
+**Bugs (con pasos para reproducir):**
+1. **El límite de 3 servicios del Plan Gratis se puede saltar (condición de
+   carrera).** Registrar un negocio nuevo de tipo Barbería → en el
+   onboarding marcar 4 plantillas → "Continuar". Resultado: 4 servicios
+   activos en un negocio Plan Gratis (confirmado por `GET /servicios` y por
+   el log del backend: 4 × "Servicio … creado"). Causa:
+   `OnboardingPage.tsx:47` manda los `POST /servicios` en paralelo
+   (`Promise.all`) y `LimitePlanGratisGuard` (`limite-plan-gratis.guard.ts:65-66`)
+   cuenta y luego deja pasar sin bloqueo ni transacción: las 4 requests ven
+   menos de 3 a la vez. La nota anterior de este archivo ("los primeros 3
+   tienen éxito y el resto falla") no se cumple: pasan todos. Afecta
+   igual a cualquier `@LimitePlan` ante requests concurrentes (reservas,
+   usuarios), no solo al onboarding.
+2. **El wizard público calcula "hoy" en UTC.** Desde las 18:00 de Costa Rica
+   (00:00 UTC), `/reservar/:id` ya no deja elegir el día actual: el mínimo
+   y el valor por defecto del selector de fecha pasan a mañana. Reproducir:
+   abrir el link público después de las 18:00 CR → paso 2 → el `min` del
+   campo Fecha es la fecha de mañana. Causa: `hoyYYYYMMDD()` en
+   `ReservaPublicaPage.tsx:19` usa `toISOString()`. Un negocio que atienda
+   después de las 18:00 pierde esas reservas por el link.
+3. **`<html lang>` no sigue al idioma elegido.** Cambiar a EN → la UI pasa a
+   inglés pero `document.documentElement.lang` sigue en `"es"` (fijo en
+   `index.html`, nada lo actualiza). Consecuencias: el menú de UserWay se
+   queda en español con la app en inglés (verificado tras recargar:
+   "Menú de traducciones"), y un lector de pantalla leería el texto inglés
+   con pronunciación española.
+4. **El chatbot inventa funciones de la UI.** Preguntar "¿por qué mis
+   notificaciones siguen pendientes?" → sugiere un botón "Marcar todas como
+   leídas" y una sección "Configuración > Notificaciones", que no existen
+   ("pendiente" significa "todavía no enviada"). Además las respuestas
+   muestran Markdown crudo (`**4 servicios activos**` con asteriscos).
+
+**Fricciones (no son fallas, pero se notan en una demo):**
+- Negocio nuevo arranca con los 7 días "Cerrado" y nada (onboarding ni
+  Dashboard) le avisa que debe configurar el horario; sin eso el link
+  público no ofrece ningún horario.
+- "Nueva reserva" del Calendario solo permite clientes ya existentes; para
+  una llamada de un cliente nuevo hay que ir antes a Clientes.
+- En el Dashboard el subtítulo sale "Resumen De Octubre De 2026" (la clase
+  `capitalize` en `InicioPage.tsx:123` pone mayúscula a cada palabra; en
+  español debería ser "Resumen de octubre de 2026").
+- Notificaciones que fallan en Resend se ven como "pendiente" sin motivo
+  hasta agotar los 3 intentos; para la demo el correo del cliente debe ser
+  el de la cuenta de Resend.
+- Al abrir el chatbot, el botón de cerrar queda abajo a la izquierda del
+  panel en vez de en la esquina donde estaba el de abrir.
+- El botón de UserWay (abajo al centro) queda sobre una celda de la última
+  fila del calendario mensual (se puede hacer scroll; no tapa controles).
+
+**Descartado como bug de la app (artefactos de la herramienta de
+automatización, verificados):** recargas completas de página al ejecutar
+`fetch` desde la consola de la herramienta (0 recargas en 60 s sin tocar
+la pestaña y navegación SPA normal con y sin UserWay), y modales/paneles
+"pegados" abiertos: la pestaña reportaba `visibilityState: hidden`, Chrome
+pausa las animaciones de salida de Framer Motion ahí; al traerla al frente
+se cierran solos.
+
+**Datos de prueba que quedaron en la BD de desarrollo:** negocio "Barbería
+Humo 1791346399" (admin `humo.admin.1791346399@test.turnify.app`), 4
+servicios, 6 franjas de horario, 1 cliente y 2 reservas (7 y 8 oct). No se
+borró nada.
+
+## Corrección de los 4 bugs de la prueba de humo (Seguimiento #3, 08/10/2026)
+Un commit por bug, en orden de prioridad, cada uno verificado contra el
+sistema real corriendo antes de pasar al siguiente.
+
+### Bug 1 — Límites del Plan Gratis saltables con requests paralelas ✅
+**Causa (confirmada en el código):** `LimitePlanGratisGuard` contaba con
+`LimitesPlanService.contar()` y el service insertaba después, en otra
+conexión y sin bloqueo. N requests simultáneas contaban todas por debajo
+del límite antes de que ninguna insertara. Afectaba a los 3 recursos que
+crean filas: `servicios` (el caso del onboarding), `reservas` (el lock por
+usuario de `ReservasService` evita traslapes, no el cupo mensual del
+negocio) y `usuarios`.
+
+**Solución:** `LimitesPlanService.asegurarDentroDelLimite(manager, recurso,
+idNegocio)`, llamado por `ServiciosService.crear`, `UsuariosService.crear`
+y `ReservasService.crear` **dentro de la misma transacción que hace el
+INSERT**: `pg_advisory_xact_lock(hashtext('limite-plan:<recurso>:<idNegocio>'))`
+→ COUNT → INSERT. El lock se libera al confirmar, así que la siguiente
+request ya cuenta la fila nueva.
+- **Por qué advisory lock y no una constraint:** es el mismo mecanismo que
+  ya usa `ReservasService` contra el doble-booking. Una constraint no
+  puede expresar "máximo 3 activos solo si el plan es gratis" sin un
+  trigger que duplique en SQL los límites que viven en
+  `LimitesPlanService` (única fuente, también la lee la Landing).
+- El guard se queda como fast-fail (responde 403 sin hacer trabajo, ej.
+  sin calcular bcrypt). Ya no es la garantía. El error se construye en un
+  solo lugar (`LimitesPlanService.errorLimiteAlcanzado`).
+- Servicios y Usuarios ahora insertan con `manager` (antes con
+  `TenantScopedRepository`), así que ponen `idNegocio` del contexto a mano,
+  igual que ya hacía `ReservasService.crear`.
+- Orden de locks en Reservas: primero el del límite (por negocio), después
+  el de traslapes (por usuario). Ningún camino los toma al revés, así que
+  no hay deadlock. La reserva pública queda cubierta porque crea vía
+  `ReservasService.crear`.
+- Usuarios: con el límite actual (1 = el admin) el cupo ya está lleno
+  desde el registro, así que la carrera no era explotable hoy. Se aplicó
+  el mismo mecanismo igual, por consistencia y por si el número cambia.
+- No cubierto (fuera del alcance pedido): `mensajesChatbot` usa el mismo
+  guard sin chequeo atómico. Su riesgo ya lo acota el throttler del
+  WebSocket (5 mensajes/10 s por socket).
+
+**Verificación:**
+- Test de integración nuevo `limite-plan-concurrencia.integration.spec.ts`
+  (app y BD reales, requests de verdad en paralelo): 6 `POST /servicios`
+  simultáneos → exactamente 3×201 y 3×403 `LIMITE_PLAN_ALCANZADO`, `GET
+  /servicios` = 3; 23 `POST /reservas` simultáneos → exactamente 20
+  creadas y 3 bloqueadas. **Con el chequeo atómico desactivado a propósito
+  el mismo test falla: 6/6 servicios y 23/23 reservas creados**, lo que
+  confirma que el test detecta la carrera y que también afectaba a reservas.
+- Contra el servidor de desarrollo real (`npm run backend:dev`), negocio
+  nuevo + 6 `POST /servicios` en paralelo: 3×201, 3×403, 3 activos en BD.
+  3 `POST /usuarios` paralelos: 3×403. (Nota operativa: un primer intento
+  dio 6/6 porque en el puerto 3000 seguía vivo el proceso `node dist/main`
+  de la sesión anterior, con el código viejo. Al cortar el `npm` por falta
+  de memoria, el `node` hijo sobrevivió. Se detuvo y se repitió.)
+- 8 tests unitarios nuevos o ajustados (lock antes del COUNT, sin lock en
+  plan de pago, error traducido; cada service llama el chequeo dentro de
+  la transacción y no inserta si se alcanzó el límite).
+
+### Bug 2 — El wizard público calculaba "hoy" en UTC ✅
+**Causa (confirmada):** `hoyYYYYMMDD()` en `ReservaPublicaPage.tsx` hacía
+`new Date().toISOString().slice(0, 10)`, que es el día en UTC. Desde las
+18:00 de Costa Rica (00:00 UTC) el selector de fecha bloqueaba el día
+actual y proponía mañana.
+
+**Zona horaria del negocio:** se verificó que el modelo **no** guarda una
+zona por negocio (ninguna columna en las entidades); la decisión vigente
+es Costa Rica fija (`common/utils/zona-horaria-negocio.ts` en el backend,
+que ya interpreta la `fecha` de `/horarios` en hora CR). Por eso "hoy" se
+calcula en la zona del negocio y no en la del navegador: un cliente que
+abra el link desde otra zona igual ve el día del negocio.
+
+**Solución:** `src/lib/fecha-negocio.ts` con `hoyEnZonaNegocio()` (Intl con
+`timeZone: 'America/Costa_Rica'`, misma convención que ya usaba la
+pantalla para mostrar horas), usado para el valor inicial y el `min` del
+selector.
+
+**Primer test unitario del frontend:** se agregó Vitest (`npm test` en
+`apps/frontend`, solo `src/**/*.test.ts` para no tocar los e2e de
+Playwright), en la misma versión que ya usa el backend (5.0.1; el lockfile
+solo agrega la declaración). `fecha-negocio.test.ts`, 6 casos: 18:00,
+22:22 (el caso de la prueba de humo) y 23:59:59 de Costa Rica siguen
+siendo el día local; cambia exactamente a la medianoche CR; cambio de mes
+y año. Pasa igual con el proceso en `TZ=America/Costa_Rica`, `UTC` y
+`Asia/Tokyo`, porque no depende de la zona del sistema.
+
+**Verificación en vivo:** el 07/10/2026 a las 19:12 hora CR (ya 08/10 en
+UTC), en Chrome real con el wizard público de un negocio real, paso 2: `min`
+y valor por defecto del campo Fecha = `2026-10-07` (antes habría sido
+`2026-10-08`).
+
+### Bug 3 — `<html lang>` quedaba en "es" con la interfaz en inglés ✅
+**Causa (confirmada):** `index.html` trae `lang="es"` fijo y nada en el
+código lo actualizaba (ningún uso de `documentElement.lang` ni listener de
+`languageChanged`).
+
+**Solución:**
+- `src/i18n/config.ts`: `sincronizarIdiomaDelDocumento()` al iniciar i18next
+  y en cada `languageChanged`. Pone `lang` con `i18n.resolvedLanguage`
+  (`es`/`en`, nunca `en-US` crudo del navegador) y llama
+  `window.UserWay?.changeWidgetLanguage(idioma)`, la API documentada de
+  UserWay para cambiar su idioma sin recargar. La documentación de
+  UserWay dice que lee `lang` **solo al inicializarse**.
+- `index.html`: el script inline que ya aplicaba el tema antes de React
+  ahora también pone `lang` desde `turnify_idioma` (o el idioma del
+  navegador, español por defecto, mismo criterio que i18next). Es
+  necesario porque la app de UserWay carga async y puede inicializarse
+  antes que el módulo diferido de React.
+
+**Verificación en Chrome real (Landing):**
+- Clic real en EN → `lang="en"` al instante. Recarga → sigue `lang="en"`,
+  la Landing en inglés y UserWay arranca en inglés (descarga
+  `locales/en-US.json`, botón "Accessibility Menu").
+- En el mismo documento (sin recargar, confirmado con `performance.timeOrigin`):
+  clic en ES → `lang="es"` y el menú de UserWay abre `/es/index.html`;
+  clic en EN → `lang="en"` y el menú abre `/en/index.html`.
+- **Atribución verificada:** cambiar solo el atributo `lang` a mano, sin
+  llamar la API, NO cambia el menú (siguió en `/en/`). El cambio en vivo
+  lo hace `changeWidgetLanguage`, así que la llamada es necesaria.
+- **Limitación de UserWay, no corregible desde Turnify:** el `aria-label`
+  del botón flotante ("Accessibility Menu" / "Menú de Accesibilidad")
+  queda en el idioma con que se inicializó la página hasta la próxima
+  recarga; `changeWidgetLanguage` actualiza el menú, no la etiqueta del
+  ícono.
+- **No verificado visualmente:** la pestaña de Chrome automatizada estuvo
+  en `visibilityState: hidden` toda la prueba (las capturas de pantalla
+  fallaban por timeout), así que el idioma del menú se confirmó por la URL
+  del iframe que carga UserWay (`/es/` vs `/en/`), no con una captura.
+
+### Bug 4 — El chatbot inventaba funciones y mostraba `**` sin formato ✅
+**Causa (confirmada):**
+- (a) `base-conocimiento.ts` describía Turnify a grandes rasgos, sin un
+  inventario de lo que existe ni una regla contra suponer funciones.
+  Incluso nombraba una sección "Disponibilidad" que en la interfaz vive
+  dentro de Configuración. El modelo rellenaba con lo típico de otras
+  apps ("Marcar todas como leídas", "Configuración > Notificaciones").
+- (b) `ChatbotWidget` pintaba el texto tal cual (`whitespace-pre-wrap`),
+  así que el Markdown del modelo se veía crudo.
+
+**Solución:**
+- (a) Base de conocimiento reescrita con un **inventario exhaustivo**
+  tomado del código, no de suposiciones: rutas de `App.tsx`, acciones de
+  cada página (claves i18n y botones), el worker de notificaciones
+  (reintentos = 3, recordatorio 24 h) y docs/spec.md. Se revisó contra el
+  código cada detalle dudoso: el filtro de Reservas incluye "ausente", el
+  detalle del Calendario solo permite cancelar, y Reportes sí muestra
+  ingresos estimados. Incluye el significado de los estados de
+  notificación, una lista de cosas que NO existen (confirmadas ausentes:
+  marcar leídas, configurar la anticipación del recordatorio, gestionar
+  empleados desde la UI —solo hay API—, bloquear fechas o vacaciones,
+  marcar "ausente" desde la UI) y reglas: describir solo lo del
+  inventario, decir "Turnify no tiene esa función" y ofrecer la
+  alternativa real; formato limitado a negritas y listas.
+- (b) `lib/markdown-basico.ts` (parser a una estructura de datos: negrita,
+  cursiva, listas con viñetas o numeradas, párrafos) +
+  `components/chat/MarkdownBasico.tsx` (la pinta con elementos de React).
+  **Seguro por construcción:** nunca se interpreta HTML, todo el texto
+  pasa por el escape de React, sin `dangerouslySetInnerHTML` ni
+  sanitizador. Se eligió esto en vez de `react-markdown` porque solo hace
+  falta lo que el prompt permite, sin agregar una dependencia grande.
+  Tolera Markdown a medias durante el streaming (un `**` sin cerrar se ve
+  como texto hasta que llega el cierre). Solo se aplica a las respuestas
+  del asistente; lo que escribe la persona se muestra tal cual.
+- 10 tests unitarios del parser (negrita, cursiva, `2 * 3 * 4` no es
+  cursiva, `**` sin cerrar, HTML queda como texto, listas, encabezados).
+
+**Verificación contra Groq real** (widget en Chrome, negocio de prueba,
+servidor con el prompt nuevo confirmado en `dist`):
+1. "¿Cómo marco todas las notificaciones como leídas?" → "Turnify no tiene
+   esa función. En la pantalla de **Notificaciones** solo puedes consultar
+   el historial…" (antes inventaba el botón).
+2. Algo que NO está en la lista de ejemplos, para ver si generaliza:
+   "¿Dónde activo que mis clientes paguen la reserva por adelantado…?" →
+   "Turnify no ofrece la posibilidad de cobrar por adelantado a través del
+   link público…".
+3. Función real: "Dame los pasos para que un día deje de recibir
+   reservas" → pasos correctos (Configuración → horario laboral →
+   desmarcar el día). Se pinta como `<ol>` de 4 ítems con `<strong>`.
+   Detalle menor: el paso 4 dice "Guarda el cambio" aunque aclara que se
+   guarda solo.
+- En las 3 respuestas: 0 asteriscos literales en el texto visible,
+  confirmado también con captura de pantalla.
+- Límite honesto: son 3 preguntas a un LLM, no una garantía. El prompt
+  reduce la invención, pero el modelo puede equivocarse con preguntas que
+  no se probaron.
+
+### Resultados de la verificación final (después de los 4 commits)
+| | Backend | Frontend |
+|---|---|---|
+| Tests | `npm test`: **222/222** (33 archivos, incluye integración contra la BD real) | `npm test`: **16/16** (2 archivos, nuevos) · `test:e2e` (Playwright, wizard público): **1/1** |
+| Lint | 0 errores, 45 warnings: todas existían antes; en los archivos tocados, mismo conteo antes y después | 0 errores, 2 warnings (ya existían, `AuthContext.tsx`) |
+| Typecheck / build | `tsc --noEmit` y `nest build` OK | `tsc -b` + `vite build` OK |
+
+docs/spec.md: nota en el punto 5 (Implementación) sobre el chequeo atómico
+de límites; el guard ya no es la única barrera. Ningún otro punto
+documentado cambió.
+
+## Cierre de "Bugs y observaciones — Seguimiento #3" (7 puntos)
+Un commit por punto, cada uno verificado contra el sistema real. Antes de
+empezar se revisaron los puertos: había un backend del 7/10 19:19 (PID
+20568) y un Vite del 6/10. Se detuvieron los dos y se levantaron limpios
+desde el commit `57fe72b`.
+
+### Punto 1 — Chatbot: verificación amplia contra Groq real ✅ (con 2 respuestas incompletas)
+Script por el mismo WebSocket que el widget, con un socket nuevo por
+pregunta (sin historial que contamine). Se usaron negocios de prueba
+nuevos cada 9 preguntas por el límite real de 10 mensajes/día del Plan
+Gratis (no se saltó).
+
+**Iteraciones del prompt (`base-conocimiento.ts`)** — en cada ronda se
+contrastó cada respuesta contra el código:
+- Ronda 1 (18 preguntas): 7 con invenciones. Labels inexistentes ("Crear
+  servicio" / "+" / "Guardar" / "English"), "el botón se deshabilita al
+  llegar al límite" (falso: `Nuevo servicio` nunca se deshabilita), un
+  paso de "guardar" en el horario (se guarda solo), idioma "arriba a la
+  derecha" (en escritorio está abajo en el menú lateral), "panel de
+  control externo" para sucursales, y alternativas falsas para
+  vacaciones.
+  → Se agregaron los textos exactos de cada botón y su ubicación, que el
+  horario es semanal y se guarda solo, el estado del botón Exportar,
+  más cosas que no existen, una lista cerrada de alternativas reales y la
+  regla de no nombrar botones, ubicaciones ni herramientas que no estén
+  en el inventario.
+- Ronda 2 (18): 16 correctas. Seguían "comparte la cuenta" para empleados
+  y una alternativa no listada para descuentos. → Alternativas explícitas
+  y "NUNCA sugieras compartir la cuenta".
+- Ronda 3 (+6 preguntas nuevas, para no ajustar el prompt solo a las
+  mismas): inventó "contactar al soporte técnico" (no existe) y notas
+  editables en la reserva (solo al crearla); además afirmó que la página
+  pública tiene botones de idioma y tema (no los tiene; confirmado en
+  `ReservaPublicaPage.tsx`). → Se agregaron esos hechos.
+- Ronda 4 (+3 nuevas): correctas. Ajuste final: reprogramar NO envía
+  aviso (confirmado en `ReservasService.reprogramar`), Turnify no cobra a
+  los clientes, y un servicio con precio especial lo ve cualquiera.
+
+**Tabla final** (todas con el prompt comiteado; #8, #20, #21 y #23 son del
+reintento después del último ajuste):
+
+| # | Tipo | Pregunta | Respuesta resumida | Resultado |
+|---|---|---|---|---|
+| 1 | no existe | Exportar reservas a PDF | No existe; solo CSV en Reportes, deshabilitado en Plan Gratis | ✅ |
+| 2 | no existe | Conectar con Google Calendar | No hay integración con calendarios externos | ✅ |
+| 3 | no existe | Recordatorios por SMS | No hay SMS; correo, y WhatsApp con Plan de Pago + cliente Premium | ✅ |
+| 4 | no existe | App móvil Android | No hay app; usar el navegador, sitio responsive | ⚠️ ambiguo: "visita la página de tu negocio" en vez de "inicia sesión en Turnify" |
+| 5 | no existe | Dos sucursales en una cuenta | No; registrar cada una como negocio aparte, sin vínculo | ✅ |
+| 6 | no existe | Invitar a un empleado | No existe desde la interfaz | ✅ |
+| 7 | no existe | Bloquear el 24 de diciembre | No hay fechas puntuales; desactivar ese día de la semana afecta todas las semanas; reservas existentes no se cancelan | ✅ |
+| 8 | no existe | Descuento 10% a cliente Premium | No hay descuentos; crear otro servicio con ese precio (cuenta para el límite de 3) | ⚠️ incompleto: no aclara que ese servicio lo ve cualquier cliente |
+| 9 | existe | Configurar horario | Configuración → Horario laboral semanal, casillas y horas, se guarda solo | ✅ |
+| 10 | existe | Crear servicio | Servicios → "Nuevo servicio" → campos → "Crear servicio"; aviso de límite al crear el 4to | ✅ |
+| 11 | existe | Agendar cita por teléfono | Clientes → "Nuevo cliente" → "Crear cliente"; Calendario → "Nueva reserva" → "Crear reserva" | ✅ |
+| 12 | existe | Cambiar idioma a inglés | Botón "EN" abajo en el menú lateral; en celular en la barra superior | ✅ |
+| 13 | existe | Reservas del mes pasado | Reportes → "Mes pasado" | ✅ |
+| 14 | existe | Compartir link de reservas | Configuración → Link público → "Copiar" | ✅ |
+| 15 | existe | Mover una cita | Calendario, vista Mes o Semana, arrastrar | ✅ |
+| 16 | fuera de tema | Capital de Australia | Se niega y redirige a Turnify | ✅ |
+| 17 | fuera de tema | Poema sobre el mar | Se niega y ofrece ayuda con Turnify | ✅ |
+| 18 | fuera de tema | Política de Costa Rica | Se niega y redirige | ✅ |
+| 19 | no existe | Acceso al panel para recepcionista | No se puede dar acceso al panel | ✅ |
+| 20 | no existe | Cobrar seña | Turnify no procesa pagos; hacerlo fuera de la plataforma | ✅ |
+| 21 | no existe | Promoción a todos los clientes | No hay mensajes masivos | ✅ |
+| 22 | no existe | Cambiar contraseña | No existe en la interfaz | ✅ |
+| 23 | no existe | Marcar que no se presentó | No existe; dejarlo en "Notas" del cliente (Editar → "Guardar cambios") | ✅ |
+| 24 | no existe | Logo en la página de reservas | No se puede personalizar | ✅ |
+| 25 | no existe | Hablar con soporte | No hay canal de soporte | ✅ |
+| 26 | existe | Página de reservas en inglés | Sí, según el idioma del navegador; no hay botón | ✅ |
+| 27 | existe | Qué significa "fallida" | No se entregó tras 3 reintentos; no se puede reenviar | ✅ |
+
+**Resultado: 25/27 correctas y 2 incompletas o ambiguas (#4, #8), sin
+invenciones en la corrida final.** A lo largo de las rondas se eliminaron
+10 invenciones reales.
+**Lo que NO queda resuelto:** esto es un LLM (`openai/gpt-oss-20b`) y la
+verificación es muestral. Preguntas distintas a estas 27 pueden producir
+errores, y #4 y #8 siguen omitiendo un matiz pese al prompt. También hay
+detalles de redacción (#7 dice "Guarda el cambio (se guarda
+automáticamente)").
+
+**Revisión posterior a los puntos 2, 3 y 5** (cambiaron funciones que el
+asistente describe y se actualizó su inventario en cada commit): 3
+preguntas nuevas contra Groq. "Cliente me llamó por teléfono" ya ofrece
+"Cliente nuevo" dentro de Nueva reserva ✅; "aviso amarillo de horario"
+explica el botón "Configurar horario" ✅; "aparece pendiente con un texto
+en inglés" **inventó** que las reservas quedan pendientes y que se pueden
+"marcar como Confirmada" ❌. Se confirmó en el código que toda reserva se
+crea `CONFIRMADA` (`ReservasService.crear`) y que solo existen cancelar y
+reprogramar; se agregó eso al prompt. Repetida 2 veces: ambas correctas
+(explica que es una notificación, con intentos y motivo del proveedor).
+
+### Punto 2 — Negocio sin horario laboral: aviso en el Dashboard ✅
+**Estado previo (confirmado):** `InicioPage` no consultaba la
+disponibilidad. Un negocio nuevo arranca con los 7 días "Cerrado" y nada
+lo advertía. `GET /disponibilidad` devuelve también las franjas
+inactivas, así que el chequeo filtra por `activo`.
+**Solución:** `InicioPage` consulta `['disponibilidad']` (misma query y
+caché que el Calendario) y, si no hay ninguna franja activa, muestra el
+`Banner` compartido (variante advertencia) con el botón "Configurar
+horario" → `/configuracion`. Desaparece solo: toda mutación exitosa
+invalida las queries (`queryClient.ts`). 3 claves nuevas
+`dashboard.bannerSinHorario*` en es.json y en.json (paridad verificada
+por script: 360/360). El chatbot también conoce el aviso
+(`base-conocimiento.ts`).
+**Verificación en Chrome real:** negocio registrado desde cero por la UI
+(tipo "otro") → onboarding → Dashboard muestra el aviso en ES y en EN
+("You haven't set your working hours yet" / "Set working hours") → botón
+→ Configuración → activar el lunes → volver al Inicio: el aviso ya no
+está.
+
+### Punto 3 — Reserva manual: crear el cliente en el mismo formulario ✅
+**Estado previo (confirmado):** el modal "Nueva reserva" del Calendario
+solo tenía un `<select>` de clientes existentes. `POST /clientes` exige
+nombre (2–150) y correo; el resto es opcional. No tiene límite de plan
+(solo `PrivilegioClienteGuard` para WhatsApp, que aquí no aplica porque
+se crea con correo). Un correo repetido responde
+`409 CLIENTE_CORREO_YA_REGISTRADO` (sin `field`).
+**Solución (sin lógica duplicada):**
+- `crearNuevaReservaSchema` gana `modoCliente` (existente/nuevo). Los
+  datos del cliente nuevo se validan con `crearClienteSchema(t).pick(...)`,
+  las MISMAS reglas que la pantalla Clientes.
+- Al confirmar: primero `clientesApi.crear` (mismo endpoint, mismas
+  validaciones y guards del backend), después `reservasApi.crear`.
+- Errores: correo repetido → error en el propio campo Correo ("Ya existe
+  un cliente con ese correo. Elígelo en la lista…"); un error de campo
+  del backend → en su campo. **Si el cliente se crea pero la reserva
+  falla**, toast de advertencia con el motivo real y el formulario pasa a
+  "cliente existente" con ese cliente elegido, para que reintentar no lo
+  duplique.
+- Sin clientes todavía, el modal abre directo en "Cliente nuevo".
+- `useWatch` en vez de `watch()` (lint `react-hooks/incompatible-library`).
+- 6 claves i18n nuevas en `calendario.*` (ES/EN). El chatbot ya no dice
+  que el cliente debe existir antes.
+- 5 tests nuevos (`validation.test.ts`).
+**Verificación en Chrome real** (negocio nuevo, servicio creado por API):
+1. Sin clientes → modal en "Cliente nuevo" → nombre, correo y teléfono +
+   lunes 12/10 10:00 → "Reserva creada". En **Clientes** aparece el
+   cliente; en **Reservas**, la reserva (12 oct 10:00, Confirmada); por
+   API, el teléfono quedó guardado.
+2. Mismo correo como "cliente nuevo" → error en el campo Correo
+   (`aria-invalid`, `aria-describedby`), sin crear nada (API: 1 cliente,
+   1 reserva).
+3. Cliente nuevo + martes (día cerrado) → toast "El cliente se creó, pero
+   la reserva no — Ese horario está fuera de la disponibilidad…"; el
+   formulario queda en "cliente existente" con ese cliente. Al cambiar a
+   lunes y reintentar → reserva creada; Clientes sigue mostrando 2
+   (sin duplicado).
+4. EN: "New client" / "Full name" / "Choose an existing client".
+
+### Punto 4 — Subtítulo del Dashboard con mayúsculas incorrectas ✅
+**Causa (confirmada):** el texto era correcto ("Resumen de" + `octubre de
+2026` de Intl), pero el `<p>` tenía la clase CSS `capitalize`, que pone en
+mayúscula la primera letra de CADA palabra ("Resumen De Octubre De 2026").
+**Solución:** sin `capitalize`. El mes se formatea con la nueva
+`mesYAnioEnZonaNegocio(idioma)` en `lib/fecha-negocio.ts` (zona del
+negocio, misma convención del bug 2). Inglés: "Summary for October 2026",
+el formato natural ya existente en `en.json`, sin cambios de texto.
+3 tests nuevos (minúsculas en ES, formato EN, mes de Costa Rica y no de UTC
+en el borde de fin de mes).
+**Verificación en Chrome real:** Dashboard → "Resumen de octubre de 2026"
+(`text-transform: none`); en EN → "Summary for October 2026".
+
+### Punto 5 — Correos rechazados quedaban "pendiente" sin explicación ✅
+**Investigación (antes de cambiar nada):** al fallar un envío,
+`NotificacionesService.enviarUna()` solo actualizaba `reintentos` y
+`estado`. El motivo de Resend (`error.message` del SDK) iba **únicamente
+al log** del servidor (`logger.warn`) y se perdía. La entidad no tenía
+dónde guardarlo.
+**Cambio en el modelo (mínimo):** columna nueva `notificaciones.ultimo_error`
+(`text`, nullable), migración escrita a mano
+`1791426021912-NotificacionUltimoError` (`ALTER TABLE "notificaciones" ADD
+"ultimo_error" text`), aplicada con `npm run migration:run` en la BD del
+`.env`. Entidad: `Notificacion.ultimoError?: string | null`. docs/spec.md
+(punto 1) actualizado.
+**Qué se guarda:** el texto que devuelve la capa de envío, sin
+reinterpretarlo. Con Resend es su `error.message` literal; con WhatsApp,
+el status y el cuerpo de la Graph API. Hay dos casos locales que NO son
+del proveedor y se guardan igual porque son el motivo real: falta de
+credenciales en `.env` y canal sin proveedor. Se limpia (`null`) al
+enviarse bien. Tope de 1000 caracteres.
+**Pantalla:** en el historial, si la notificación no se envió y hay
+motivo, debajo del estado aparece "Intentos: N · Motivo del proveedor:
+<texto>" (2 líneas + tooltip con el texto completo; el texto del
+proveedor no se traduce). Además, un aviso breve en el panel de canales:
+con el remitente de prueba de Resend (sin dominio verificado) solo se
+entrega a la dirección dueña de la cuenta. ES/EN, paridad 369/369.
+**Verificación con un caso real:** cliente nuevo con correo
+`ajeno-…@ejemplo-externo.com` + reserva → en el siguiente tick Resend
+rechazó de verdad ("You can only send testing emails to your own email
+address…") → el historial muestra "pendiente · Intentos: 1 · Motivo del
+proveedor: You can only send testing emails…" (ES y EN). Una notificación
+de antes de la migración muestra "fallida" sin motivo: no se inventa uno
+que nunca se guardó. Tests ajustados para verificar que se guarda el
+motivo al fallar y se limpia al enviar (12/12).
+**Observaciones honestas:**
+- El texto de Resend incluye el correo de la persona dueña de la cuenta
+  de Resend del equipo. Mostrarlo tal cual (como se pidió) lo expone a
+  cualquier administrador de negocio. Con un dominio verificado en
+  producción este error no ocurriría, pero conviene decidirlo.
+- Solo se registran los rechazos que el proveedor devuelve al momento de
+  enviar. Un correo aceptado por Resend que luego rebota no se detecta:
+  haría falta el webhook de eventos de Resend, que no existe en Turnify.
+
+### Punto 6 — Botones de abrir y cerrar el chatbot en posiciones distintas ✅
+**Causa (confirmada):** el contenedor fijo del widget era un bloque
+normal. Con el panel abierto, el contenedor tomaba el ancho del panel y
+el botón redondo (que pasa a ser "cerrar") caía a la izquierda, debajo
+del panel, en vez de quedar en la esquina donde estaba "abrir". Además, la
+X del encabezado tenía un área táctil de 24×24 px (`p-1` + ícono de 16 px).
+**Solución:** `flex flex-col items-end` en el contenedor (el botón queda
+siempre en la misma esquina) y la X del encabezado pasa a 44×44 px, con
+el padding del encabezado reducido para que no crezca de más.
+**Verificación en Chrome real** (iframes de 1280 px y 390 px, claro y
+oscuro): el botón redondo mide 56×56 y está en la misma posición cerrado
+y abierto — (1200, 640) en escritorio y (298, 772) en móvil, en ambos
+temas. La X del encabezado mide 44×44 (`offsetWidth/offsetHeight`; la
+medición con `getBoundingClientRect` daba 42 porque la animación de
+apertura, `scale(0.95)`, queda congelada en la pestaña oculta de la
+herramienta). Sin scroll horizontal. Captura en modo oscuro: el botón de
+cerrar en la esquina inferior derecha en ambos anchos.
+
+### Punto 7 — El botón de UserWay tapaba la última fila del calendario ✅
+**Estado previo (medido, no supuesto):** en escritorio (1280×720), con
+scroll hasta el final, UserWay quedaba encima de una celda de la última
+fila del calendario mensual. Ninguna pantalla tenía espacio inferior
+reservado para los botones flotantes.
+**Solución:** una sola constante `ESPACIO_INFERIOR_WIDGETS` (`pb-24` = 96
+px; `components/layout/espacio-widgets.ts`) que cubre el área de UserWay
+(~60 px) y del botón del chatbot (hasta 80 px). Se aplica al `<main>` de
+`AppLayout` (todas las pantallas del panel: Calendario, Clientes,
+Servicios, Reservas, Notificaciones, Reportes, Configuración, Suscripción,
+Inicio), a Landing, Login, Registro, Onboarding y al wizard público.
+(En `AppLayout`, Prettier además reacomodó una línea existente que
+excedía el ancho; es solo formato.)
+**Verificación en Chrome real** (iframes 1280×720 y 390×844, con UserWay
+presente, datos largos creados a propósito: 16 clientes y 11 reservas en
+el negocio de prueba). Se midió la distancia entre el final del
+contenido y el borde superior de UserWay con scroll al máximo, más los
+elementos que se superponen:
+- Escritorio: Calendario +78 px (antes tapaba una celda), Clientes +68 px.
+- 390 px: Clientes +68, Reservas +85, Notificaciones +90, Reportes +96,
+  Configuración +85; Landing +36 (sin sesión, también en escritorio).
+- Wizard público en 390 px, paso 2 con 18 horarios: botón "Siguiente"
+  +112 px.
+- Ningún elemento tapado en ninguna medición.
+- Nota de proceso: a mitad de la medición la sesión se cerró sola. Varios
+  iframes con la misma sesión refrescaron el token al mismo tiempo y la
+  detección de reuso de refresh token del backend (comportamiento de
+  seguridad correcto) revocó la sesión. Se volvió a iniciar sesión, se
+  repitieron las mediciones con un iframe a la vez y se valida que cada
+  iframe esté en la ruta pedida.
+
+### Resultados de la verificación final (después de los 8 commits del cierre)
+| | Backend | Frontend |
+|---|---|---|
+| Tests | `npm test`: **222/222** (33 archivos, incluye integración contra la BD real) | `npm test`: **24/24** (3 archivos) · `test:e2e` (Playwright, wizard público): **1/1** |
+| Lint | 0 errores, 45 warnings (los mismos de antes) | 0 errores, 2 warnings (ya existían: `react-refresh/only-export-components` en `AuthContext.tsx` y `ToastProvider.tsx`) |
+| Typecheck / build | `tsc --noEmit` y `nest build` OK | `tsc -b` + `vite build` OK |
+
+docs/spec.md: punto 1 (NOTIFICACION gana `ultimo_error`). Migración nueva
+aplicada: `1791426021912-NotificacionUltimoError`.
+
+## Seguimiento #3 — 4 frentes (chatbot, enmascarado, datos de prueba, webhook de Resend)
+Rama `feature/inicial`, un commit por tarea. Toda verificación de interfaz
+se hace en Chrome real, usando el frontend.
+
+### PUNTO DE CONTROL (actualizar al cerrar cada tarea)
+- **Frente en curso:** 3 (datos de prueba). Frente 2 ✅ cerrado (ver abajo).
+  Frente 1 sigue parcial: se retoma cuando se libere la cuota de Groq.
+- **Frente 3, negocio 1 "Barbería El Sabanero" (Nicoya, barbería) ✅**
+  (salvo las 3 preguntas al chatbot: pendientes por la cuota de Groq).
+  Recorrido en Chrome real, como usuario:
+  | Flujo | Resultado |
+  |---|---|
+  | Registro + onboarding (3 de 7 plantillas) | OK |
+  | Editar precios de servicios (₡4 500 / ₡6 500 / ₡5 000) | OK |
+  | 4.º servicio → bloqueo del Plan Gratis en pantalla | OK |
+  | Horario L–V 08–19, S 08–14, D cerrado (persiste tras recargar) | OK |
+  | 13 clientes (2 en inglés, 3 Premium, 1 con el correo real autorizado) | OK |
+  | 6 reservas por el link público (2 clientes nuevos, 3 existentes, 1 real) | OK |
+  | 14 reservas manuales en el Calendario (una con cliente nuevo en el formulario) | OK |
+  | Reserva 21 del mes → bloqueo en pantalla (toast + banner, ver fix B) | OK |
+  | Cancelar desde el detalle del Calendario y desde Reservas (página 2) | OK |
+  | Reprogramar arrastrando (14/10 08:00 → 15/10 11:00) | OK (dato correcto; ver hallazgo 3 sobre la etiqueta) |
+  | Notificaciones: confirmación al correo real → "enviada"; el resto (example.com) "fallida · rechazado por el proveedor", sin correos visibles | OK |
+  | Reportes "Este mes": 20 reservas, ₡93 000, 10 % cancelación, gráficos con datos reales | OK |
+  | Idioma EN: 9 pantallas recorridas, sin textos de interfaz en español (único marcado: "Premium", que también es inglés) | OK |
+  | Tema oscuro en vivo (persiste en `turnify_tema`) | OK (ver hallazgo 4) |
+  | 3 preguntas al chatbot sobre el negocio | **pendiente (Groq 429)** |
+  | Pago (Stripe) | no probable (limitación geográfica) |
+- **Frente 3, negocio 2 "Clínica Dental Sonrisa Pampeña" (Liberia,
+  clínica dental) ✅** (salvo chatbot: pendiente por Groq). Registro +
+  onboarding (3 de 8 plantillas: Consulta/valoración inicial, Limpieza
+  dental, Extracción), precios ₡15 000 / ₡25 000 / ₡30 000, horario L–V
+  07:30–17:00 con fin de semana cerrado (persiste tras recargar), 11
+  pacientes (2 en inglés, 3 Premium), 3 reservas por el link público (2
+  pacientes nuevos), 6 manuales (una con paciente nuevo creado en el
+  formulario y notas clínicas), cancelación desde Reservas, reprogramación
+  arrastrando (14/10 11:00 → 16/10 13:00, confirmado en Reservas),
+  Notificaciones (9 confirmaciones, 1 cancelación, 4 recordatorios, 0
+  correos visibles), Reportes (9 reservas, ₡180 000 = suma exacta de las 8
+  activas, 11 % cancelación), EN en 9 pantallas sin texto de interfaz en
+  español, tema oscuro (captura de Reportes). Todo OK salvo el hallazgo 5.
+- **Frente 3, negocio 3 "Salón de Belleza Bella Santa Cruz" (Santa Cruz,
+  salón de belleza) ✅** (salvo chatbot: pendiente por Groq). Registro +
+  onboarding (3 de 9 plantillas: Corte y peinado, Manicure, Coloración),
+  precios ₡12 000 / ₡8 000 / ₡35 000, horario Ma–S 09:00–18:00 (domingo y
+  lunes cerrados), 10 clientas (2 en inglés, 3 Premium), 3 reservas por el
+  link (2 clientas nuevas), 5 manuales (una con clienta nueva creada en el
+  formulario), cancelación desde el detalle del Calendario (se ve
+  "Cancelada" con el fix A), reprogramación arrastrando (17/10 09:00 →
+  15:00), Notificaciones (8 confirmaciones + 1 cancelación, 0 correos
+  visibles), Reportes (8 reservas, ₡118 000 = suma exacta de las 7
+  activas, 13 %), EN en 9 pantallas sin texto de interfaz en español, tema
+  oscuro (captura de Clientes en EN).
+- **Frente 3, negocio 4 "Fisioterapia Movimiento Cañas" (Cañas, tipo
+  "otro") ✅** (salvo chatbot: pendiente por Groq). Onboarding sin
+  plantillas ("No hay plantillas sugeridas… Continuar") y Servicios con su
+  estado vacío; 3 servicios creados a mano con descripción y color
+  (₡20 000 / ₡18 000 / ₡15 000), horario L–V 13:00–20:00 y S 08:00–12:00
+  (persiste tras recargar), 10 pacientes (2 en inglés, 2 Premium), 3
+  reservas por el link (una para HOY 08/10 13:00, 2 pacientes nuevos), 5
+  manuales (una con paciente nuevo creado en el formulario), intento fuera
+  de horario rechazado en pantalla ("Ese horario está fuera de la
+  disponibilidad…"), cancelación desde Reservas, reprogramación
+  arrastrando (17/10 10:00 → 11:00), Notificaciones (8 confirmaciones, 1
+  cancelación, 1 recordatorio de la cita de hoy, 0 correos visibles),
+  Reportes (8 reservas, ₡124 000 = suma exacta de las 7 activas, 13 %), EN
+  en 9 pantallas sin texto de interfaz en español, tema oscuro (captura
+  del Dashboard).
+- **Frente 3 completo** salvo las 12 preguntas al chatbot (3 por negocio),
+  pendientes por la cuota diaria de Groq (429). Pago con Stripe: no
+  probable (limitación geográfica), no se tocó.
+- **Frente 4 (webhook de Resend) ✅** — ver sección "Frente 4" abajo.
+- **Siguiente tarea exacta:** cuando se libere la cuota de Groq, Frente 1
+  (preguntas 17–27, re-prueba de #6 y #14) y las 12 preguntas del Frente 3.
+- **Hallazgos del Frente 3** (A y B se corrigen por pedido explícito; el
+  resto solo se registra para el tablero):
+  1. **(A, corregido ✅)** Calendario: una reserva cancelada seguía
+     diciendo "Cita programada" y se distinguía solo por color (WCAG
+     1.4.1). Ahora dice "Cancelada"/"Cancelled", lleva el ícono `Ban` y la
+     hora tachada, y el `aria-label` del evento incluye el estado ("08:00
+     · Cancelada · Tom Becker · Corte a máquina (fade) (cancelada)").
+     Verificado en Chrome, vista Semana, ES y EN (las activas siguen "Cita
+     programada"/"Scheduled appointment"), con capturas.
+  2. **(B, corregido ✅)** Al llegar al límite de 20 reservas del mes, el
+     error solo salía como toast. Ahora el formulario "Nueva reserva" del
+     Calendario muestra además un `Banner` persistente (variante
+     advertencia, botón "Ver planes" → /suscripcion), que se limpia al
+     reabrir el formulario. **Corrección de la premisa:** Servicios NO
+     usaba el componente `Banner`, sino un `<p>` ámbar hecho a mano. Para
+     que ambos sean consistentes y reutilicen el componente compartido
+     (punto 8 del brief), Servicios también pasó a `Banner`, con los
+     mismos textos traducidos (antes mostraba el mensaje crudo del
+     backend, siempre en español). Verificado en Chrome llegando al
+     límite real: reserva 21 → banner en ES y EN; al reabrir el
+     formulario ya no está; 4.º servicio → mismo banner. Capturas.
+  5. **(nuevo, NO corregido) Recordatorios duplicados.** Notificaciones
+     (ES, clínica dental): Jorge Luis Álvarez y Gabriela Rojas tienen 2
+     recordatorios cada uno para la MISMA reserva (`idReserva` igual),
+     creados con ~0,5 s de diferencia en el tick del cron de las 9:00 del
+     08/10. Había un solo proceso de backend corriendo, y
+     `NotificacionesService` se registra una sola vez como provider.
+     Reproducir: tener reservas confirmadas dentro de las próximas 24 h y
+     esperar el tick de `programarRecordatorios` (cada 10 min); revisar
+     Notificaciones. Causa probable, no confirmada: el chequeo "ya existe
+     un recordatorio" + INSERT no es atómico ni tiene una restricción única
+     `(id_reserva, tipo)` que lo respalde, y en ese tick se ejecutó dos
+     veces de forma superpuesta. Efecto: el cliente recibiría 2 correos.
+  6. **(nuevo, NO corregido)** Calendario → Nueva reserva (ES/EN): un
+     horario fuera de la disponibilidad se rechaza solo con un toast que
+     queda parcialmente detrás del fondo oscurecido del modal, y el texto
+     dice "…disponibilidad registrada del usuario" (jerga interna;
+     convendría "del profesional"). Reproducir: Fisioterapia → Nueva
+     reserva → lunes 09:00 (el negocio abre a las 13:00).
+  7. **(nuevo, NO corregido) i18n de errores del backend.** Con la interfaz
+     en EN, los mensajes de error que vienen del backend llegan en español
+     (ej. "Ese horario está fuera de la disponibilidad registrada del
+     usuario"). El backend traduce según `Accept-Language`, pero el
+     cliente HTTP del frontend (`lib/api.ts`) no lo envía. Reproducir:
+     cambiar a EN → Calendar → New booking fuera de horario → toast en
+     español.
+  8. **(nuevo, NO corregido, menor)** Dashboard (ES/EN): el saludo toma la
+     primera palabra del nombre del administrador, así que con títulos
+     queda "Hola, Lic." / "Hi, Lic." (Fisioterapia) o "Hola, Dra."
+     (clínica dental). Reproducir: registrar un administrador cuyo nombre
+     empiece con "Lic." o "Dra.".
+  4. **(nuevo, NO corregido, visual menor)** Calendario en tema oscuro
+     (EN/ES, escritorio, vista Mes): los días fuera del horario laboral
+     (ej. domingo cerrado) se sombrean con un gris claro que choca con el
+     fondo oscuro. Reproducir: tema oscuro → Calendario → Mes en un negocio
+     con domingo cerrado.
+  3. **(nuevo, NO corregido)** Calendario (ES/EN, escritorio), tras
+     arrastrar una reserva: el bloque queda en el día/hora nuevos pero
+     sigue mostrando la hora VIEJA (ej. "08:00" en la franja de las 11:00)
+     hasta recargar la página. Reproducir: Calendario → Semana → arrastrar
+     una cita a otra hora → toast "Reserva reprogramada", la etiqueta
+     conserva la hora anterior. Causa probable: `renderizarEvento` usa
+     `reserva.fechaHoraInicio` de los datos ya cargados y el arrastre llama
+     a `reservasApi.reprogramar` fuera de un `useMutation`, así que nada
+     invalida la query. El dato en el servidor sí queda bien (verificado en
+     Reservas: 15 oct 11:00).
+  2. Calendario → Nueva reserva (ES): al llegar al límite de 20 reservas
+     del mes, el error sale solo como toast. En Servicios el mismo tipo de
+     límite se muestra además como banner dentro del modal. Inconsistencia
+     de UX.
+- **Nota de entorno:** la ventana de Chrome automatizada está tapada por
+  otra ventana (`visibilityState: "hidden"`). Chrome entonces limita los
+  timers de la página y congela las animaciones. Se resolvió con esperas
+  basadas en `MessageChannel` (helper en `localStorage.__ui`), pero las
+  capturas salen con animaciones congeladas y la re-verificación visual
+  de UserWay sigue bloqueada hasta que la ventana esté en primer plano.
+- **Hecho en Frente 1:** prompt ajustado (#4 app móvil, #8 descuento, y
+  correcciones de #6 y #14 encontradas en esta ronda). Preguntas 1–16
+  hechas en el widget, en Chrome.
+- **Falta en Frente 1:** preguntas 17–27, y repetir #6 y #14 con el prompt
+  corregido. Negocios de prueba: "QA Chatbot 1-1791429245" (9 mensajes
+  usados hoy), "QA Chatbot 2-1791429245" (8 usados). "QA Chatbot 3" aún no
+  registrado. Credenciales: en el scratchpad de la sesión, no en el repo.
+- **Bloqueado (externo):** Groq respondió `429 Rate limit reached ... tokens
+  per day (TPD): Limit 200000, Used 198565` del tier gratuito, con "try
+  again in 19m38s". No se modificó límite, código ni proveedor para
+  saltarlo.
+- **Re-verificación visual de UserWay (pedido aparte) ✅** — hecha el
+  08/10, con la ventana de Chrome visible (`visibilityState: "visible"`),
+  abriendo el menú con clic real sobre el botón de UserWay, desde el
+  Dashboard:
+  1. ES: el menú abre en español ("Menú De Accesibilidad", "Contraste +",
+     "Agrandar texto"). Captura.
+  2. Clic real en "EN" y menú abierto de nuevo SIN recargar (mismo
+     documento, confirmado con `performance.timeOrigin`): el menú sale en
+     inglés ("Accessibility Menu", "Bigger Text", "Contrast +"), iframe
+     `/en/index.html`, `lang="en"`. El `aria-label` del botón flotante
+     sigue en español ("Menú de Accesibilidad") hasta recargar
+     (limitación de UserWay, ya documentada). Captura.
+  3. Tras recargar: el menú sigue en inglés y el botón flotante ya dice
+     "Accessibility Menu" / "Translations Menu". Captura.
+
+### Frente 1 — Chatbot (ronda en el widget, Chrome real)
+Las preguntas se escriben en el campo del widget y se envían con su botón
+"Enviar", dentro de una conversación por negocio (como un usuario real,
+con historial). Resultado parcial con el prompt nuevo:
+
+| # | Pregunta | Respuesta resumida | Resultado |
+|---|---|---|---|
+| 1 | Exportar a PDF | No existe; solo CSV en Reportes, deshabilitado en Plan Gratis | ✅ |
+| 2 | Google Calendar | No hay integración | ✅ |
+| 3 | Recordatorios por SMS | No hay SMS ni alternativa | ✅ |
+| 4 | App Android | No hay app; abrir el navegador del celular, misma URL que en la computadora, e iniciar sesión con correo y contraseña de administrador | ✅ (antes incompleta) |
+| 5 | Dos sucursales | No; registrar cada una como negocio aparte | ✅ |
+| 6 | Invitar empleado | No existe… "la única alternativa es que cada sucursal registre su propio negocio" | ❌ inventó (arrastró el contexto de la pregunta 5); prompt corregido, falta repetir |
+| 7 | Bloquear 24 de diciembre | No hay fechas puntuales; desactivar el día de la semana afecta todas las semanas | ✅ |
+| 8 | Descuento 10% | No hay descuentos; servicio con precio reducido, "todos los clientes podrán reservarlo desde el link público" | ✅ (antes incompleta) |
+| 9 | Configurar horario | Configuración → Horario laboral semanal, se guarda solo | ✅ |
+| 10 | Crear servicio | Servicios → "Nuevo servicio" → "Crear servicio" | ✅ |
+| 11 | Cita por teléfono | Calendario → "Nueva reserva", cliente de la lista o "Cliente nuevo" | ✅ |
+| 12 | Idioma a inglés | Botón "EN" abajo en el menú lateral (barra superior en móvil) | ✅ |
+| 13 | Reservas del mes pasado | Reportes → "Mes pasado" | ✅ |
+| 14 | Compartir link | Configuración → Link público → "Copiar"… pero describe Configuración como "el icono con el nombre de tu negocio" | ❌ inventó el ícono; prompt corregido, falta repetir |
+| 15 | Mover cita | Arrastrar en Mes o Semana; no envía aviso | ✅ |
+| 16 | Capital de Australia | Se niega y redirige | ✅ |
+| 17–27 | — | pendientes (cuota de Groq) | — |
+
+### Frente 2 — Datos de terceros en el motivo de las notificaciones ✅
+**Estado previo (confirmado):** `ultimo_error` guardaba el `error.message`
+crudo de Resend, y `GET /notificaciones` lo devolvía tal cual. En la BD de
+desarrollo había 54 filas con motivo; 10 contenían un correo (el de la
+persona dueña de la cuenta de Resend del equipo).
+**Elección: categoría legible, no texto enmascarado.** Se guarda y se
+expone solo un código (`MotivoFallo`: `DESTINATARIO_NO_HABILITADO`,
+`CREDENCIALES_FALTANTES`, `CANAL_SIN_PROVEEDOR`,
+`RECHAZADO_POR_PROVEEDOR`) que el frontend traduce. Es lo más simple y
+seguro: al no guardar texto libre no hay nada que pueda filtrarse, sea
+cual sea el formato del proveedor. Enmascarar con expresiones regulares
+dependería de atrapar cada formato (correos, teléfonos, IDs). Es además el
+mismo patrón de `errorCode` de toda la API, y arregla que el motivo
+saliera en inglés con la interfaz en español. El texto crudo sigue en el
+log del servidor (`logger.warn`).
+- Clasificación en la fuente: `ResendService` y `WhatsappCloudApiService`
+  devuelven `motivo` además del `error` crudo
+  (`clasificarRechazoProveedor()`: el sandbox de Resend y el 131030 de
+  Meta → destinatario no habilitado; credenciales faltantes; canal sin
+  proveedor; el resto → rechazado).
+- **Registros viejos:** migración de DATOS
+  `1791430080850-NotificacionMotivoSaneado` (UPDATE con las mismas reglas;
+  `down` irreversible a propósito), aplicada a la BD del `.env`: antes 54
+  con motivo / 10 con "@"; después 54 categorías / 0 con "@". Además, una
+  whitelist al leer (`motivoPublico()`): cualquier valor desconocido sale
+  como `RECHAZADO_POR_PROVEEDOR`, como segunda barrera.
+- Frontend: "Intentos: N · Motivo: <categoría traducida>" (ES/EN, 373
+  claves con paridad).
+- Tests: `motivo-fallo.spec.ts` (6), un caso nuevo en
+  `notificaciones.service.spec.ts` (el UPDATE nunca lleva el texto crudo
+  ni "@") y **test de integración**
+  `notificaciones-sin-datos-terceros.integration.spec.ts`: app y BD reales,
+  Resend reemplazado por un doble que devuelve el texto real del sandbox
+  con un correo de dueña de cuenta; `GET /notificaciones` del admin no
+  contiene ese correo, ni "testing emails", ni ningún correo. **Con el
+  comportamiento anterior restaurado a propósito, el test falla**; se
+  restauró el código y vuelve a pasar.
+- **Verificación en Chrome real:** negocio "Cierre" → Notificaciones: 11
+  filas "fallida · Intentos: 3 · Motivo: destinatario no habilitado en el
+  entorno de prueba del proveedor", 0 correos en el texto de la pantalla.
+  En EN: "Reason: recipient not allowed in the provider's test
+  environment". Capturas en ES y EN.
+
+### Frente 4 — Webhook de Resend (rebotes y entregas) ✅
+Docs oficiales leídas (2026-10-08):
+https://resend.com/docs/webhooks/verify-webhooks-requests (headers
+`svix-id`/`svix-timestamp`/`svix-signature`, verificar con
+`resend.webhooks.verify()` sobre el body crudo, 400 si falla),
+https://resend.com/docs/webhooks/event-types y `/webhooks/emails/bounced`
+(payload: `data.email_id`, `bounce.{type,subType,message}`),
+https://resend.com/docs/webhooks/retries-and-replays (reintentos con
+backoff hasta ~10 h, replay manual), https://resend.com/docs/webhooks/create-webhook
+(registro: Webhooks → Add Webhook) y Svix
+https://docs.svix.com/receiving/verifying-payloads/how-manual (`svix-id`
+igual en reenvíos → clave de idempotencia). Tolerancia: 5 min, la de
+`standardwebhooks` (`WEBHOOK_TOLERANCE_IN_SECONDS = 5 * 60`), que es lo
+que usa el SDK `resend@6.28.1`.
+- **Backend:** `POST /webhooks/resend` (@Public, sin tenant;
+  `modules/notificaciones/webhook-resend/`). Firma inválida, body alterado,
+  headers faltantes o timestamp fuera de ±5 min → 400
+  `WEBHOOK_FIRMA_INVALIDA`; sin `RESEND_WEBHOOK_SECRET` → 503
+  `WEBHOOK_NO_CONFIGURADO`. Idempotente por `svix-id` (tabla
+  `webhook_eventos_procesados`, INSERT … ON CONFLICT DO NOTHING en la misma
+  transacción que el UPDATE, con lock de la fila). Eventos: delivered →
+  `entregada`; delivery_delayed → sigue `enviada` + `ENTREGA_DEMORADA`;
+  bounced → `fallida` + `REBOTE_PERMANENTE`/`REBOTE_TEMPORAL`; complained
+  → `entregada` + `MARCADO_COMO_SPAM`; failed → `fallida` +
+  `RECHAZADO_POR_PROVEEDOR`. Un evento tardío más débil no pisa a uno más
+  fuerte. `bounce.message` no se guarda ni se loguea. `ResendService`
+  ahora devuelve `data.id` y el worker lo guarda en
+  `notificaciones.id_correo_proveedor`.
+- **Migración** `1791472563669-NotificacionWebhookResend` (aplicada en la
+  BD compartida): columna `id_correo_proveedor` + índice, valor
+  `entregada` en `notificaciones_estado_enum`, tabla
+  `webhook_eventos_procesados`. `migration:generate` proponía además DROP
+  de la exclusion constraint `no_traslape_reserva_usuario`; se quitó a mano.
+  El `down` pasa `entregada` → `enviada` antes de recrear el enum viejo.
+- **Frontend:** estado "entregada"/"delivered" (icono doble check) y los 4
+  motivos nuevos en ES/EN (382 claves, paridad); el motivo se muestra
+  también en enviada/entregada, y "Intentos" solo si hubo reintentos.
+- **Config/docs:** `RESEND_WEBHOOK_SECRET` en `env.schema.ts` (opcional),
+  `.env.example` (vacío), README (pasos de registro después del deploy) y
+  `docs/spec.md` (modelo + sección del webhook). Base de conocimiento del
+  chatbot: estado "entregada" y avisos del proveedor.
+- **Tests:** `transicion-por-evento.spec.ts` (8, función pura) y
+  `webhook-resend.integration.spec.ts` (9, app y BD reales, Resend
+  reemplazado por un doble; firma calculada a mano con node:crypto, no con
+  el SDK): id guardado al enviar, firma de otro secreto → 400, body
+  alterado → 400, sin headers → 400, timestamp de hace 10 min → 400,
+  delayed + delivered, bounced (con un correo en `bounce.message`: no
+  llega a la API), evento repetido → "duplicado" con 1 sola fila y sin
+  reaplicar, evento de correo ajeno → "ignorado". Sabotaje: quitando el
+  chequeo de duplicado, el test de evento repetido falla (en la primera
+  corrida saboteada también falló el de bounced; no se reprodujo en 1
+  corrida saboteada más ni en 5 corridas normales seguidas).
+- **Verificación en Chrome real (simulación firmada):** el backend local se
+  levantó con un secreto de PRUEBA en la variable de entorno del proceso
+  (no en `.env` ni en el repo). Negocio 4 (Fisioterapia), desde la UI:
+  paciente nuevo con el correo autorizado + 2 reservas (20/10 y 21/10
+  14:00) → el worker envió 2 correos reales por Resend y guardó sus ids.
+  Con un script que firma como Svix contra `localhost:3000`: firma de otro
+  secreto → 400; timestamp −10 min → 400; delivery_delayed → "enviada ·
+  Motivo: entrega demorada…"; delivered → "entregada"; bounced Permanent →
+  "fallida · Motivo: la dirección de correo rechazó el mensaje (rebote
+  permanente)"; mismo bounced con el mismo svix-id → 200 "duplicado";
+  complained → "entregada · marcado como spam"; delivered tardío sobre el
+  rebote → "ignorado". EN: "delivered", "failed", "Reason: … (permanent
+  bounce)", "the recipient marked it as spam"; ni el texto del rebote ni
+  ningún correo aparecen en la página. Capturas
+  `screenshot-1791473495519-20` (demora, ES), `-1791473562855-21`
+  (entregada + rebote, ES), `-1791473583182-22` (EN).
+- **NO verificado:** un evento real enviado por Resend (no hay URL pública:
+  el webhook solo se puede registrar después del deploy, ver README).
+  Tampoco se probó el 503 sin secreto en vivo (cubierto por código, sin
+  test). Observación: una de las 2 notificaciones reales quedó con
+  `reintentos = 1` sin un fallo en el log del backend actual; en ese
+  momento seguía vivo un watcher huérfano de la sesión de las 08:38 que
+  pudo haber intentado el mismo envío. Se detuvo, sin investigar más.
+
 ## Cómo continuar si se corta la sesión
 Ver reglas de commit/pausa en el prompt original de arquitectura (punto 18
 del brief del equipo). Resumen: terminar hasta que compile, commitear con
 mensaje honesto, actualizar este archivo, nunca reiniciar un módulo con
 avance ya commiteado.
 
-**Primera tarea a retomar la próxima sesión**: de los 2 pendientes
-menores que quedan (ver "Pendientes menores" arriba), ninguno es
-urgente ni bloquea la demo del Seguimiento #2 (24/09/2026) — el link
-público de reservas y el cron de RECORDATORIO, que eran el gap más
-visible, ya están cerrados (ver sección de arriba). Si se retoma
-trabajo técnico, el más señalado por el equipo es el límite de 3
-servicios del plan gratis en el onboarding del frontend.
+**Primera tarea a retomar la próxima sesión**: la lista "Bugs y
+observaciones — Seguimiento #3" quedó cerrada (7 puntos, ver arriba).
+Pendiente del equipo: push y Pull Request de `feature/inicial`, y decidir
+si el historial de Notificaciones debe seguir mostrando el texto literal
+de Resend, que incluye el correo dueño de la cuenta (ver punto 5).

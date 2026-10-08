@@ -14,6 +14,7 @@ import {
 import { Boton } from '@/components/ui';
 import { ControlesGlobales } from '@/components/layout/ControlesGlobales';
 import { TarjetasPlanes } from '@/components/suscripciones/TarjetasPlanes';
+import { ESPACIO_INFERIOR_WIDGETS } from '@/components/layout/espacio-widgets';
 
 const ICONOS_CARACTERISTICAS = [Calendar, Bell, BarChart3, MessageCircle, Building2, ShieldCheck];
 
@@ -48,7 +49,7 @@ export default function LandingPage() {
   }));
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900">
+    <div className={`min-h-screen bg-white dark:bg-slate-900 ${ESPACIO_INFERIOR_WIDGETS}`}>
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-3 sm:px-6">
           <span className="shrink-0 text-lg font-semibold text-primary-600 dark:text-primary-400">

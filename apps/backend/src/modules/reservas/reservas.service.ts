@@ -31,6 +31,7 @@ import {
   Usuario,
 } from '../../database/entities';
 import { NotificacionesService } from '../notificaciones/notificaciones.service';
+import { LimitesPlanService } from '../suscripciones/limites-plan.service';
 import { CrearReservaDto } from './dto/crear-reserva.dto';
 import { ReprogramarReservaDto } from './dto/reprogramar-reserva.dto';
 import { ListarReservasQueryDto } from './dto/listar-reservas-query.dto';
@@ -58,6 +59,7 @@ export class ReservasService {
     private readonly disponibilidadRepo: TenantScopedRepository<Disponibilidad>,
     private readonly tenantContext: TenantContextService,
     private readonly notificaciones: NotificacionesService,
+    private readonly limitesPlan: LimitesPlanService,
   ) {}
 
   async crear(dto: CrearReservaDto): Promise<Reserva> {
@@ -98,6 +100,13 @@ export class ReservasService {
     await this.asegurarDentroDeDisponibilidad(dto.idUsuario, fechaHoraInicio, fechaHoraFin);
 
     const guardada = await this.dataSource.transaction(async (manager) => {
+      // Límite de reservas/mes del Plan Gratis, atómico con el INSERT
+      // (lock por negocio). Va ANTES del lock por usuario y ningún otro
+      // camino toma estos dos locks en el orden inverso, así que no hay
+      // riesgo de deadlock. Cubre también la reserva pública, que crea
+      // vía este mismo método.
+      await this.limitesPlan.asegurarDentroDelLimite(manager, 'reservas', idNegocio);
+
       // Serializa por usuario: dos requests concurrentes para el MISMO
       // usuario nunca corren la validación de traslapes en paralelo (el
       // lock se libera solo al terminar la transacción). El EXCLUDE

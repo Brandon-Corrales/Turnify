@@ -7,12 +7,14 @@ import listPlugin from '@fullcalendar/list';
 import momentTimezonePlugin from '@fullcalendar/moment-timezone';
 import esLocale from '@fullcalendar/core/locales/es';
 import type { DatesSetArg, EventClickArg, EventContentArg, EventDropArg } from '@fullcalendar/core';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Ban, UserPlus } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Boton, ConfirmDialog, Input, Modal, Select, useToast } from '@/components/ui';
+import { Banner, Boton, ConfirmDialog, Input, Modal, Select, useToast } from '@/components/ui';
 import { crearEtiquetaEstadoReserva, reservasApi, type Reserva } from '@/lib/reservas-api';
 import { disponibilidadApi } from '@/lib/disponibilidad-api';
 import { usuariosApi } from '@/lib/usuarios-api';
@@ -104,6 +106,20 @@ interface RangoVisible {
  * `POST /reservas` del staff (ya valida disponibilidad, traslapes y el
  * límite de 20/mes del Plan Gratis), solo le falta la UI hasta ahora.
  */
+/** Falló POST /clientes (antes de intentar la reserva). */
+class ErrorAlCrearCliente extends Error {
+  constructor(readonly causa: unknown) {
+    super('No se pudo crear el cliente');
+  }
+}
+
+/** El cliente nuevo SÍ se creó, pero la reserva falló después. */
+class ErrorReservaConClienteCreado extends Error {
+  constructor(readonly causa: unknown) {
+    super('Cliente creado, reserva fallida');
+  }
+}
+
 export default function CalendarioPage() {
   const { t, i18n } = useTranslation();
   const calendarRef = useRef<FullCalendar>(null);
@@ -179,31 +195,48 @@ export default function CalendarioPage() {
 
   const etiquetaEstadoReserva = useMemo(() => crearEtiquetaEstadoReserva(t), [t]);
 
-  const renderizarEvento = useCallback((info: EventContentArg) => {
-    const reserva = info.event.extendedProps.reserva as Reserva;
-    const cancelada = reserva.estado === 'cancelada';
-    // Bug real encontrado y arreglado: usaba formatearHoraLocal (huso del
-    // navegador) para la hora GUARDADA de la reserva — mismo tipo de
-    // inconsistencia ya corregida en el modal de detalle, ahora también acá.
-    const horaInicio = formatearHoraCR(new Date(reserva.fechaHoraInicio));
-    // La celda muestra solo "hora + Cita programada" (diseño de la vista
-    // interna del calendario); el detalle "Cliente · Servicio" que trae
-    // info.event.title queda como tooltip nativo y en el modal de detalle.
-    return (
-      <div
-        className={`flex min-w-0 items-center gap-1.5 rounded-md border-l-2 px-2 py-1 text-xs leading-5 ${
-          cancelada
-            ? 'bg-slate-100 text-slate-600 dark:bg-slate-700/70 dark:text-slate-300'
-            : 'bg-violet-100 text-violet-900 dark:bg-violet-500/20 dark:text-violet-100'
-        }`}
-        style={{ borderLeftColor: cancelada ? '#94a3b8' : (reserva.servicio?.colorCalendario ?? '#8b5cf6') }}
-        title={info.event.title}
-      >
-        <span className="shrink-0 font-semibold">{horaInicio}</span>
-        <span className="min-w-0 truncate">{t('calendario.citaProgramada')}</span>
-      </div>
-    );
-  }, [t]);
+  const renderizarEvento = useCallback(
+    (info: EventContentArg) => {
+      const reserva = info.event.extendedProps.reserva as Reserva;
+      const cancelada = reserva.estado === 'cancelada';
+      // Bug real encontrado y arreglado: usaba formatearHoraLocal (huso del
+      // navegador) para la hora GUARDADA de la reserva — mismo tipo de
+      // inconsistencia ya corregida en el modal de detalle, ahora también acá.
+      const horaInicio = formatearHoraCR(new Date(reserva.fechaHoraInicio));
+      // La celda muestra "hora + estado" (diseño de la vista interna del
+      // calendario); el detalle "Cliente · Servicio" que trae
+      // info.event.title queda como tooltip nativo y en el modal de detalle.
+      // Una cancelada NO se distingue solo por color (WCAG 1.4.1): dice
+      // "Cancelada", lleva ícono y la hora tachada, y el texto accesible
+      // (aria-label) trae el estado real.
+      const textoEstado = cancelada
+        ? etiquetaEstadoReserva.cancelada
+        : t('calendario.citaProgramada');
+      return (
+        <div
+          aria-label={`${horaInicio} · ${textoEstado} · ${info.event.title}`}
+          className={`flex min-w-0 items-center gap-1.5 rounded-md border-l-2 px-2 py-1 text-xs leading-5 ${
+            cancelada
+              ? 'bg-slate-100 text-slate-600 dark:bg-slate-700/70 dark:text-slate-300'
+              : 'bg-violet-100 text-violet-900 dark:bg-violet-500/20 dark:text-violet-100'
+          }`}
+          style={{
+            borderLeftColor: cancelada
+              ? '#94a3b8'
+              : (reserva.servicio?.colorCalendario ?? '#8b5cf6'),
+          }}
+          title={info.event.title}
+        >
+          {cancelada && <Ban className="h-3 w-3 shrink-0" aria-hidden="true" />}
+          <span className={`shrink-0 font-semibold ${cancelada ? 'line-through' : ''}`}>
+            {horaInicio}
+          </span>
+          <span className="min-w-0 truncate">{textoEstado}</span>
+        </div>
+      );
+    },
+    [t, etiquetaEstadoReserva],
+  );
 
   const eventos = useMemo(
     () =>
@@ -257,17 +290,22 @@ export default function CalendarioPage() {
     setReservaSeleccionada(info.event.extendedProps.reserva as Reserva);
   }, []);
 
+  const navigate = useNavigate();
   const nuevaReservaSchema = useMemo(() => crearNuevaReservaSchema(t), [t]);
   const {
     register: registerNuevaReserva,
     handleSubmit: handleSubmitNuevaReserva,
     reset: resetNuevaReserva,
     setError: setErrorNuevaReserva,
+    setValue: setValueNuevaReserva,
+    control: controlNuevaReserva,
     formState: { errors: erroresNuevaReserva, isSubmitting: enviandoNuevaReserva },
   } = useForm<NuevaReservaFormValues>({
     resolver: zodResolver(nuevaReservaSchema),
     defaultValues: {
+      modoCliente: 'existente',
       idCliente: '',
+      nuevoCliente: { nombreCompleto: '', correoElectronico: '', telefono: '' },
       idServicio: '',
       idUsuario: '',
       fecha: '',
@@ -276,49 +314,85 @@ export default function CalendarioPage() {
     },
   });
 
-  // Abre el formulario de reserva manual precargado con una fecha/hora —
-  // bug real reportado probando la app: "no me deja seleccionar dentro del
-  // calendario para reservar". Se dispara tanto al hacer clic en un espacio
-  // vacío del calendario (día del mes o franja de semana/día) como desde el
-  // botón "Nueva reserva". En vista de mes o desde el botón no hay una hora
-  // útil que precargar (allDay), así que se usa la hora por defecto y el
-  // usuario la ajusta en el formulario.
-  const abrirModalNuevaReserva = useCallback(
-    (fecha: Date, allDay: boolean) => {
-      const { fecha: fechaCR, hora: horaCR } = formatearFechaHoraCR(fecha);
-      resetNuevaReserva({
-        idCliente: '',
-        idServicio: '',
-        idUsuario: idUsuarioFiltro || empleadosActivos[0]?.idUsuario || '',
-        fecha: fechaCR,
-        hora: allDay ? HORA_DEFECTO_CLIC_EN_DIA : horaCR,
-        notas: '',
-      });
-      setModalNuevaReservaAbierto(true);
-    },
-    [resetNuevaReserva, idUsuarioFiltro, empleadosActivos],
-  );
-
-  const alHacerClicEnFecha = useCallback(
-    (info: DateClickArg) => abrirModalNuevaReserva(info.date, info.allDay),
-    [abrirModalNuevaReserva],
-  );
-
+  // Si se eligió "cliente nuevo", primero se crea con el MISMO endpoint que
+  // la pantalla Clientes (POST /clientes, con sus validaciones y guards) y
+  // después la reserva. Si la reserva falla con el cliente ya creado, el
+  // formulario pasa a "cliente existente" con ese cliente elegido, para que
+  // reintentar no intente crearlo otra vez.
   const crearReservaMutation = useMutation({
-    mutationFn: (valores: NuevaReservaFormValues) =>
-      reservasApi.crear({
-        idCliente: valores.idCliente,
-        idServicio: valores.idServicio,
-        idUsuario: valores.idUsuario,
-        fechaHoraInicio: crLocalAFechaUtc(valores.fecha, valores.hora).toISOString(),
-        notas: valores.notas || undefined,
-      }),
+    mutationFn: async (valores: NuevaReservaFormValues) => {
+      let idCliente = valores.idCliente;
+      let clienteRecienCreado = false;
+      if (valores.modoCliente === 'nuevo') {
+        try {
+          const creado = await clientesApi.crear({
+            nombreCompleto: valores.nuevoCliente.nombreCompleto,
+            correoElectronico: valores.nuevoCliente.correoElectronico,
+            telefono: valores.nuevoCliente.telefono || undefined,
+          });
+          idCliente = creado.idCliente;
+          clienteRecienCreado = true;
+        } catch (error) {
+          throw new ErrorAlCrearCliente(error);
+        }
+        await queryClient.invalidateQueries({ queryKey: ['clientes'] });
+        setValueNuevaReserva('modoCliente', 'existente');
+        setValueNuevaReserva('idCliente', idCliente);
+      }
+      try {
+        return await reservasApi.crear({
+          idCliente,
+          idServicio: valores.idServicio,
+          idUsuario: valores.idUsuario,
+          fechaHoraInicio: crLocalAFechaUtc(valores.fecha, valores.hora).toISOString(),
+          notas: valores.notas || undefined,
+        });
+      } catch (error) {
+        if (clienteRecienCreado) throw new ErrorReservaConClienteCreado(error);
+        throw error;
+      }
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['reservas'] });
       mostrarToast({ variante: 'exito', titulo: t('calendario.reservaCreada') });
       setModalNuevaReservaAbierto(false);
     },
-    onError: (error) => {
+    onError: (errorOriginal) => {
+      if (errorOriginal instanceof ErrorAlCrearCliente) {
+        const error = errorOriginal.causa;
+        if (error instanceof ApiError && error.errorCode === 'CLIENTE_CORREO_YA_REGISTRADO') {
+          setErrorNuevaReserva('nuevoCliente.correoElectronico', {
+            message: t('calendario.clienteYaExiste'),
+          });
+          return;
+        }
+        if (error instanceof ApiError && error.field) {
+          setErrorNuevaReserva(`nuevoCliente.${error.field}` as 'nuevoCliente.nombreCompleto', {
+            message: error.message,
+          });
+          return;
+        }
+        mostrarToast({
+          variante: 'error',
+          titulo: error instanceof ApiError ? error.message : t('calendario.errorCrearCliente'),
+        });
+        return;
+      }
+      const conClienteCreado = errorOriginal instanceof ErrorReservaConClienteCreado;
+      const error = conClienteCreado ? errorOriginal.causa : errorOriginal;
+      if (conClienteCreado) {
+        mostrarToast({
+          variante: 'advertencia',
+          titulo: t('calendario.clienteCreadoSinReserva'),
+          descripcion: error instanceof ApiError ? error.message : t('calendario.errorCrear'),
+        });
+        if (error instanceof ApiError && error.field) {
+          setErrorNuevaReserva(error.field as keyof NuevaReservaFormValues, {
+            message: error.message,
+          });
+        }
+        return;
+      }
       if (error instanceof ApiError && error.field) {
         setErrorNuevaReserva(error.field as keyof NuevaReservaFormValues, {
           message: error.message,
@@ -331,6 +405,54 @@ export default function CalendarioPage() {
       });
     },
   });
+
+  // Límite de reservas del mes del Plan Gratis: además del toast, un banner
+  // persistente dentro del formulario (mismo Banner compartido que Servicios).
+  const errorDeReserva =
+    crearReservaMutation.error instanceof ErrorReservaConClienteCreado
+      ? crearReservaMutation.error.causa
+      : crearReservaMutation.error;
+  const limiteReservasAlcanzado =
+    errorDeReserva instanceof ApiError && errorDeReserva.errorCode === 'LIMITE_PLAN_ALCANZADO';
+
+  // Abre el formulario de reserva manual precargado con una fecha/hora —
+  // bug real reportado probando la app: "no me deja seleccionar dentro del
+  // calendario para reservar". Se dispara tanto al hacer clic en un espacio
+  // vacío del calendario (día del mes o franja de semana/día) como desde el
+  // botón "Nueva reserva". En vista de mes o desde el botón no hay una hora
+  // útil que precargar (allDay), así que se usa la hora por defecto y el
+  // usuario la ajusta en el formulario.
+  const abrirModalNuevaReserva = useCallback(
+    (fecha: Date, allDay: boolean) => {
+      const { fecha: fechaCR, hora: horaCR } = formatearFechaHoraCR(fecha);
+      crearReservaMutation.reset();
+      resetNuevaReserva({
+        // Sin ningún cliente todavía, arranca directo en "cliente nuevo".
+        modoCliente: clientesActivos.length > 0 ? 'existente' : 'nuevo',
+        idCliente: '',
+        nuevoCliente: { nombreCompleto: '', correoElectronico: '', telefono: '' },
+        idServicio: '',
+        idUsuario: idUsuarioFiltro || empleadosActivos[0]?.idUsuario || '',
+        fecha: fechaCR,
+        hora: allDay ? HORA_DEFECTO_CLIC_EN_DIA : horaCR,
+        notas: '',
+      });
+      setModalNuevaReservaAbierto(true);
+    },
+    [
+      resetNuevaReserva,
+      idUsuarioFiltro,
+      empleadosActivos,
+      clientesActivos.length,
+      crearReservaMutation,
+    ],
+  );
+  const modoCliente = useWatch({ control: controlNuevaReserva, name: 'modoCliente' });
+
+  const alHacerClicEnFecha = useCallback(
+    (info: DateClickArg) => abrirModalNuevaReserva(info.date, info.allDay),
+    [abrirModalNuevaReserva],
+  );
 
   const alArrastrarEvento = useCallback(
     async (info: EventDropArg) => {
@@ -413,7 +535,13 @@ export default function CalendarioPage() {
           )}
           <FullCalendar
             ref={calendarRef}
-            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin, momentTimezonePlugin]}
+            plugins={[
+              dayGridPlugin,
+              timeGridPlugin,
+              interactionPlugin,
+              listPlugin,
+              momentTimezonePlugin,
+            ]}
             // Bug real corregido: sin esto, FullCalendar posiciona y rotula
             // los eventos en el huso horario del navegador de quien mira la
             // pantalla — un admin fuera de Costa Rica veía una reserva a una
@@ -513,15 +641,87 @@ export default function CalendarioPage() {
           noValidate
           className="flex flex-col gap-4"
         >
-          <Select
-            label={t('calendario.campoCliente')}
-            variante="crear"
-            requerido
-            placeholder={t('validacion.seleccionaCliente')}
-            opciones={clientesActivos.map((c) => ({ value: c.idCliente, label: c.nombreCompleto }))}
-            error={erroresNuevaReserva.idCliente?.message}
-            {...registerNuevaReserva('idCliente')}
-          />
+          {limiteReservasAlcanzado && (
+            <Banner
+              variante="advertencia"
+              titulo={t('calendario.limiteTitulo')}
+              descripcion={t('calendario.limiteDescripcion')}
+              accion={
+                <Boton type="button" tamano="sm" onClick={() => navigate('/suscripcion')}>
+                  {t('dashboard.bannerPlanGratisBoton')}
+                </Boton>
+              }
+            />
+          )}
+          {modoCliente === 'existente' ? (
+            <div className="flex flex-col gap-2">
+              <Select
+                label={t('calendario.campoCliente')}
+                variante="crear"
+                requerido
+                placeholder={t('validacion.seleccionaCliente')}
+                opciones={clientesActivos.map((c) => ({
+                  value: c.idCliente,
+                  label: c.nombreCompleto,
+                }))}
+                error={erroresNuevaReserva.idCliente?.message}
+                {...registerNuevaReserva('idCliente')}
+              />
+              <Boton
+                type="button"
+                variante="secundario"
+                tamano="sm"
+                className="self-start"
+                onClick={() => setValueNuevaReserva('modoCliente', 'nuevo')}
+              >
+                <UserPlus className="h-4 w-4" aria-hidden="true" />
+                {t('calendario.crearClienteNuevo')}
+              </Boton>
+            </div>
+          ) : (
+            <fieldset className="flex flex-col gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+              <legend className="px-1 text-sm font-medium text-slate-700 dark:text-slate-300">
+                {t('calendario.clienteNuevo')}
+              </legend>
+              <Input
+                label={t('clientes.nombreCompleto')}
+                variante="crear"
+                requerido
+                autoComplete="off"
+                error={erroresNuevaReserva.nuevoCliente?.nombreCompleto?.message}
+                {...registerNuevaReserva('nuevoCliente.nombreCompleto')}
+              />
+              <Input
+                label={t('comun.correoElectronico')}
+                type="email"
+                variante="crear"
+                requerido
+                autoComplete="off"
+                error={erroresNuevaReserva.nuevoCliente?.correoElectronico?.message}
+                {...registerNuevaReserva('nuevoCliente.correoElectronico')}
+              />
+              <Input
+                label={t('clientes.telefono')}
+                type="tel"
+                variante="crear"
+                hint={t('comun.opcional')}
+                autoComplete="off"
+                error={erroresNuevaReserva.nuevoCliente?.telefono?.message}
+                {...registerNuevaReserva('nuevoCliente.telefono')}
+              />
+              {clientesActivos.length > 0 && (
+                <Boton
+                  type="button"
+                  variante="secundario"
+                  tamano="sm"
+                  className="self-start"
+                  onClick={() => setValueNuevaReserva('modoCliente', 'existente')}
+                >
+                  {t('calendario.elegirClienteExistente')}
+                </Boton>
+              )}
+            </fieldset>
+          )}
           <Select
             label={t('calendario.campoServicio')}
             variante="crear"

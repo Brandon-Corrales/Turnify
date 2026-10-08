@@ -30,4 +30,27 @@ i18n
     interpolation: { escapeValue: false },
   });
 
+declare global {
+  interface Window {
+    /** API pública del widget de UserWay (cargado en index.html). */
+    UserWay?: { changeWidgetLanguage?: (codigo: string) => void };
+  }
+}
+
+/**
+ * `<html lang>` sigue al idioma activo (al cargar y en cada cambio): lo
+ * usan los lectores de pantalla para pronunciar y UserWay para el idioma
+ * de su menú. UserWay solo lee `lang` al inicializarse (así lo documenta),
+ * por eso en cada cambio también se le avisa con su API
+ * `changeWidgetLanguage`. El valor inicial antes de que React cargue lo
+ * pone el script inline de `index.html`.
+ */
+function sincronizarIdiomaDelDocumento() {
+  const idioma = i18n.resolvedLanguage ?? 'es';
+  document.documentElement.lang = idioma;
+  window.UserWay?.changeWidgetLanguage?.(idioma);
+}
+sincronizarIdiomaDelDocumento();
+i18n.on('languageChanged', sincronizarIdiomaDelDocumento);
+
 export default i18n;

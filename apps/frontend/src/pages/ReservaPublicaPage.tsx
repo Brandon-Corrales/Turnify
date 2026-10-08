@@ -14,10 +14,8 @@ import {
   crearDatosClientePublicoSchema,
   type DatosClientePublicoFormValues,
 } from '@/lib/validation';
-
-function hoyYYYYMMDD(): string {
-  return new Date().toISOString().slice(0, 10);
-}
+import { hoyEnZonaNegocio } from '@/lib/fecha-negocio';
+import { ESPACIO_INFERIOR_WIDGETS } from '@/components/layout/espacio-widgets';
 
 function formatearHoraCR(iso: string, idioma: string): string {
   return new Date(iso).toLocaleTimeString(idioma.startsWith('en') ? 'en-US' : 'es-CR', {
@@ -89,7 +87,7 @@ export default function ReservaPublicaPage() {
   const { idNegocio = '' } = useParams<{ idNegocio: string }>();
   const [paso, setPaso] = useState(1);
   const [servicio, setServicio] = useState<ServicioPublico | null>(null);
-  const [fecha, setFecha] = useState(hoyYYYYMMDD());
+  const [fecha, setFecha] = useState(hoyEnZonaNegocio());
   const [horario, setHorario] = useState<string | null>(null);
   const [datosCliente, setDatosCliente] = useState<DatosClientePublicoFormValues | null>(null);
 
@@ -156,7 +154,7 @@ export default function ReservaPublicaPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className={`min-h-screen bg-slate-50 dark:bg-slate-900 ${ESPACIO_INFERIOR_WIDGETS}`}>
       <header className="border-b border-slate-200 bg-white px-4 py-4 dark:border-slate-700 dark:bg-slate-800">
         <div className="mx-auto max-w-2xl">
           <p className="text-xs font-medium text-primary-600 dark:text-primary-400">
@@ -245,7 +243,7 @@ export default function ReservaPublicaPage() {
                   type="date"
                   label={t('calendario.campoFecha')}
                   className="mt-4 max-w-xs"
-                  min={hoyYYYYMMDD()}
+                  min={hoyEnZonaNegocio()}
                   value={fecha}
                   onChange={(e) => {
                     setFecha(e.target.value);

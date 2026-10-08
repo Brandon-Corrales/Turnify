@@ -153,7 +153,7 @@ describe('NotificacionesService', () => {
     );
     expect(notificacionRepo.update).toHaveBeenCalledWith(
       { idNotificacion: 'notif-1' },
-      expect.objectContaining({ estado: EstadoNotificacion.ENVIADA }),
+      expect.objectContaining({ estado: EstadoNotificacion.ENVIADA, ultimoError: null }),
     );
   });
 
@@ -191,8 +191,33 @@ describe('NotificacionesService', () => {
 
     expect(notificacionRepo.update).toHaveBeenCalledWith(
       { idNotificacion: 'notif-3' },
-      { reintentos: 1, estado: EstadoNotificacion.PENDIENTE },
+      {
+        reintentos: 1,
+        estado: EstadoNotificacion.PENDIENTE,
+        ultimoError: 'RECHAZADO_POR_PROVEEDOR',
+      },
     );
+  });
+
+  it('procesarPendientes() guarda solo la categoría saneada, nunca el texto crudo del proveedor', async () => {
+    notificacionRepo.find.mockResolvedValue([
+      {
+        idNotificacion: 'notif-crudo',
+        canal: CanalNotificacion.EMAIL,
+        mensaje: ['Asunto', 'Cuerpo'].join(String.fromCharCode(10)),
+        reintentos: 0,
+        cliente: { correoElectronico: 'cliente@example.com' },
+      },
+    ]);
+    resend.enviarCorreo.mockResolvedValue({
+      exito: false,
+      error: 'You can only send testing emails to your own email address (duena@cuenta.test).',
+      motivo: 'DESTINATARIO_NO_HABILITADO',
+    });
+    await service.procesarPendientes();
+    const cambios = (notificacionRepo.update as any).mock.calls[0][1];
+    expect(cambios.ultimoError).toBe('DESTINATARIO_NO_HABILITADO');
+    expect(JSON.stringify(cambios)).not.toContain('@');
   });
 
   it('procesarPendientes() marca FALLIDA al agotar los reintentos', async () => {
@@ -211,7 +236,7 @@ describe('NotificacionesService', () => {
 
     expect(notificacionRepo.update).toHaveBeenCalledWith(
       { idNotificacion: 'notif-4' },
-      { reintentos: 3, estado: EstadoNotificacion.FALLIDA },
+      { reintentos: 3, estado: EstadoNotificacion.FALLIDA, ultimoError: 'RECHAZADO_POR_PROVEEDOR' },
     );
   });
 

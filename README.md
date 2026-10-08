@@ -60,6 +60,28 @@ npm run backend:dev       # http://localhost:3000 (Swagger en /docs)
 npm run frontend:dev
 ```
 
+### Webhook de Resend (rebotes y entregas)
+El backend expone `POST /webhooks/resend`, que actualiza el historial de
+Notificaciones con los eventos de Resend (entregado, demorado, rebotado, marcado
+como spam, fallido). Necesita `RESEND_WEBHOOK_SECRET` en el `.env`; sin ella
+responde 503 y no procesa nada.
+
+Registro (una vez, **después del deploy**, porque Resend solo llama a una URL
+HTTPS pública):
+1. En el dashboard de Resend: **Webhooks → Add Webhook**.
+2. URL: `https://<dominio-del-backend>/webhooks/resend`.
+3. Eventos: `email.delivered`, `email.delivery_delayed`, `email.bounced`,
+   `email.complained` y `email.failed`.
+4. Copiar el *signing secret* (`whsec_…`) a `RESEND_WEBHOOK_SECRET` en el entorno
+   del servidor (nunca en el repo) y reiniciar el backend.
+5. Mandar un correo de prueba y revisar en Resend que el evento quedó con
+   respuesta 200.
+
+En local, Resend no puede llamar a `localhost`: hace falta un túnel (ngrok) o el
+comando `webhooks listen` de la CLI de Resend. Docs:
+https://resend.com/docs/webhooks/create-webhook y
+https://resend.com/docs/webhooks/verify-webhooks-requests.
+
 ### Respaldo opcional: Postgres local aislado
 Solo para pruebas destructivas que no deben afectar la base de datos compartida de Supabase.
 ```bash
