@@ -3254,6 +3254,55 @@ elementos que se superponen:
 docs/spec.md: punto 1 (NOTIFICACION gana `ultimo_error`). Migración nueva
 aplicada: `1791426021912-NotificacionUltimoError`.
 
+## Seguimiento #3 — 4 frentes (chatbot, enmascarado, datos de prueba, webhook de Resend)
+Rama `feature/inicial`, un commit por tarea. Toda verificación de interfaz
+se hace en Chrome real, usando el frontend.
+
+### PUNTO DE CONTROL (actualizar al cerrar cada tarea)
+- **Frente en curso:** 1 (chatbot), bloqueado temporalmente por la cuota
+  diaria de Groq (ver abajo). Se avanza al Frente 2 y se vuelve después.
+- **Hecho en Frente 1:** prompt ajustado (#4 app móvil, #8 descuento, y
+  correcciones de #6 y #14 encontradas en esta ronda). Preguntas 1–16
+  hechas en el widget, en Chrome.
+- **Falta en Frente 1:** preguntas 17–27, y repetir #6 y #14 con el prompt
+  corregido. Negocios de prueba: "QA Chatbot 1-1791429245" (9 mensajes
+  usados hoy), "QA Chatbot 2-1791429245" (8 usados). "QA Chatbot 3" aún no
+  registrado. Credenciales: en el scratchpad de la sesión, no en el repo.
+- **Bloqueado (externo):** Groq respondió `429 Rate limit reached ... tokens
+  per day (TPD): Limit 200000, Used 198565` del tier gratuito, con "try
+  again in 19m38s". No se modificó límite, código ni proveedor para
+  saltarlo.
+- **Pendiente aparte (pedido nuevo):** re-verificar con captura el menú de
+  UserWay en EN (sin recargar y tras recargar). **Bloqueado:** la ventana de
+  Chrome automatizada está oculta (`visibilityState: "hidden"`, también en
+  una pestaña nueva y tras `resize_window`). Hace falta que la ventana de
+  Chrome esté en primer plano en la pantalla del equipo.
+
+### Frente 1 — Chatbot (ronda en el widget, Chrome real)
+Las preguntas se escriben en el campo del widget y se envían con su botón
+"Enviar", dentro de una conversación por negocio (como un usuario real,
+con historial). Resultado parcial con el prompt nuevo:
+
+| # | Pregunta | Respuesta resumida | Resultado |
+|---|---|---|---|
+| 1 | Exportar a PDF | No existe; solo CSV en Reportes, deshabilitado en Plan Gratis | ✅ |
+| 2 | Google Calendar | No hay integración | ✅ |
+| 3 | Recordatorios por SMS | No hay SMS ni alternativa | ✅ |
+| 4 | App Android | No hay app; abrir el navegador del celular, misma URL que en la computadora, e iniciar sesión con correo y contraseña de administrador | ✅ (antes incompleta) |
+| 5 | Dos sucursales | No; registrar cada una como negocio aparte | ✅ |
+| 6 | Invitar empleado | No existe… "la única alternativa es que cada sucursal registre su propio negocio" | ❌ inventó (arrastró el contexto de la pregunta 5); prompt corregido, falta repetir |
+| 7 | Bloquear 24 de diciembre | No hay fechas puntuales; desactivar el día de la semana afecta todas las semanas | ✅ |
+| 8 | Descuento 10% | No hay descuentos; servicio con precio reducido, "todos los clientes podrán reservarlo desde el link público" | ✅ (antes incompleta) |
+| 9 | Configurar horario | Configuración → Horario laboral semanal, se guarda solo | ✅ |
+| 10 | Crear servicio | Servicios → "Nuevo servicio" → "Crear servicio" | ✅ |
+| 11 | Cita por teléfono | Calendario → "Nueva reserva", cliente de la lista o "Cliente nuevo" | ✅ |
+| 12 | Idioma a inglés | Botón "EN" abajo en el menú lateral (barra superior en móvil) | ✅ |
+| 13 | Reservas del mes pasado | Reportes → "Mes pasado" | ✅ |
+| 14 | Compartir link | Configuración → Link público → "Copiar"… pero describe Configuración como "el icono con el nombre de tu negocio" | ❌ inventó el ícono; prompt corregido, falta repetir |
+| 15 | Mover cita | Arrastrar en Mes o Semana; no envía aviso | ✅ |
+| 16 | Capital de Australia | Se niega y redirige | ✅ |
+| 17–27 | — | pendientes (cuota de Groq) | — |
+
 ## Cómo continuar si se corta la sesión
 Ver reglas de commit/pausa en el prompt original de arquitectura (punto 18
 del brief del equipo). Resumen: terminar hasta que compile, commitear con
