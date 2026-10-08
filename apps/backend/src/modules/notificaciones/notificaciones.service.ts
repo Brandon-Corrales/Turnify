@@ -17,7 +17,7 @@ import {
 } from '../../database/entities';
 import { formatearFechaHoraLocalCR } from '../../common/utils/zona-horaria-negocio';
 import { construirMensaje } from './mensajes-notificacion';
-import { ResendService } from './providers/resend.service';
+import { ResendService, type ResultadoEnvio } from './providers/resend.service';
 import { WhatsappCloudApiService } from './providers/whatsapp-cloud-api.service';
 import { MotivoFallo, motivoPublico } from './motivo-fallo';
 
@@ -205,7 +205,7 @@ export class NotificacionesService {
     const texto = resto.join('\n');
     const cliente = notificacion.cliente;
 
-    const resultado =
+    const resultado: ResultadoEnvio =
       notificacion.canal === CanalNotificacion.EMAIL
         ? await this.resend.enviarCorreo(cliente.correoElectronico, asunto, texto)
         : notificacion.canal === CanalNotificacion.WHATSAPP
@@ -219,7 +219,13 @@ export class NotificacionesService {
     if (resultado.exito) {
       await this.notificacionRepo.update(
         { idNotificacion: notificacion.idNotificacion },
-        { estado: EstadoNotificacion.ENVIADA, enviadoEn: new Date(), ultimoError: null },
+        {
+          estado: EstadoNotificacion.ENVIADA,
+          enviadoEn: new Date(),
+          ultimoError: null,
+          // Solo Resend lo devuelve hoy; lo usa el webhook de Resend.
+          idCorreoProveedor: resultado.idProveedor ?? null,
+        },
       );
       this.logger.log(
         `Notificación ${notificacion.idNotificacion} enviada por ${notificacion.canal}`,

@@ -10,6 +10,8 @@ export interface ResultadoEnvio {
   error?: string;
   /** Categoría saneada: lo único que se guarda en BD y sale por la API. */
   motivo?: MotivoFallo;
+  /** Id del mensaje en el proveedor (Resend: `data.id`), para cruzarlo con sus webhooks. */
+  idProveedor?: string;
 }
 
 /**
@@ -38,7 +40,7 @@ export class ResendService {
         motivo: MotivoFallo.CREDENCIALES_FALTANTES,
       };
     }
-    const { error } = await this.cliente.emails.send({
+    const { data, error } = await this.cliente.emails.send({
       from: this.remitente,
       to: [destinatario],
       subject: asunto,
@@ -52,6 +54,6 @@ export class ResendService {
         motivo: clasificarRechazoProveedor(error.message),
       };
     }
-    return { exito: true };
+    return { exito: true, idProveedor: data?.id };
   }
 }

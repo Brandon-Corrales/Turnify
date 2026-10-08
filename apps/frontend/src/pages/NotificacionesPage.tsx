@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Bell, Check, Clock, Info, Mail, MessageCircle, X } from 'lucide-react';
+import { Bell, Check, CheckCheck, Clock, Info, Mail, MessageCircle, X } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Boton } from '@/components/ui';
 import { SkeletonTable } from '@/components/ui/Skeleton';
@@ -27,6 +27,7 @@ const CLAVE_I18N_CANAL: Record<CanalNotificacion, string> = {
 
 const CLAVE_I18N_ESTADO: Record<EstadoNotificacion, string> = {
   enviada: 'notificaciones.estadoEnviada',
+  entregada: 'notificaciones.estadoEntregada',
   pendiente: 'notificaciones.estadoPendiente',
   fallida: 'notificaciones.estadoFallida',
 };
@@ -39,12 +40,14 @@ const ICONO_CANAL: Record<CanalNotificacion, typeof Mail> = {
 
 const ESTILO_ESTADO: Record<EstadoNotificacion, string> = {
   enviada: 'bg-secondary-50 text-secondary-700 dark:bg-secondary-900/30 dark:text-secondary-400',
+  entregada: 'bg-secondary-50 text-secondary-700 dark:bg-secondary-900/30 dark:text-secondary-400',
   pendiente: 'bg-amber-50 text-warning dark:bg-amber-900/30 dark:text-amber-400',
   fallida: 'bg-red-50 text-danger dark:bg-red-900/30 dark:text-red-400',
 };
 
 const ICONO_ESTADO: Record<EstadoNotificacion, typeof Check> = {
   enviada: Check,
+  entregada: CheckCheck,
   pendiente: Clock,
   fallida: X,
 };
@@ -185,9 +188,13 @@ export default function NotificacionesPage() {
                           </span>
                           {/* Categoría del motivo, traducida. El texto crudo del proveedor
                               nunca llega al navegador (puede traer datos de terceros). */}
-                          {n.estado !== 'enviada' && n.ultimoError && (
+                          {/* También en enviada/entregada: el webhook de Resend puede
+                              traer una demora o una queja de spam. */}
+                          {n.ultimoError && (
                             <p className="mt-1 max-w-xs text-xs text-slate-500 dark:text-slate-400">
-                              {t('notificaciones.intentos', { n: n.reintentos })} ·{' '}
+                              {n.reintentos > 0 && (
+                                <>{t('notificaciones.intentos', { n: n.reintentos })} · </>
+                              )}
                               {t('notificaciones.motivo')}{' '}
                               <span className="text-slate-600 dark:text-slate-300">
                                 {t(`notificaciones.motivos.${n.ultimoError}`, {

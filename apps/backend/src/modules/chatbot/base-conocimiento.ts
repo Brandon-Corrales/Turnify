@@ -72,8 +72,12 @@ pantalla; no hay otros botones de crear, guardar ni íconos "+".
   qué canales tiene disponibles el negocio. Los estados significan:
   "pendiente" = todavía no se ha enviado o se está reintentando (el
   sistema reintenta automáticamente hasta 3 veces), "enviada" = se
-  entregó al proveedor de correo o WhatsApp, "fallida" = no se pudo
-  enviar tras los reintentos. Si un intento falló, debajo del estado se
+  entregó al proveedor de correo o WhatsApp, "entregada" = el proveedor
+  de correo confirmó que llegó al servidor del destinatario, "fallida" =
+  no se pudo enviar tras los reintentos o el correo rebotó. Debajo del
+  estado también puede aparecer un aviso del proveedor de correo: rebote
+  (dirección inexistente o rechazo temporal), entrega demorada o
+  "marcado como spam". Si un intento falló, debajo del estado se
   ve el número de intentos y un motivo resumido (por ejemplo
   "destinatario no habilitado en el entorno de prueba del proveedor",
   "faltan las credenciales del proveedor en el servidor" o "rechazado por

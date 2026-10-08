@@ -61,4 +61,14 @@ export class Notificacion extends AuditableEntity {
    */
   @Column({ name: 'ultimo_error', type: 'text', nullable: true })
   ultimoError?: string | null;
+
+  /**
+   * Id que devuelve el proveedor al aceptar el envío (`data.id` de
+   * `resend.emails.send`). Los webhooks de Resend lo traen como
+   * `data.email_id` y es lo único que permite saber a qué notificación se
+   * refiere un rebote o una entrega.
+   */
+  @Index()
+  @Column({ name: 'id_correo_proveedor', type: 'varchar', length: 255, nullable: true })
+  idCorreoProveedor?: string | null;
 }

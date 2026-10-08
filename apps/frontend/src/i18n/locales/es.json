@@ -406,6 +406,7 @@
     "canalWhatsappCorto": "WhatsApp",
     "canalSms": "SMS",
     "estadoEnviada": "enviada",
+    "estadoEntregada": "entregada",
     "estadoPendiente": "pendiente",
     "estadoFallida": "fallida",
     "intentos": "Intentos: {{n}}",
@@ -415,7 +416,11 @@
       "DESTINATARIO_NO_HABILITADO": "destinatario no habilitado en el entorno de prueba del proveedor",
       "CREDENCIALES_FALTANTES": "faltan las credenciales del proveedor en el servidor",
       "CANAL_SIN_PROVEEDOR": "este canal no tiene proveedor configurado",
-      "RECHAZADO_POR_PROVEEDOR": "rechazado por el proveedor"
+      "RECHAZADO_POR_PROVEEDOR": "rechazado por el proveedor",
+      "REBOTE_PERMANENTE": "la dirección de correo rechazó el mensaje (rebote permanente)",
+      "REBOTE_TEMPORAL": "el servidor del destinatario rechazó el mensaje temporalmente (rebote)",
+      "ENTREGA_DEMORADA": "entrega demorada; el proveedor sigue intentando",
+      "MARCADO_COMO_SPAM": "el destinatario lo marcó como spam"
     }
   }
 }

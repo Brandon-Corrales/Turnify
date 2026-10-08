@@ -406,6 +406,7 @@
     "canalWhatsappCorto": "WhatsApp",
     "canalSms": "SMS",
     "estadoEnviada": "sent",
+    "estadoEntregada": "delivered",
     "estadoPendiente": "pending",
     "estadoFallida": "failed",
     "intentos": "Attempts: {{n}}",
@@ -415,7 +416,11 @@
       "DESTINATARIO_NO_HABILITADO": "recipient not allowed in the provider's test environment",
       "CREDENCIALES_FALTANTES": "the provider's credentials are missing on the server",
       "CANAL_SIN_PROVEEDOR": "this channel has no provider configured",
-      "RECHAZADO_POR_PROVEEDOR": "rejected by the provider"
+      "RECHAZADO_POR_PROVEEDOR": "rejected by the provider",
+      "REBOTE_PERMANENTE": "the email address rejected the message (permanent bounce)",
+      "REBOTE_TEMPORAL": "the recipient's server temporarily rejected the message (bounce)",
+      "ENTREGA_DEMORADA": "delivery delayed; the provider keeps trying",
+      "MARCADO_COMO_SPAM": "the recipient marked it as spam"
     }
   }
 }

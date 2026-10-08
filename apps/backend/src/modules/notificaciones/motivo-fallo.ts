@@ -14,8 +14,16 @@ export enum MotivoFallo {
   CREDENCIALES_FALTANTES = 'CREDENCIALES_FALTANTES',
   /** El canal no tiene proveedor implementado (ej. SMS). */
   CANAL_SIN_PROVEEDOR = 'CANAL_SIN_PROVEEDOR',
-  /** Cualquier otro rechazo del proveedor. */
+  /** Cualquier otro rechazo del proveedor (incluye el evento `email.failed`). */
   RECHAZADO_POR_PROVEEDOR = 'RECHAZADO_POR_PROVEEDOR',
+  /** Webhook `email.bounced` con `bounce.type` "Permanent": la dirección no recibe correo. */
+  REBOTE_PERMANENTE = 'REBOTE_PERMANENTE',
+  /** Webhook `email.bounced` de cualquier otro tipo (ej. "Temporary", buzón lleno). */
+  REBOTE_TEMPORAL = 'REBOTE_TEMPORAL',
+  /** Webhook `email.delivery_delayed`: aviso, no fallo; el proveedor sigue intentando. */
+  ENTREGA_DEMORADA = 'ENTREGA_DEMORADA',
+  /** Webhook `email.complained`: el destinatario lo marcó como spam. */
+  MARCADO_COMO_SPAM = 'MARCADO_COMO_SPAM',
 }
 
 const VALORES = new Set<string>(Object.values(MotivoFallo));

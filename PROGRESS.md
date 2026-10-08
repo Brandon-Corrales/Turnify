@@ -3325,7 +3325,9 @@ se hace en Chrome real, usando el frontend.
 - **Frente 3 completo** salvo las 12 preguntas al chatbot (3 por negocio),
   pendientes por la cuota diaria de Groq (429). Pago con Stripe: no
   probable (limitación geográfica), no se tocó.
-- **Siguiente tarea exacta:** Frente 4 (webhook de Resend).
+- **Frente 4 (webhook de Resend) ✅** — ver sección "Frente 4" abajo.
+- **Siguiente tarea exacta:** cuando se libere la cuota de Groq, Frente 1
+  (preguntas 17–27, re-prueba de #6 y #14) y las 12 preguntas del Frente 3.
 - **Hallazgos del Frente 3** (A y B se corrigen por pedido explícito; el
   resto solo se registra para el tablero):
   1. **(A, corregido ✅)** Calendario: una reserva cancelada seguía
@@ -3495,6 +3497,82 @@ log del servidor (`logger.warn`).
   entorno de prueba del proveedor", 0 correos en el texto de la pantalla.
   En EN: "Reason: recipient not allowed in the provider's test
   environment". Capturas en ES y EN.
+
+### Frente 4 — Webhook de Resend (rebotes y entregas) ✅
+Docs oficiales leídas (2026-10-08):
+https://resend.com/docs/webhooks/verify-webhooks-requests (headers
+`svix-id`/`svix-timestamp`/`svix-signature`, verificar con
+`resend.webhooks.verify()` sobre el body crudo, 400 si falla),
+https://resend.com/docs/webhooks/event-types y `/webhooks/emails/bounced`
+(payload: `data.email_id`, `bounce.{type,subType,message}`),
+https://resend.com/docs/webhooks/retries-and-replays (reintentos con
+backoff hasta ~10 h, replay manual), https://resend.com/docs/webhooks/create-webhook
+(registro: Webhooks → Add Webhook) y Svix
+https://docs.svix.com/receiving/verifying-payloads/how-manual (`svix-id`
+igual en reenvíos → clave de idempotencia). Tolerancia: 5 min, la de
+`standardwebhooks` (`WEBHOOK_TOLERANCE_IN_SECONDS = 5 * 60`), que es lo
+que usa el SDK `resend@6.28.1`.
+- **Backend:** `POST /webhooks/resend` (@Public, sin tenant;
+  `modules/notificaciones/webhook-resend/`). Firma inválida, body alterado,
+  headers faltantes o timestamp fuera de ±5 min → 400
+  `WEBHOOK_FIRMA_INVALIDA`; sin `RESEND_WEBHOOK_SECRET` → 503
+  `WEBHOOK_NO_CONFIGURADO`. Idempotente por `svix-id` (tabla
+  `webhook_eventos_procesados`, INSERT … ON CONFLICT DO NOTHING en la misma
+  transacción que el UPDATE, con lock de la fila). Eventos: delivered →
+  `entregada`; delivery_delayed → sigue `enviada` + `ENTREGA_DEMORADA`;
+  bounced → `fallida` + `REBOTE_PERMANENTE`/`REBOTE_TEMPORAL`; complained
+  → `entregada` + `MARCADO_COMO_SPAM`; failed → `fallida` +
+  `RECHAZADO_POR_PROVEEDOR`. Un evento tardío más débil no pisa a uno más
+  fuerte. `bounce.message` no se guarda ni se loguea. `ResendService`
+  ahora devuelve `data.id` y el worker lo guarda en
+  `notificaciones.id_correo_proveedor`.
+- **Migración** `1791472563669-NotificacionWebhookResend` (aplicada en la
+  BD compartida): columna `id_correo_proveedor` + índice, valor
+  `entregada` en `notificaciones_estado_enum`, tabla
+  `webhook_eventos_procesados`. `migration:generate` proponía además DROP
+  de la exclusion constraint `no_traslape_reserva_usuario`; se quitó a mano.
+  El `down` pasa `entregada` → `enviada` antes de recrear el enum viejo.
+- **Frontend:** estado "entregada"/"delivered" (icono doble check) y los 4
+  motivos nuevos en ES/EN (382 claves, paridad); el motivo se muestra
+  también en enviada/entregada, y "Intentos" solo si hubo reintentos.
+- **Config/docs:** `RESEND_WEBHOOK_SECRET` en `env.schema.ts` (opcional),
+  `.env.example` (vacío), README (pasos de registro después del deploy) y
+  `docs/spec.md` (modelo + sección del webhook). Base de conocimiento del
+  chatbot: estado "entregada" y avisos del proveedor.
+- **Tests:** `transicion-por-evento.spec.ts` (8, función pura) y
+  `webhook-resend.integration.spec.ts` (9, app y BD reales, Resend
+  reemplazado por un doble; firma calculada a mano con node:crypto, no con
+  el SDK): id guardado al enviar, firma de otro secreto → 400, body
+  alterado → 400, sin headers → 400, timestamp de hace 10 min → 400,
+  delayed + delivered, bounced (con un correo en `bounce.message`: no
+  llega a la API), evento repetido → "duplicado" con 1 sola fila y sin
+  reaplicar, evento de correo ajeno → "ignorado". Sabotaje: quitando el
+  chequeo de duplicado, el test de evento repetido falla (en la primera
+  corrida saboteada también falló el de bounced; no se reprodujo en 1
+  corrida saboteada más ni en 5 corridas normales seguidas).
+- **Verificación en Chrome real (simulación firmada):** el backend local se
+  levantó con un secreto de PRUEBA en la variable de entorno del proceso
+  (no en `.env` ni en el repo). Negocio 4 (Fisioterapia), desde la UI:
+  paciente nuevo con el correo autorizado + 2 reservas (20/10 y 21/10
+  14:00) → el worker envió 2 correos reales por Resend y guardó sus ids.
+  Con un script que firma como Svix contra `localhost:3000`: firma de otro
+  secreto → 400; timestamp −10 min → 400; delivery_delayed → "enviada ·
+  Motivo: entrega demorada…"; delivered → "entregada"; bounced Permanent →
+  "fallida · Motivo: la dirección de correo rechazó el mensaje (rebote
+  permanente)"; mismo bounced con el mismo svix-id → 200 "duplicado";
+  complained → "entregada · marcado como spam"; delivered tardío sobre el
+  rebote → "ignorado". EN: "delivered", "failed", "Reason: … (permanent
+  bounce)", "the recipient marked it as spam"; ni el texto del rebote ni
+  ningún correo aparecen en la página. Capturas
+  `screenshot-1791473495519-20` (demora, ES), `-1791473562855-21`
+  (entregada + rebote, ES), `-1791473583182-22` (EN).
+- **NO verificado:** un evento real enviado por Resend (no hay URL pública:
+  el webhook solo se puede registrar después del deploy, ver README).
+  Tampoco se probó el 503 sin secreto en vivo (cubierto por código, sin
+  test). Observación: una de las 2 notificaciones reales quedó con
+  `reintentos = 1` sin un fallo en el log del backend actual; en ese
+  momento seguía vivo un watcher huérfano de la sesión de las 08:38 que
+  pudo haber intentado el mismo envío. Se detuvo, sin investigar más.
 
 ## Cómo continuar si se corta la sesión
 Ver reglas de commit/pausa en el prompt original de arquitectura (punto 18

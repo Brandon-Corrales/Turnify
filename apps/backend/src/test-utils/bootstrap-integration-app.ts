@@ -21,7 +21,8 @@ export async function bootstrapIntegrationApp(
   ajustar: (builder: TestingModuleBuilder) => TestingModuleBuilder = (b) => b,
 ): Promise<INestApplication> {
   const moduleRef = await ajustar(Test.createTestingModule({ imports: [AppModule] })).compile();
-  const app = moduleRef.createNestApplication();
+  // rawBody: igual que main.ts (los webhooks verifican la firma sobre el body crudo).
+  const app = moduleRef.createNestApplication({ rawBody: true });
 
   app.useGlobalPipes(
     new ValidationPipe({

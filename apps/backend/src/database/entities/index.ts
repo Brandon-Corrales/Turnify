@@ -11,3 +11,4 @@ export * from './excepcion-disponibilidad.entity';
 export * from './suscripcion.entity';
 export * from './plantilla-servicio.entity';
 export * from './mensaje-chatbot.entity';
+export * from './webhook-evento-procesado.entity';

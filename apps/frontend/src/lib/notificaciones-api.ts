@@ -2,12 +2,17 @@ import { apiFetch } from './api';
 
 export type TipoNotificacion = 'recordatorio' | 'confirmacion' | 'cancelacion';
 export type CanalNotificacion = 'email' | 'whatsapp' | 'sms';
-export type EstadoNotificacion = 'pendiente' | 'enviada' | 'fallida';
+export type EstadoNotificacion = 'pendiente' | 'enviada' | 'entregada' | 'fallida';
 export type MotivoFallo =
   | 'DESTINATARIO_NO_HABILITADO'
   | 'CREDENCIALES_FALTANTES'
   | 'CANAL_SIN_PROVEEDOR'
-  | 'RECHAZADO_POR_PROVEEDOR';
+  | 'RECHAZADO_POR_PROVEEDOR'
+  // Los cuatro siguientes llegan por el webhook de Resend.
+  | 'REBOTE_PERMANENTE'
+  | 'REBOTE_TEMPORAL'
+  | 'ENTREGA_DEMORADA'
+  | 'MARCADO_COMO_SPAM';
 
 export interface Notificacion {
   idNotificacion: string;
@@ -19,8 +24,9 @@ export interface Notificacion {
   mensaje: string;
   reintentos: number;
   /**
-   * Categoría del último intento fallido (nunca el texto crudo del
-   * proveedor, que puede traer datos de terceros). Se traduce en pantalla.
+   * Categoría del último intento fallido o del último aviso del proveedor
+   * (rebote, demora, spam; nunca el texto crudo del proveedor, que puede
+   * traer datos de terceros). Se traduce en pantalla.
    */
   ultimoError?: MotivoFallo | null;
   creadoEn: string;
