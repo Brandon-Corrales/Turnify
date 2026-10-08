@@ -3091,6 +3091,45 @@ por script: 360/360). El chatbot también conoce el aviso
 → Configuración → activar el lunes → volver al Inicio: el aviso ya no
 está.
 
+### Punto 3 — Reserva manual: crear el cliente en el mismo formulario ✅
+**Estado previo (confirmado):** el modal "Nueva reserva" del Calendario
+solo tenía un `<select>` de clientes existentes. `POST /clientes` exige
+nombre (2–150) y correo; el resto es opcional. No tiene límite de plan
+(solo `PrivilegioClienteGuard` para WhatsApp, que aquí no aplica porque
+se crea con correo). Un correo repetido responde
+`409 CLIENTE_CORREO_YA_REGISTRADO` (sin `field`).
+**Solución (sin lógica duplicada):**
+- `crearNuevaReservaSchema` gana `modoCliente` (existente/nuevo). Los
+  datos del cliente nuevo se validan con `crearClienteSchema(t).pick(...)`,
+  las MISMAS reglas que la pantalla Clientes.
+- Al confirmar: primero `clientesApi.crear` (mismo endpoint, mismas
+  validaciones y guards del backend), después `reservasApi.crear`.
+- Errores: correo repetido → error en el propio campo Correo ("Ya existe
+  un cliente con ese correo. Elígelo en la lista…"); un error de campo
+  del backend → en su campo. **Si el cliente se crea pero la reserva
+  falla**, toast de advertencia con el motivo real y el formulario pasa a
+  "cliente existente" con ese cliente elegido, para que reintentar no lo
+  duplique.
+- Sin clientes todavía, el modal abre directo en "Cliente nuevo".
+- `useWatch` en vez de `watch()` (lint `react-hooks/incompatible-library`).
+- 6 claves i18n nuevas en `calendario.*` (ES/EN). El chatbot ya no dice
+  que el cliente debe existir antes.
+- 5 tests nuevos (`validation.test.ts`).
+**Verificación en Chrome real** (negocio nuevo, servicio creado por API):
+1. Sin clientes → modal en "Cliente nuevo" → nombre, correo y teléfono +
+   lunes 12/10 10:00 → "Reserva creada". En **Clientes** aparece el
+   cliente; en **Reservas**, la reserva (12 oct 10:00, Confirmada); por
+   API, el teléfono quedó guardado.
+2. Mismo correo como "cliente nuevo" → error en el campo Correo
+   (`aria-invalid`, `aria-describedby`), sin crear nada (API: 1 cliente,
+   1 reserva).
+3. Cliente nuevo + martes (día cerrado) → toast "El cliente se creó, pero
+   la reserva no — Ese horario está fuera de la disponibilidad…"; el
+   formulario queda en "cliente existente" con ese cliente. Al cambiar a
+   lunes y reintentar → reserva creada; Clientes sigue mostrando 2
+   (sin duplicado).
+4. EN: "New client" / "Full name" / "Choose an existing client".
+
 ## Cómo continuar si se corta la sesión
 Ver reglas de commit/pausa en el prompt original de arquitectura (punto 18
 del brief del equipo). Resumen: terminar hasta que compile, commitear con

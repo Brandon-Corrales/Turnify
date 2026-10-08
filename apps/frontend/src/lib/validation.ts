@@ -116,15 +116,55 @@ export function crearServicioSchema(t: TFunction) {
 
 export type ServicioFormValues = z.infer<ReturnType<typeof crearServicioSchema>>;
 
+/**
+ * Reserva manual del Calendario. El cliente puede ser uno existente o uno
+ * nuevo creado en el mismo formulario. Los datos del cliente nuevo se
+ * validan con las MISMAS reglas que el formulario de Clientes
+ * (`crearClienteSchema`, solo los campos que pide este formulario), así
+ * no hay dos versiones de "qué es un cliente válido".
+ */
 export function crearNuevaReservaSchema(t: TFunction) {
-  return z.object({
-    idCliente: z.string().min(1, t('validacion.seleccionaCliente')),
-    idServicio: z.string().min(1, t('validacion.seleccionaServicio')),
-    idUsuario: z.string().min(1, t('validacion.seleccionaEmpleado')),
-    fecha: z.string().min(1, t('validacion.fechaObligatoria')),
-    hora: z.string().min(1, t('validacion.horaObligatoria')),
-    notas: z.string().max(500).optional().or(z.literal('')),
+  const datosClienteNuevo = crearClienteSchema(t).pick({
+    nombreCompleto: true,
+    correoElectronico: true,
+    telefono: true,
   });
+  return z
+    .object({
+      modoCliente: z.enum(['existente', 'nuevo']),
+      idCliente: z.string(),
+      nuevoCliente: z.object({
+        nombreCompleto: z.string(),
+        correoElectronico: z.string(),
+        telefono: z.string().optional(),
+      }),
+      idServicio: z.string().min(1, t('validacion.seleccionaServicio')),
+      idUsuario: z.string().min(1, t('validacion.seleccionaEmpleado')),
+      fecha: z.string().min(1, t('validacion.fechaObligatoria')),
+      hora: z.string().min(1, t('validacion.horaObligatoria')),
+      notas: z.string().max(500).optional().or(z.literal('')),
+    })
+    .superRefine((valores, ctx) => {
+      if (valores.modoCliente === 'existente') {
+        if (!valores.idCliente) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['idCliente'],
+            message: t('validacion.seleccionaCliente'),
+          });
+        }
+        return;
+      }
+      const resultado = datosClienteNuevo.safeParse(valores.nuevoCliente);
+      if (resultado.success) return;
+      for (const problema of resultado.error.issues) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['nuevoCliente', ...problema.path],
+          message: problema.message,
+        });
+      }
+    });
 }
 
 export type NuevaReservaFormValues = z.infer<ReturnType<typeof crearNuevaReservaSchema>>;

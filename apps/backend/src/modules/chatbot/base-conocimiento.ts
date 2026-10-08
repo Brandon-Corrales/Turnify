@@ -39,7 +39,10 @@ pantalla; no hay otros botones de crear, guardar ni íconos "+".
 - Calendario: vistas Mes, Semana y Agenda; filtro por empleado; botón
   "Nueva reserva" (o clic en un día/franja) que abre un formulario con
   cliente, servicio, quién atiende, fecha, hora y notas, y se confirma con
-  "Crear reserva" — el cliente debe existir antes en Clientes. Clic en una
+  "Crear reserva". El cliente se elige de la lista o, con el botón
+  "Cliente nuevo", se crea ahí mismo (nombre, correo y teléfono opcional)
+  sin pasar por Clientes; si ya existe un cliente con ese correo, avisa
+  para elegirlo de la lista. Clic en una
   reserva: ver su detalle y cancelarla. Arrastrar una reserva a otro día u
   hora (en las vistas Mes o Semana) la reprograma.
 - Clientes: botón "Nuevo cliente" abre el formulario (nombre, correo,

@@ -300,7 +300,13 @@
     "campoAtiende": "Served by",
     "campoFecha": "Date",
     "campoHora": "Time",
-    "crearReserva": "Create booking"
+    "crearReserva": "Create booking",
+    "crearClienteNuevo": "New client",
+    "clienteNuevo": "New client",
+    "elegirClienteExistente": "Choose an existing client",
+    "clienteYaExiste": "A client with that email already exists. Choose them from the existing clients list.",
+    "clienteCreadoSinReserva": "The client was created, but the booking wasn't",
+    "errorCrearCliente": "Couldn't create the client"
   },
   "clientes": {
     "subtitulo": "Manage your business's client base.",
