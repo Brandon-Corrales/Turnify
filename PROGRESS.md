@@ -2886,6 +2886,44 @@ UTC), en Chrome real con el wizard público de un negocio real, paso 2: `min`
 y valor por defecto del campo Fecha = `2026-10-07` (antes habría sido
 `2026-10-08`).
 
+### Bug 3 — `<html lang>` quedaba en "es" con la interfaz en inglés ✅
+**Causa (confirmada):** `index.html` trae `lang="es"` fijo y nada en el
+código lo actualizaba (ningún uso de `documentElement.lang` ni listener de
+`languageChanged`).
+
+**Solución:**
+- `src/i18n/config.ts`: `sincronizarIdiomaDelDocumento()` al iniciar i18next
+  y en cada `languageChanged`. Pone `lang` con `i18n.resolvedLanguage`
+  (`es`/`en`, nunca `en-US` crudo del navegador) y llama
+  `window.UserWay?.changeWidgetLanguage(idioma)`, la API documentada de
+  UserWay para cambiar su idioma sin recargar. La documentación de
+  UserWay dice que lee `lang` **solo al inicializarse**.
+- `index.html`: el script inline que ya aplicaba el tema antes de React
+  ahora también pone `lang` desde `turnify_idioma` (o el idioma del
+  navegador, español por defecto, mismo criterio que i18next). Es
+  necesario porque la app de UserWay carga async y puede inicializarse
+  antes que el módulo diferido de React.
+
+**Verificación en Chrome real (Landing):**
+- Clic real en EN → `lang="en"` al instante. Recarga → sigue `lang="en"`,
+  la Landing en inglés y UserWay arranca en inglés (descarga
+  `locales/en-US.json`, botón "Accessibility Menu").
+- En el mismo documento (sin recargar, confirmado con `performance.timeOrigin`):
+  clic en ES → `lang="es"` y el menú de UserWay abre `/es/index.html`;
+  clic en EN → `lang="en"` y el menú abre `/en/index.html`.
+- **Atribución verificada:** cambiar solo el atributo `lang` a mano, sin
+  llamar la API, NO cambia el menú (siguió en `/en/`). El cambio en vivo
+  lo hace `changeWidgetLanguage`, así que la llamada es necesaria.
+- **Limitación de UserWay, no corregible desde Turnify:** el `aria-label`
+  del botón flotante ("Accessibility Menu" / "Menú de Accesibilidad")
+  queda en el idioma con que se inicializó la página hasta la próxima
+  recarga; `changeWidgetLanguage` actualiza el menú, no la etiqueta del
+  ícono.
+- **No verificado visualmente:** la pestaña de Chrome automatizada estuvo
+  en `visibilityState: hidden` toda la prueba (las capturas de pantalla
+  fallaban por timeout), así que el idioma del menú se confirmó por la URL
+  del iframe que carga UserWay (`/es/` vs `/en/`), no con una captura.
+
 ## Cómo continuar si se corta la sesión
 Ver reglas de commit/pausa en el prompt original de arquitectura (punto 18
 del brief del equipo). Resumen: terminar hasta que compile, commitear con

@@ -35,6 +35,21 @@
           document.documentElement.classList.toggle('dark', oscuro);
         } catch (e) {}
       })();
+      // <html lang> con el idioma elegido ANTES de que UserWay se
+      // inicialice: su app carga async y solo lee `lang` al arrancar, así
+      // que no puede esperar a que React (módulo diferido) lo corrija.
+      // Mismo criterio que src/i18n/config.ts: preferencia guardada
+      // (turnify_idioma) y si no hay, idioma del navegador; español por
+      // defecto.
+      (function () {
+        try {
+          var idioma = localStorage.getItem('turnify_idioma');
+          if (idioma !== 'es' && idioma !== 'en') {
+            idioma = /^en\b/i.test(navigator.language) ? 'en' : 'es';
+          }
+          document.documentElement.lang = idioma;
+        } catch (e) {}
+      })();
     </script>
   </head>
   <body>
