@@ -2854,6 +2854,38 @@ request ya cuenta la fila nueva.
   plan de pago, error traducido; cada service llama el chequeo dentro de
   la transacción y no inserta si se alcanzó el límite).
 
+### Bug 2 — El wizard público calculaba "hoy" en UTC ✅
+**Causa (confirmada):** `hoyYYYYMMDD()` en `ReservaPublicaPage.tsx` hacía
+`new Date().toISOString().slice(0, 10)`, que es el día en UTC. Desde las
+18:00 de Costa Rica (00:00 UTC) el selector de fecha bloqueaba el día
+actual y proponía mañana.
+
+**Zona horaria del negocio:** se verificó que el modelo **no** guarda una
+zona por negocio (ninguna columna en las entidades); la decisión vigente
+es Costa Rica fija (`common/utils/zona-horaria-negocio.ts` en el backend,
+que ya interpreta la `fecha` de `/horarios` en hora CR). Por eso "hoy" se
+calcula en la zona del negocio y no en la del navegador: un cliente que
+abra el link desde otra zona igual ve el día del negocio.
+
+**Solución:** `src/lib/fecha-negocio.ts` con `hoyEnZonaNegocio()` (Intl con
+`timeZone: 'America/Costa_Rica'`, misma convención que ya usaba la
+pantalla para mostrar horas), usado para el valor inicial y el `min` del
+selector.
+
+**Primer test unitario del frontend:** se agregó Vitest (`npm test` en
+`apps/frontend`, solo `src/**/*.test.ts` para no tocar los e2e de
+Playwright), en la misma versión que ya usa el backend (5.0.1; el lockfile
+solo agrega la declaración). `fecha-negocio.test.ts`, 6 casos: 18:00,
+22:22 (el caso de la prueba de humo) y 23:59:59 de Costa Rica siguen
+siendo el día local; cambia exactamente a la medianoche CR; cambio de mes
+y año. Pasa igual con el proceso en `TZ=America/Costa_Rica`, `UTC` y
+`Asia/Tokyo`, porque no depende de la zona del sistema.
+
+**Verificación en vivo:** el 07/10/2026 a las 19:12 hora CR (ya 08/10 en
+UTC), en Chrome real con el wizard público de un negocio real, paso 2: `min`
+y valor por defecto del campo Fecha = `2026-10-07` (antes habría sido
+`2026-10-08`).
+
 ## Cómo continuar si se corta la sesión
 Ver reglas de commit/pausa en el prompt original de arquitectura (punto 18
 del brief del equipo). Resumen: terminar hasta que compile, commitear con

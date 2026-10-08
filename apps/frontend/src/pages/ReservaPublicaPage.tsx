@@ -14,10 +14,7 @@ import {
   crearDatosClientePublicoSchema,
   type DatosClientePublicoFormValues,
 } from '@/lib/validation';
-
-function hoyYYYYMMDD(): string {
-  return new Date().toISOString().slice(0, 10);
-}
+import { hoyEnZonaNegocio } from '@/lib/fecha-negocio';
 
 function formatearHoraCR(iso: string, idioma: string): string {
   return new Date(iso).toLocaleTimeString(idioma.startsWith('en') ? 'en-US' : 'es-CR', {
@@ -89,7 +86,7 @@ export default function ReservaPublicaPage() {
   const { idNegocio = '' } = useParams<{ idNegocio: string }>();
   const [paso, setPaso] = useState(1);
   const [servicio, setServicio] = useState<ServicioPublico | null>(null);
-  const [fecha, setFecha] = useState(hoyYYYYMMDD());
+  const [fecha, setFecha] = useState(hoyEnZonaNegocio());
   const [horario, setHorario] = useState<string | null>(null);
   const [datosCliente, setDatosCliente] = useState<DatosClientePublicoFormValues | null>(null);
 
@@ -245,7 +242,7 @@ export default function ReservaPublicaPage() {
                   type="date"
                   label={t('calendario.campoFecha')}
                   className="mt-4 max-w-xs"
-                  min={hoyYYYYMMDD()}
+                  min={hoyEnZonaNegocio()}
                   value={fecha}
                   onChange={(e) => {
                     setFecha(e.target.value);
