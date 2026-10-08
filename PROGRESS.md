@@ -3072,6 +3072,17 @@ errores, y #4 y #8 siguen omitiendo un matiz pese al prompt. También hay
 detalles de redacción (#7 dice "Guarda el cambio (se guarda
 automáticamente)").
 
+**Revisión posterior a los puntos 2, 3 y 5** (cambiaron funciones que el
+asistente describe y se actualizó su inventario en cada commit): 3
+preguntas nuevas contra Groq. "Cliente me llamó por teléfono" ya ofrece
+"Cliente nuevo" dentro de Nueva reserva ✅; "aviso amarillo de horario"
+explica el botón "Configurar horario" ✅; "aparece pendiente con un texto
+en inglés" **inventó** que las reservas quedan pendientes y que se pueden
+"marcar como Confirmada" ❌. Se confirmó en el código que toda reserva se
+crea `CONFIRMADA` (`ReservasService.crear`) y que solo existen cancelar y
+reprogramar; se agregó eso al prompt. Repetida 2 veces: ambas correctas
+(explica que es una notificación, con intentos y motivo del proveedor).
+
 ### Punto 2 — Negocio sin horario laboral: aviso en el Dashboard ✅
 **Estado previo (confirmado):** `InicioPage` no consultaba la
 disponibilidad. Un negocio nuevo arranca con los 7 días "Cerrado" y nada

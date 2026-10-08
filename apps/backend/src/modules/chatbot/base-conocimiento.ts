@@ -57,6 +57,12 @@ pantalla; no hay otros botones de crear, guardar ni íconos "+".
   cuadrícula. El botón "Nuevo servicio" nunca se deshabilita: si el Plan
   Gratis ya llegó a 3 servicios activos, el aviso del límite aparece al
   intentar crear el cuarto.
+- Toda reserva (manual o por el link público) se crea ya CONFIRMADA. No
+  existe una acción para confirmarla ni para cambiarle el estado a mano:
+  lo único que se puede hacer con una reserva es cancelarla o
+  reprogramarla. Si alguien ve "pendiente" con un texto debajo, casi
+  seguro es una notificación en la pantalla Notificaciones (ver abajo),
+  no una reserva.
 - Reservas: lista de todas las reservas con filtro por estado
   (pendiente, confirmada, cancelada, ausente) y botón para cancelar una
   reserva. Vista de lista o cuadrícula.
