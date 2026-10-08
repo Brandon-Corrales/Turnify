@@ -3307,8 +3307,25 @@ se hace en Chrome real, usando el frontend.
   visibles), Reportes (8 reservas, ₡118 000 = suma exacta de las 7
   activas, 13 %), EN en 9 pantallas sin texto de interfaz en español, tema
   oscuro (captura de Clientes en EN).
-- **Negocio 4:** sin crear. **Siguiente tarea exacta:** registrar
-  "Fisioterapia Movimiento Cañas" (tipo "otro", servicios creados a mano).
+- **Frente 3, negocio 4 "Fisioterapia Movimiento Cañas" (Cañas, tipo
+  "otro") ✅** (salvo chatbot: pendiente por Groq). Onboarding sin
+  plantillas ("No hay plantillas sugeridas… Continuar") y Servicios con su
+  estado vacío; 3 servicios creados a mano con descripción y color
+  (₡20 000 / ₡18 000 / ₡15 000), horario L–V 13:00–20:00 y S 08:00–12:00
+  (persiste tras recargar), 10 pacientes (2 en inglés, 2 Premium), 3
+  reservas por el link (una para HOY 08/10 13:00, 2 pacientes nuevos), 5
+  manuales (una con paciente nuevo creado en el formulario), intento fuera
+  de horario rechazado en pantalla ("Ese horario está fuera de la
+  disponibilidad…"), cancelación desde Reservas, reprogramación
+  arrastrando (17/10 10:00 → 11:00), Notificaciones (8 confirmaciones, 1
+  cancelación, 1 recordatorio de la cita de hoy, 0 correos visibles),
+  Reportes (8 reservas, ₡124 000 = suma exacta de las 7 activas, 13 %), EN
+  en 9 pantallas sin texto de interfaz en español, tema oscuro (captura
+  del Dashboard).
+- **Frente 3 completo** salvo las 12 preguntas al chatbot (3 por negocio),
+  pendientes por la cuota diaria de Groq (429). Pago con Stripe: no
+  probable (limitación geográfica), no se tocó.
+- **Siguiente tarea exacta:** Frente 4 (webhook de Resend).
 - **Hallazgos del Frente 3** (A y B se corrigen por pedido explícito; el
   resto solo se registra para el tablero):
   1. **(A, corregido ✅)** Calendario: una reserva cancelada seguía
@@ -3342,6 +3359,24 @@ se hace en Chrome real, usando el frontend.
      un recordatorio" + INSERT no es atómico ni tiene una restricción única
      `(id_reserva, tipo)` que lo respalde, y en ese tick se ejecutó dos
      veces de forma superpuesta. Efecto: el cliente recibiría 2 correos.
+  6. **(nuevo, NO corregido)** Calendario → Nueva reserva (ES/EN): un
+     horario fuera de la disponibilidad se rechaza solo con un toast que
+     queda parcialmente detrás del fondo oscurecido del modal, y el texto
+     dice "…disponibilidad registrada del usuario" (jerga interna;
+     convendría "del profesional"). Reproducir: Fisioterapia → Nueva
+     reserva → lunes 09:00 (el negocio abre a las 13:00).
+  7. **(nuevo, NO corregido) i18n de errores del backend.** Con la interfaz
+     en EN, los mensajes de error que vienen del backend llegan en español
+     (ej. "Ese horario está fuera de la disponibilidad registrada del
+     usuario"). El backend traduce según `Accept-Language`, pero el
+     cliente HTTP del frontend (`lib/api.ts`) no lo envía. Reproducir:
+     cambiar a EN → Calendar → New booking fuera de horario → toast en
+     español.
+  8. **(nuevo, NO corregido, menor)** Dashboard (ES/EN): el saludo toma la
+     primera palabra del nombre del administrador, así que con títulos
+     queda "Hola, Lic." / "Hi, Lic." (Fisioterapia) o "Hola, Dra."
+     (clínica dental). Reproducir: registrar un administrador cuyo nombre
+     empiece con "Lic." o "Dra.".
   4. **(nuevo, NO corregido, visual menor)** Calendario en tema oscuro
      (EN/ES, escritorio, vista Mes): los días fuera del horario laboral
      (ej. domingo cerrado) se sombrean con un gris claro que choca con el
