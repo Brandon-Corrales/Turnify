@@ -306,7 +306,9 @@
     "elegirClienteExistente": "Elegir un cliente existente",
     "clienteYaExiste": "Ya existe un cliente con ese correo. Elígelo en la lista de clientes existentes.",
     "clienteCreadoSinReserva": "El cliente se creó, pero la reserva no",
-    "errorCrearCliente": "No se pudo crear el cliente"
+    "errorCrearCliente": "No se pudo crear el cliente",
+    "limiteTitulo": "Llegaste al límite de reservas del mes del Plan Gratis",
+    "limiteDescripcion": "El Plan Gratis permite hasta 20 reservas por mes. Actualiza a un plan de pago para seguir reservando."
   },
   "clientes": {
     "subtitulo": "Gestiona la base de clientes de tu negocio.",
@@ -364,7 +366,9 @@
     "servicioDesactivado": "Servicio desactivado",
     "errorDesactivar": "No se pudo desactivar el servicio",
     "confirmarDesactivarTitulo": "Desactivar servicio",
-    "confirmarDesactivarDescripcion": "¿Seguro que deseas desactivar \"{{nombre}}\"? Ya no podrá reservarse, pero se conserva su historial."
+    "confirmarDesactivarDescripcion": "¿Seguro que deseas desactivar \"{{nombre}}\"? Ya no podrá reservarse, pero se conserva su historial.",
+    "limiteTitulo": "Llegaste al límite de servicios activos del Plan Gratis",
+    "limiteDescripcion": "El Plan Gratis permite hasta 3 servicios activos. Actualiza a un plan de pago para agregar más."
   },
   "reservas": {
     "subtitulo": "Vista administrativa de todas las reservas. Para agendar o mover horarios, usa el Calendario.",

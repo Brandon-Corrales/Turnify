@@ -306,7 +306,9 @@
     "elegirClienteExistente": "Choose an existing client",
     "clienteYaExiste": "A client with that email already exists. Choose them from the existing clients list.",
     "clienteCreadoSinReserva": "The client was created, but the booking wasn't",
-    "errorCrearCliente": "Couldn't create the client"
+    "errorCrearCliente": "Couldn't create the client",
+    "limiteTitulo": "You've reached the Free Plan's monthly bookings limit",
+    "limiteDescripcion": "The Free Plan allows up to 20 bookings per month. Upgrade to a paid plan to keep booking."
   },
   "clientes": {
     "subtitulo": "Manage your business's client base.",
@@ -364,7 +366,9 @@
     "servicioDesactivado": "Service deactivated",
     "errorDesactivar": "Couldn't deactivate the service",
     "confirmarDesactivarTitulo": "Deactivate service",
-    "confirmarDesactivarDescripcion": "Are you sure you want to deactivate \"{{nombre}}\"? It will no longer be bookable, but its history is kept."
+    "confirmarDesactivarDescripcion": "Are you sure you want to deactivate \"{{nombre}}\"? It will no longer be bookable, but its history is kept.",
+    "limiteTitulo": "You've reached the Free Plan's active services limit",
+    "limiteDescripcion": "The Free Plan allows up to 3 active services. Upgrade to a paid plan to add more."
   },
   "reservas": {
     "subtitulo": "Administrative view of all bookings. To schedule or move times, use the Calendar.",

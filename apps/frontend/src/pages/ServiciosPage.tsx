@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Clock, Pencil, Plus, Tag, Trash2 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Boton, ConfirmDialog, Input, Modal, ToggleVista, useToast } from '@/components/ui';
+import { Banner, Boton, ConfirmDialog, Input, Modal, ToggleVista, useToast } from '@/components/ui';
 import { SkeletonCard, SkeletonTable } from '@/components/ui/Skeleton';
 import { useVistaPreferida } from '@/lib/vista-preferida';
 import { ApiError } from '@/lib/api';
@@ -37,6 +38,7 @@ export default function ServiciosPage() {
   const { t, i18n } = useTranslation();
   const [pagina, setPagina] = useState(1);
   const [vista, setVista] = useVistaPreferida('servicios');
+  const navigate = useNavigate();
   const [modalAbierto, setModalAbierto] = useState(false);
   const [servicioEditando, setServicioEditando] = useState<Servicio | null>(null);
   const [servicioADesactivar, setServicioADesactivar] = useState<Servicio | null>(null);
@@ -62,12 +64,14 @@ export default function ServiciosPage() {
   });
 
   const abrirCrear = () => {
+    guardarMutation.reset();
     setServicioEditando(null);
     reset(VALORES_VACIOS);
     setModalAbierto(true);
   };
 
   const abrirEditar = (servicio: Servicio) => {
+    guardarMutation.reset();
     setServicioEditando(servicio);
     reset({
       nombre: servicio.nombre,
@@ -290,9 +294,16 @@ export default function ServiciosPage() {
           className="flex flex-col gap-4"
         >
           {limiteAlcanzado && (
-            <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-              {guardarMutation.error instanceof Error ? guardarMutation.error.message : ''}
-            </p>
+            <Banner
+              variante="advertencia"
+              titulo={t('servicios.limiteTitulo')}
+              descripcion={t('servicios.limiteDescripcion')}
+              accion={
+                <Boton type="button" tamano="sm" onClick={() => navigate('/suscripcion')}>
+                  {t('dashboard.bannerPlanGratisBoton')}
+                </Boton>
+              }
+            />
           )}
           <Input
             label={t('servicios.nombreServicio')}

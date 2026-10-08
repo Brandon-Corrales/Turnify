@@ -3286,6 +3286,18 @@ se hace en Chrome real, usando el frontend.
      · Cancelada · Tom Becker · Corte a máquina (fade) (cancelada)").
      Verificado en Chrome, vista Semana, ES y EN (las activas siguen "Cita
      programada"/"Scheduled appointment"), con capturas.
+  2. **(B, corregido ✅)** Al llegar al límite de 20 reservas del mes, el
+     error solo salía como toast. Ahora el formulario "Nueva reserva" del
+     Calendario muestra además un `Banner` persistente (variante
+     advertencia, botón "Ver planes" → /suscripcion), que se limpia al
+     reabrir el formulario. **Corrección de la premisa:** Servicios NO
+     usaba el componente `Banner`, sino un `<p>` ámbar hecho a mano. Para
+     que ambos sean consistentes y reutilicen el componente compartido
+     (punto 8 del brief), Servicios también pasó a `Banner`, con los
+     mismos textos traducidos (antes mostraba el mensaje crudo del
+     backend, siempre en español). Verificado en Chrome llegando al
+     límite real: reserva 21 → banner en ES y EN; al reabrir el
+     formulario ya no está; 4.º servicio → mismo banner. Capturas.
   3. **(nuevo, NO corregido)** Calendario (ES/EN, escritorio), tras
      arrastrar una reserva: el bloque queda en el día/hora nuevos pero
      sigue mostrando la hora VIEJA (ej. "08:00" en la franja de las 11:00)

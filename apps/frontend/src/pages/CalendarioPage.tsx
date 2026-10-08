@@ -10,10 +10,11 @@ import type { DatesSetArg, EventClickArg, EventContentArg, EventDropArg } from '
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Ban, UserPlus } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Boton, ConfirmDialog, Input, Modal, Select, useToast } from '@/components/ui';
+import { Banner, Boton, ConfirmDialog, Input, Modal, Select, useToast } from '@/components/ui';
 import { crearEtiquetaEstadoReserva, reservasApi, type Reserva } from '@/lib/reservas-api';
 import { disponibilidadApi } from '@/lib/disponibilidad-api';
 import { usuariosApi } from '@/lib/usuarios-api';
@@ -289,6 +290,7 @@ export default function CalendarioPage() {
     setReservaSeleccionada(info.event.extendedProps.reserva as Reserva);
   }, []);
 
+  const navigate = useNavigate();
   const nuevaReservaSchema = useMemo(() => crearNuevaReservaSchema(t), [t]);
   const {
     register: registerNuevaReserva,
@@ -311,38 +313,6 @@ export default function CalendarioPage() {
       notas: '',
     },
   });
-
-  // Abre el formulario de reserva manual precargado con una fecha/hora —
-  // bug real reportado probando la app: "no me deja seleccionar dentro del
-  // calendario para reservar". Se dispara tanto al hacer clic en un espacio
-  // vacío del calendario (día del mes o franja de semana/día) como desde el
-  // botón "Nueva reserva". En vista de mes o desde el botón no hay una hora
-  // útil que precargar (allDay), así que se usa la hora por defecto y el
-  // usuario la ajusta en el formulario.
-  const abrirModalNuevaReserva = useCallback(
-    (fecha: Date, allDay: boolean) => {
-      const { fecha: fechaCR, hora: horaCR } = formatearFechaHoraCR(fecha);
-      resetNuevaReserva({
-        // Sin ningún cliente todavía, arranca directo en "cliente nuevo".
-        modoCliente: clientesActivos.length > 0 ? 'existente' : 'nuevo',
-        idCliente: '',
-        nuevoCliente: { nombreCompleto: '', correoElectronico: '', telefono: '' },
-        idServicio: '',
-        idUsuario: idUsuarioFiltro || empleadosActivos[0]?.idUsuario || '',
-        fecha: fechaCR,
-        hora: allDay ? HORA_DEFECTO_CLIC_EN_DIA : horaCR,
-        notas: '',
-      });
-      setModalNuevaReservaAbierto(true);
-    },
-    [resetNuevaReserva, idUsuarioFiltro, empleadosActivos, clientesActivos.length],
-  );
-  const modoCliente = useWatch({ control: controlNuevaReserva, name: 'modoCliente' });
-
-  const alHacerClicEnFecha = useCallback(
-    (info: DateClickArg) => abrirModalNuevaReserva(info.date, info.allDay),
-    [abrirModalNuevaReserva],
-  );
 
   // Si se eligió "cliente nuevo", primero se crea con el MISMO endpoint que
   // la pantalla Clientes (POST /clientes, con sus validaciones y guards) y
@@ -435,6 +405,54 @@ export default function CalendarioPage() {
       });
     },
   });
+
+  // Límite de reservas del mes del Plan Gratis: además del toast, un banner
+  // persistente dentro del formulario (mismo Banner compartido que Servicios).
+  const errorDeReserva =
+    crearReservaMutation.error instanceof ErrorReservaConClienteCreado
+      ? crearReservaMutation.error.causa
+      : crearReservaMutation.error;
+  const limiteReservasAlcanzado =
+    errorDeReserva instanceof ApiError && errorDeReserva.errorCode === 'LIMITE_PLAN_ALCANZADO';
+
+  // Abre el formulario de reserva manual precargado con una fecha/hora —
+  // bug real reportado probando la app: "no me deja seleccionar dentro del
+  // calendario para reservar". Se dispara tanto al hacer clic en un espacio
+  // vacío del calendario (día del mes o franja de semana/día) como desde el
+  // botón "Nueva reserva". En vista de mes o desde el botón no hay una hora
+  // útil que precargar (allDay), así que se usa la hora por defecto y el
+  // usuario la ajusta en el formulario.
+  const abrirModalNuevaReserva = useCallback(
+    (fecha: Date, allDay: boolean) => {
+      const { fecha: fechaCR, hora: horaCR } = formatearFechaHoraCR(fecha);
+      crearReservaMutation.reset();
+      resetNuevaReserva({
+        // Sin ningún cliente todavía, arranca directo en "cliente nuevo".
+        modoCliente: clientesActivos.length > 0 ? 'existente' : 'nuevo',
+        idCliente: '',
+        nuevoCliente: { nombreCompleto: '', correoElectronico: '', telefono: '' },
+        idServicio: '',
+        idUsuario: idUsuarioFiltro || empleadosActivos[0]?.idUsuario || '',
+        fecha: fechaCR,
+        hora: allDay ? HORA_DEFECTO_CLIC_EN_DIA : horaCR,
+        notas: '',
+      });
+      setModalNuevaReservaAbierto(true);
+    },
+    [
+      resetNuevaReserva,
+      idUsuarioFiltro,
+      empleadosActivos,
+      clientesActivos.length,
+      crearReservaMutation,
+    ],
+  );
+  const modoCliente = useWatch({ control: controlNuevaReserva, name: 'modoCliente' });
+
+  const alHacerClicEnFecha = useCallback(
+    (info: DateClickArg) => abrirModalNuevaReserva(info.date, info.allDay),
+    [abrirModalNuevaReserva],
+  );
 
   const alArrastrarEvento = useCallback(
     async (info: EventDropArg) => {
@@ -623,6 +641,18 @@ export default function CalendarioPage() {
           noValidate
           className="flex flex-col gap-4"
         >
+          {limiteReservasAlcanzado && (
+            <Banner
+              variante="advertencia"
+              titulo={t('calendario.limiteTitulo')}
+              descripcion={t('calendario.limiteDescripcion')}
+              accion={
+                <Boton type="button" tamano="sm" onClick={() => navigate('/suscripcion')}>
+                  {t('dashboard.bannerPlanGratisBoton')}
+                </Boton>
+              }
+            />
+          )}
           {modoCliente === 'existente' ? (
             <div className="flex flex-col gap-2">
               <Select
