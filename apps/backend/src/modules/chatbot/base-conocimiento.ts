@@ -33,7 +33,9 @@ pantalla; no hay otros botones de crear, guardar ni íconos "+".
 - Inicio (Dashboard): resumen del mes en curso — reservas del mes,
   confirmadas, canceladas e ingresos estimados —, gráfico de reservas por
   día y la insignia del plan (Plan Gratis / Plan de Pago). En Plan Gratis
-  muestra un aviso con el botón "Ver planes".
+  muestra un aviso con el botón "Ver planes". Si el negocio no tiene
+  ningún día activo en el horario laboral, muestra un aviso con el botón
+  "Configurar horario", que lleva a Configuración.
 - Calendario: vistas Mes, Semana y Agenda; filtro por empleado; botón
   "Nueva reserva" (o clic en un día/franja) que abre un formulario con
   cliente, servicio, quién atiende, fecha, hora y notas, y se confirma con

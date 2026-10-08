@@ -7,6 +7,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Banner, Boton } from '@/components/ui';
 import { Skeleton, SkeletonCard } from '@/components/ui/Skeleton';
 import { useAuth } from '@/context/AuthContext';
+import { disponibilidadApi } from '@/lib/disponibilidad-api';
 import { negociosApi } from '@/lib/negocios-api';
 import { reportesApi, type ResumenReportes } from '@/lib/reportes-api';
 
@@ -96,6 +97,16 @@ export default function InicioPage() {
     queryFn: negociosApi.obtenerMiNegocio,
   });
 
+  // Misma query (y misma caché) que el Calendario. Sin ninguna franja
+  // activa, ni el link público ni el Calendario pueden ofrecer horarios,
+  // y un negocio recién registrado arranca así.
+  const disponibilidadQuery = useQuery({
+    queryKey: ['disponibilidad'],
+    queryFn: () => disponibilidadApi.listar(),
+  });
+  const sinHorarioLaboral =
+    disponibilidadQuery.isSuccess && !disponibilidadQuery.data.some((franja) => franja.activo);
+
   const resumenQuery = useQuery({
     queryKey: ['reportes', 'resumen', desde, hasta],
     queryFn: () => reportesApi.obtenerResumen({ desde, hasta }),
@@ -138,6 +149,20 @@ export default function InicioPage() {
             </span>
           )}
         </div>
+
+        {sinHorarioLaboral && (
+          <Banner
+            className="mt-6"
+            variante="advertencia"
+            titulo={t('dashboard.bannerSinHorarioTitulo')}
+            descripcion={t('dashboard.bannerSinHorarioDescripcion')}
+            accion={
+              <Boton tamano="sm" onClick={() => navigate('/configuracion')}>
+                {t('dashboard.bannerSinHorarioBoton')}
+              </Boton>
+            }
+          />
+        )}
 
         {esPlanGratis && (
           <Banner

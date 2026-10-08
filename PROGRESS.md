@@ -3072,6 +3072,25 @@ errores, y #4 y #8 siguen omitiendo un matiz pese al prompt. También hay
 detalles de redacción (#7 dice "Guarda el cambio (se guarda
 automáticamente)").
 
+### Punto 2 — Negocio sin horario laboral: aviso en el Dashboard ✅
+**Estado previo (confirmado):** `InicioPage` no consultaba la
+disponibilidad. Un negocio nuevo arranca con los 7 días "Cerrado" y nada
+lo advertía. `GET /disponibilidad` devuelve también las franjas
+inactivas, así que el chequeo filtra por `activo`.
+**Solución:** `InicioPage` consulta `['disponibilidad']` (misma query y
+caché que el Calendario) y, si no hay ninguna franja activa, muestra el
+`Banner` compartido (variante advertencia) con el botón "Configurar
+horario" → `/configuracion`. Desaparece solo: toda mutación exitosa
+invalida las queries (`queryClient.ts`). 3 claves nuevas
+`dashboard.bannerSinHorario*` en es.json y en.json (paridad verificada
+por script: 360/360). El chatbot también conoce el aviso
+(`base-conocimiento.ts`).
+**Verificación en Chrome real:** negocio registrado desde cero por la UI
+(tipo "otro") → onboarding → Dashboard muestra el aviso en ES y en EN
+("You haven't set your working hours yet" / "Set working hours") → botón
+→ Configuración → activar el lunes → volver al Inicio: el aviso ya no
+está.
+
 ## Cómo continuar si se corta la sesión
 Ver reglas de commit/pausa en el prompt original de arquitectura (punto 18
 del brief del equipo). Resumen: terminar hasta que compile, commitear con
