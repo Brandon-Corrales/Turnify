@@ -3295,8 +3295,20 @@ se hace en Chrome real, usando el frontend.
   correos visibles), Reportes (9 reservas, ₡180 000 = suma exacta de las 8
   activas, 11 % cancelación), EN en 9 pantallas sin texto de interfaz en
   español, tema oscuro (captura de Reportes). Todo OK salvo el hallazgo 5.
-- **Negocios 3 y 4:** sin crear. **Siguiente tarea exacta:** registrar
-  "Salón de Belleza Bella Santa Cruz" (Santa Cruz).
+- **Frente 3, negocio 3 "Salón de Belleza Bella Santa Cruz" (Santa Cruz,
+  salón de belleza) ✅** (salvo chatbot: pendiente por Groq). Registro +
+  onboarding (3 de 9 plantillas: Corte y peinado, Manicure, Coloración),
+  precios ₡12 000 / ₡8 000 / ₡35 000, horario Ma–S 09:00–18:00 (domingo y
+  lunes cerrados), 10 clientas (2 en inglés, 3 Premium), 3 reservas por el
+  link (2 clientas nuevas), 5 manuales (una con clienta nueva creada en el
+  formulario), cancelación desde el detalle del Calendario (se ve
+  "Cancelada" con el fix A), reprogramación arrastrando (17/10 09:00 →
+  15:00), Notificaciones (8 confirmaciones + 1 cancelación, 0 correos
+  visibles), Reportes (8 reservas, ₡118 000 = suma exacta de las 7
+  activas, 13 %), EN en 9 pantallas sin texto de interfaz en español, tema
+  oscuro (captura de Clientes en EN).
+- **Negocio 4:** sin crear. **Siguiente tarea exacta:** registrar
+  "Fisioterapia Movimiento Cañas" (tipo "otro", servicios creados a mano).
 - **Hallazgos del Frente 3** (A y B se corrigen por pedido explícito; el
   resto solo se registra para el tablero):
   1. **(A, corregido ✅)** Calendario: una reserva cancelada seguía
