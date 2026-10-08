@@ -2992,6 +2992,86 @@ docs/spec.md: nota en el punto 5 (Implementación) sobre el chequeo atómico
 de límites; el guard ya no es la única barrera. Ningún otro punto
 documentado cambió.
 
+## Cierre de "Bugs y observaciones — Seguimiento #3" (7 puntos)
+Un commit por punto, cada uno verificado contra el sistema real. Antes de
+empezar se revisaron los puertos: había un backend del 7/10 19:19 (PID
+20568) y un Vite del 6/10. Se detuvieron los dos y se levantaron limpios
+desde el commit `57fe72b`.
+
+### Punto 1 — Chatbot: verificación amplia contra Groq real ✅ (con 2 respuestas incompletas)
+Script por el mismo WebSocket que el widget, con un socket nuevo por
+pregunta (sin historial que contamine). Se usaron negocios de prueba
+nuevos cada 9 preguntas por el límite real de 10 mensajes/día del Plan
+Gratis (no se saltó).
+
+**Iteraciones del prompt (`base-conocimiento.ts`)** — en cada ronda se
+contrastó cada respuesta contra el código:
+- Ronda 1 (18 preguntas): 7 con invenciones. Labels inexistentes ("Crear
+  servicio" / "+" / "Guardar" / "English"), "el botón se deshabilita al
+  llegar al límite" (falso: `Nuevo servicio` nunca se deshabilita), un
+  paso de "guardar" en el horario (se guarda solo), idioma "arriba a la
+  derecha" (en escritorio está abajo en el menú lateral), "panel de
+  control externo" para sucursales, y alternativas falsas para
+  vacaciones.
+  → Se agregaron los textos exactos de cada botón y su ubicación, que el
+  horario es semanal y se guarda solo, el estado del botón Exportar,
+  más cosas que no existen, una lista cerrada de alternativas reales y la
+  regla de no nombrar botones, ubicaciones ni herramientas que no estén
+  en el inventario.
+- Ronda 2 (18): 16 correctas. Seguían "comparte la cuenta" para empleados
+  y una alternativa no listada para descuentos. → Alternativas explícitas
+  y "NUNCA sugieras compartir la cuenta".
+- Ronda 3 (+6 preguntas nuevas, para no ajustar el prompt solo a las
+  mismas): inventó "contactar al soporte técnico" (no existe) y notas
+  editables en la reserva (solo al crearla); además afirmó que la página
+  pública tiene botones de idioma y tema (no los tiene; confirmado en
+  `ReservaPublicaPage.tsx`). → Se agregaron esos hechos.
+- Ronda 4 (+3 nuevas): correctas. Ajuste final: reprogramar NO envía
+  aviso (confirmado en `ReservasService.reprogramar`), Turnify no cobra a
+  los clientes, y un servicio con precio especial lo ve cualquiera.
+
+**Tabla final** (todas con el prompt comiteado; #8, #20, #21 y #23 son del
+reintento después del último ajuste):
+
+| # | Tipo | Pregunta | Respuesta resumida | Resultado |
+|---|---|---|---|---|
+| 1 | no existe | Exportar reservas a PDF | No existe; solo CSV en Reportes, deshabilitado en Plan Gratis | ✅ |
+| 2 | no existe | Conectar con Google Calendar | No hay integración con calendarios externos | ✅ |
+| 3 | no existe | Recordatorios por SMS | No hay SMS; correo, y WhatsApp con Plan de Pago + cliente Premium | ✅ |
+| 4 | no existe | App móvil Android | No hay app; usar el navegador, sitio responsive | ⚠️ ambiguo: "visita la página de tu negocio" en vez de "inicia sesión en Turnify" |
+| 5 | no existe | Dos sucursales en una cuenta | No; registrar cada una como negocio aparte, sin vínculo | ✅ |
+| 6 | no existe | Invitar a un empleado | No existe desde la interfaz | ✅ |
+| 7 | no existe | Bloquear el 24 de diciembre | No hay fechas puntuales; desactivar ese día de la semana afecta todas las semanas; reservas existentes no se cancelan | ✅ |
+| 8 | no existe | Descuento 10% a cliente Premium | No hay descuentos; crear otro servicio con ese precio (cuenta para el límite de 3) | ⚠️ incompleto: no aclara que ese servicio lo ve cualquier cliente |
+| 9 | existe | Configurar horario | Configuración → Horario laboral semanal, casillas y horas, se guarda solo | ✅ |
+| 10 | existe | Crear servicio | Servicios → "Nuevo servicio" → campos → "Crear servicio"; aviso de límite al crear el 4to | ✅ |
+| 11 | existe | Agendar cita por teléfono | Clientes → "Nuevo cliente" → "Crear cliente"; Calendario → "Nueva reserva" → "Crear reserva" | ✅ |
+| 12 | existe | Cambiar idioma a inglés | Botón "EN" abajo en el menú lateral; en celular en la barra superior | ✅ |
+| 13 | existe | Reservas del mes pasado | Reportes → "Mes pasado" | ✅ |
+| 14 | existe | Compartir link de reservas | Configuración → Link público → "Copiar" | ✅ |
+| 15 | existe | Mover una cita | Calendario, vista Mes o Semana, arrastrar | ✅ |
+| 16 | fuera de tema | Capital de Australia | Se niega y redirige a Turnify | ✅ |
+| 17 | fuera de tema | Poema sobre el mar | Se niega y ofrece ayuda con Turnify | ✅ |
+| 18 | fuera de tema | Política de Costa Rica | Se niega y redirige | ✅ |
+| 19 | no existe | Acceso al panel para recepcionista | No se puede dar acceso al panel | ✅ |
+| 20 | no existe | Cobrar seña | Turnify no procesa pagos; hacerlo fuera de la plataforma | ✅ |
+| 21 | no existe | Promoción a todos los clientes | No hay mensajes masivos | ✅ |
+| 22 | no existe | Cambiar contraseña | No existe en la interfaz | ✅ |
+| 23 | no existe | Marcar que no se presentó | No existe; dejarlo en "Notas" del cliente (Editar → "Guardar cambios") | ✅ |
+| 24 | no existe | Logo en la página de reservas | No se puede personalizar | ✅ |
+| 25 | no existe | Hablar con soporte | No hay canal de soporte | ✅ |
+| 26 | existe | Página de reservas en inglés | Sí, según el idioma del navegador; no hay botón | ✅ |
+| 27 | existe | Qué significa "fallida" | No se entregó tras 3 reintentos; no se puede reenviar | ✅ |
+
+**Resultado: 25/27 correctas y 2 incompletas o ambiguas (#4, #8), sin
+invenciones en la corrida final.** A lo largo de las rondas se eliminaron
+10 invenciones reales.
+**Lo que NO queda resuelto:** esto es un LLM (`openai/gpt-oss-20b`) y la
+verificación es muestral. Preguntas distintas a estas 27 pueden producir
+errores, y #4 y #8 siguen omitiendo un matiz pese al prompt. También hay
+detalles de redacción (#7 dice "Guarda el cambio (se guarda
+automáticamente)").
+
 ## Cómo continuar si se corta la sesión
 Ver reglas de commit/pausa en el prompt original de arquitectura (punto 18
 del brief del equipo). Resumen: terminar hasta que compile, commitear con
