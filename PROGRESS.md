@@ -3261,6 +3261,14 @@ se hace en Chrome real, usando el frontend.
 ### PUNTO DE CONTROL (actualizar al cerrar cada tarea)
 - **Frente en curso:** 3 (datos de prueba). Frente 2 ✅ cerrado (ver abajo).
   Frente 1 sigue parcial: se retoma cuando se libere la cuota de Groq.
+- **Frente 3, negocio 1 "Barbería El Sabanero" (Nicoya, barbería):**
+  registro + onboarding (3 plantillas) ✅, precios editados ✅, bloqueo del
+  4.º servicio ✅, horario L–V 08–19 y S 08–14 (persistido tras recargar)
+  ✅, 13 clientes ✅ (uno con el correo real autorizado), 6 reservas por el
+  link público ✅. **Siguiente:** 14 reservas manuales en el Calendario
+  (una con cliente nuevo) hasta 20 en el mes, la 21.ª debe bloquearse;
+  después cancelar, reprogramar, Notificaciones, Reportes, idioma y tema.
+  Negocios 2, 3 y 4: sin crear.
 - **Hecho en Frente 1:** prompt ajustado (#4 app móvil, #8 descuento, y
   correcciones de #6 y #14 encontradas en esta ronda). Preguntas 1–16
   hechas en el widget, en Chrome.
