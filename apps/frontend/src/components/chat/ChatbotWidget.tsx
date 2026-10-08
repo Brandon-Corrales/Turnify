@@ -94,7 +94,10 @@ export function ChatbotWidget() {
   };
 
   return (
-    <div className="fixed right-4 bottom-4 z-40 sm:right-6 sm:bottom-6">
+    // flex + items-end: el botón redondo queda SIEMPRE en la misma esquina,
+    // abierto o cerrado. Antes el contenedor era un bloque y, con el panel
+    // abierto, el botón (ahora "cerrar") caía a la izquierda del panel.
+    <div className="fixed right-4 bottom-4 z-40 flex flex-col items-end sm:right-6 sm:bottom-6">
       <AnimatePresence>
         {abierto && (
           <motion.div
@@ -106,7 +109,7 @@ export function ChatbotWidget() {
             aria-label={t('chat.titulo')}
             className="mb-3 flex h-[70vh] max-h-[520px] w-[calc(100vw-2rem)] max-w-sm flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800"
           >
-            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-200 bg-primary-600 px-4 py-3 dark:border-slate-700">
+            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-200 bg-primary-600 py-1 pr-2 pl-4 dark:border-slate-700">
               <div className="flex items-center gap-2 text-white">
                 <Sparkles className="h-4 w-4" aria-hidden="true" />
                 <span className="text-sm font-medium">{t('chat.titulo')}</span>
@@ -115,7 +118,7 @@ export function ChatbotWidget() {
                 type="button"
                 onClick={() => setAbierto(false)}
                 aria-label={t('chat.cerrar')}
-                className="rounded-md p-1 text-white/80 hover:bg-white/10 hover:text-white"
+                className="flex h-11 w-11 items-center justify-center rounded-md text-white/80 hover:bg-white/10 hover:text-white"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>

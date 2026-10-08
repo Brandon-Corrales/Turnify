@@ -3184,6 +3184,24 @@ motivo al fallar y se limpia al enviar (12/12).
   enviar. Un correo aceptado por Resend que luego rebota no se detecta:
   haría falta el webhook de eventos de Resend, que no existe en Turnify.
 
+### Punto 6 — Botones de abrir y cerrar el chatbot en posiciones distintas ✅
+**Causa (confirmada):** el contenedor fijo del widget era un bloque
+normal. Con el panel abierto, el contenedor tomaba el ancho del panel y
+el botón redondo (que pasa a ser "cerrar") caía a la izquierda, debajo
+del panel, en vez de quedar en la esquina donde estaba "abrir". Además, la
+X del encabezado tenía un área táctil de 24×24 px (`p-1` + ícono de 16 px).
+**Solución:** `flex flex-col items-end` en el contenedor (el botón queda
+siempre en la misma esquina) y la X del encabezado pasa a 44×44 px, con
+el padding del encabezado reducido para que no crezca de más.
+**Verificación en Chrome real** (iframes de 1280 px y 390 px, claro y
+oscuro): el botón redondo mide 56×56 y está en la misma posición cerrado
+y abierto — (1200, 640) en escritorio y (298, 772) en móvil, en ambos
+temas. La X del encabezado mide 44×44 (`offsetWidth/offsetHeight`; la
+medición con `getBoundingClientRect` daba 42 porque la animación de
+apertura, `scale(0.95)`, queda congelada en la pestaña oculta de la
+herramienta). Sin scroll horizontal. Captura en modo oscuro: el botón de
+cerrar en la esquina inferior derecha en ambos anchos.
+
 ## Cómo continuar si se corta la sesión
 Ver reglas de commit/pausa en el prompt original de arquitectura (punto 18
 del brief del equipo). Resumen: terminar hasta que compile, commitear con
