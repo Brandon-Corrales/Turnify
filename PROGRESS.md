@@ -3265,10 +3265,34 @@ se hace en Chrome real, usando el frontend.
   registro + onboarding (3 plantillas) ✅, precios editados ✅, bloqueo del
   4.º servicio ✅, horario L–V 08–19 y S 08–14 (persistido tras recargar)
   ✅, 13 clientes ✅ (uno con el correo real autorizado), 6 reservas por el
-  link público ✅. **Siguiente:** 14 reservas manuales en el Calendario
-  (una con cliente nuevo) hasta 20 en el mes, la 21.ª debe bloquearse;
-  después cancelar, reprogramar, Notificaciones, Reportes, idioma y tema.
-  Negocios 2, 3 y 4: sin crear.
+  link público ✅, 14 reservas manuales en el Calendario ✅ (una con cliente
+  nuevo creado en el formulario: Allan Pizarro Ruiz) = 20 en el mes; la
+  21.ª se bloqueó en pantalla ✅ ("El Plan Gratis permite hasta 20 reservas
+  por mes"). Cancelación desde el Calendario ✅ (Carlos Arias, 8/10
+  10:15).
+  **Siguiente tarea exacta:** cancelar a Tom Becker desde la pantalla
+  Reservas (el botón "Cancelar reserva de Tom Becker" no se encontró por
+  aria-label exacto: revisar el label real antes de repetir), reprogramar
+  una cita (arrastre), Notificaciones (la de Brandon Núñez del 13/10 debe
+  salir "enviada"), Reportes, idioma y tema en vivo. Después, negocios 2, 3
+  y 4 (sin crear). Las credenciales están en el scratchpad de la sesión
+  (`creds-frente3.txt`), no en el repo.
+- **Hallazgos del Frente 3 hasta ahora (NO corregidos, para el tablero):**
+  1. Calendario (ES, escritorio): una reserva cancelada sigue mostrando el
+     texto "Cita programada"; solo se distingue por el color gris y la
+     opacidad (el "(cancelada)" está solo en el tooltip). Reproducir:
+     cancelar una reserva desde su detalle y mirar la vista Semana.
+     Accesibilidad: distinción solo por color (WCAG 1.4.1).
+  2. Calendario → Nueva reserva (ES): al llegar al límite de 20 reservas
+     del mes, el error sale solo como toast. En Servicios el mismo tipo de
+     límite se muestra además como banner dentro del modal. Inconsistencia
+     de UX.
+- **Nota de entorno:** la ventana de Chrome automatizada está tapada por
+  otra ventana (`visibilityState: "hidden"`). Chrome entonces limita los
+  timers de la página y congela las animaciones. Se resolvió con esperas
+  basadas en `MessageChannel` (helper en `localStorage.__ui`), pero las
+  capturas salen con animaciones congeladas y la re-verificación visual
+  de UserWay sigue bloqueada hasta que la ventana esté en primer plano.
 - **Hecho en Frente 1:** prompt ajustado (#4 app móvil, #8 descuento, y
   correcciones de #6 y #14 encontradas en esta ronda). Preguntas 1–16
   hechas en el widget, en Chrome.
