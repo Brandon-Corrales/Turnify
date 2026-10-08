@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { Check, Clock, Copy, Link2 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Boton, Select, useToast } from '@/components/ui';
+import { Boton, Input, Select, useToast } from '@/components/ui';
 import { SkeletonText } from '@/components/ui/Skeleton';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/lib/api';
@@ -277,15 +277,17 @@ export default function ConfiguracionPage() {
                 <SkeletonText lineas={1} />
               </div>
             ) : (
-              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                <input
-                  type="text"
-                  readOnly
-                  value={linkReservaPublica}
-                  onFocus={(e) => e.currentTarget.select()}
-                  aria-label={t('configuracion.linkReservaAriaLabel')}
-                  className="h-11 flex-1 rounded-md border border-slate-300 bg-slate-50 px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300"
-                />
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
+                <div className="min-w-0 flex-1">
+                  <Input
+                    label={t('configuracion.linkReservaAriaLabel')}
+                    type="text"
+                    readOnly
+                    value={linkReservaPublica}
+                    onFocus={(e) => e.currentTarget.select()}
+                    className="w-full bg-slate-50 dark:bg-slate-900"
+                  />
+                </div>
                 <Boton
                   variante="secundario"
                   onClick={copiarLinkReserva}

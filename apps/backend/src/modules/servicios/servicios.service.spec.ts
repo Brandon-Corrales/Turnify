@@ -28,23 +28,65 @@ function crearTenantRepoMock() {
   };
 }
 
+function crearManagerMock() {
+  return {
+    create: vi.fn((_entidad: unknown, data: object) => data),
+    save: vi.fn((entity: object) => Promise.resolve({ idServicio: 'servicio-nuevo', ...entity })),
+  };
+}
+
 describe('ServiciosService', () => {
   let repoMock: ReturnType<typeof crearTenantRepoMock>;
+  let managerMock: ReturnType<typeof crearManagerMock>;
+  let limitesPlan: { asegurarDentroDelLimite: ReturnType<typeof vi.fn> };
   let service: ServiciosService;
 
   beforeEach(() => {
     repoMock = crearTenantRepoMock();
-    service = new ServiciosService(repoMock as any);
+    managerMock = crearManagerMock();
+    limitesPlan = { asegurarDentroDelLimite: vi.fn().mockResolvedValue(undefined) };
+    service = new ServiciosService(
+      repoMock as any,
+      { transaction: (cb: (m: unknown) => unknown) => cb(managerMock) } as any,
+      { idNegocio: 'negocio-1' } as any,
+      limitesPlan as any,
+    );
   });
 
   it('crear() convierte el precio numérico del DTO a string con 2 decimales para la columna numeric', async () => {
     await service.crear({ nombre: 'Corte', duracionMinutos: 30, precio: 8000 } as any);
-    expect(repoMock.create).toHaveBeenCalledWith(expect.objectContaining({ precio: '8000.00' }));
+    expect(managerMock.create).toHaveBeenCalledWith(
+      Servicio,
+      expect.objectContaining({ precio: '8000.00', idNegocio: 'negocio-1' }),
+    );
   });
 
   it('crear() conserva decimales exactos del precio (no los trunca ni redondea de más)', async () => {
     await service.crear({ nombre: 'Corte', duracionMinutos: 30, precio: 7999.5 } as any);
-    expect(repoMock.create).toHaveBeenCalledWith(expect.objectContaining({ precio: '7999.50' }));
+    expect(managerMock.create).toHaveBeenCalledWith(
+      Servicio,
+      expect.objectContaining({ precio: '7999.50' }),
+    );
+  });
+
+  it('crear() verifica el límite del Plan Gratis en la misma transacción, antes de insertar', async () => {
+    await service.crear({ nombre: 'Corte', duracionMinutos: 30, precio: 8000 } as any);
+    expect(limitesPlan.asegurarDentroDelLimite).toHaveBeenCalledWith(
+      managerMock,
+      'servicios',
+      'negocio-1',
+    );
+    expect(limitesPlan.asegurarDentroDelLimite.mock.invocationCallOrder[0]).toBeLessThan(
+      managerMock.save.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('crear() no inserta si el límite del Plan Gratis ya se alcanzó', async () => {
+    limitesPlan.asegurarDentroDelLimite.mockRejectedValue(new Error('LIMITE_PLAN_ALCANZADO'));
+    await expect(
+      service.crear({ nombre: 'Corte', duracionMinutos: 30, precio: 8000 } as any),
+    ).rejects.toThrow('LIMITE_PLAN_ALCANZADO');
+    expect(managerMock.save).not.toHaveBeenCalled();
   });
 
   it('listar() pagina con skip/take calculados desde page/limit', async () => {

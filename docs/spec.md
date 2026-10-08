@@ -34,8 +34,26 @@ nombre literal para que el equipo la mueva de "Backlog técnico" a
   origen[online|admin], creado_en)
 - NOTIFICACION(id_notificacion PK, id_reserva FK, id_cliente FK,
   tipo[recordatorio|confirmacion|cancelacion], canal[email|whatsapp|sms],
-  estado[pendiente|enviada|fallida], programado_para, enviado_en, mensaje,
-  reintentos)
+  estado[pendiente|enviada|entregada|fallida], programado_para, enviado_en, mensaje,
+  reintentos, ultimo_error, id_correo_proveedor)
+  - `ultimo_error` (agregado en el cierre del Seguimiento #3, nullable): la
+    CATEGORÍA del motivo del último intento fallido
+    (`DESTINATARIO_NO_HABILITADO` | `CREDENCIALES_FALTANTES` |
+    `CANAL_SIN_PROVEEDOR` | `RECHAZADO_POR_PROVEEDOR`), que el frontend
+    traduce. Nunca el texto crudo del proveedor: puede traer datos de
+    terceros (Resend incluye el correo de la persona dueña de la cuenta), y
+    ese texto solo va al log del servidor. Migración de datos
+    `NotificacionMotivoSaneado` para los registros viejos. El webhook de
+    Resend agrega `REBOTE_PERMANENTE` | `REBOTE_TEMPORAL` |
+    `ENTREGA_DEMORADA` | `MARCADO_COMO_SPAM` (y usa
+    `RECHAZADO_POR_PROVEEDOR` para `email.failed`).
+  - `id_correo_proveedor` y estado `entregada` (Seguimiento #3, migración
+    `NotificacionWebhookResend`): id que devuelve Resend al aceptar el envío
+    (`data.id`); los eventos del webhook lo traen como `data.email_id`.
+    `entregada` = Resend confirmó la entrega al servidor del destinatario.
+- WEBHOOK_EVENTO_PROCESADO(id_mensaje PK [svix-id], proveedor, tipo_evento,
+  creado_en) — tabla técnica, sin id_negocio, para la idempotencia del
+  webhook de Resend (misma migración `NotificacionWebhookResend`).
 - DISPONIBILIDAD(id_disponibilidad PK, id_usuario FK, id_negocio FK,
   dia_semana[0-6], hora_inicio, hora_fin, activo)
 - EXCEPCION_DISPONIBILIDAD(id_excepcion PK, id_usuario FK, fecha, bloqueado, motivo)
@@ -156,6 +174,25 @@ clientes reservando el mismo horario al mismo tiempo). El webhook de Stripe
 debe ser idempotente: si Stripe reenvía el mismo evento, no debe duplicar el
 cambio de estado de la SUSCRIPCION (verifica el event id ya procesado).
 
+Webhook de Resend (`POST /webhooks/resend`, público, sin tenant): actualiza
+el estado de las notificaciones por correo con los eventos
+`email.delivered` (→ entregada), `email.delivery_delayed` (sigue enviada,
+motivo `ENTREGA_DEMORADA`), `email.bounced` (→ fallida, `REBOTE_PERMANENTE`
+si `bounce.type` es "Permanent", si no `REBOTE_TEMPORAL`),
+`email.complained` (→ entregada, `MARCADO_COMO_SPAM`) y `email.failed` (→
+fallida, `RECHAZADO_POR_PROVEEDOR`); un evento tardío más débil no pisa a
+uno más fuerte (un `delivered` no borra un rebote). La firma Svix
+(`svix-id`, `svix-timestamp`, `svix-signature`) se verifica sobre el body
+crudo con `resend.webhooks.verify()` del SDK, con tolerancia de 5 minutos
+del timestamp; firma inválida o vencida → 400 `WEBHOOK_FIRMA_INVALIDA`; sin
+`RESEND_WEBHOOK_SECRET` → 503 `WEBHOOK_NO_CONFIGURADO`. Idempotente por
+`svix-id` (tabla WEBHOOK_EVENTO_PROCESADO, en la misma transacción que el
+cambio). Nunca se guarda `bounce.message` (puede traer la dirección del
+destinatario). Referencias:
+https://resend.com/docs/webhooks/verify-webhooks-requests,
+https://resend.com/docs/webhooks/event-types,
+https://resend.com/docs/webhooks/retries-and-replays.
+
 ## 5. MODELO FREEMIUM: LÍMITES POR PLAN (GRATIS VS PAGO)
 
 Turnify maneja DOS estados de freemium independientes, uno por tipo de
@@ -224,6 +261,15 @@ tiene ese canal habilitado.
   servicio. Al alcanzar un límite, responde con el formato estándar de
   error del punto 8 (ej: `errorCode: "LIMITE_PLAN_ALCANZADO"` o
   `errorCode: "PRIVILEGIO_CLIENTE_NO_DISPONIBLE"`).
+  - Nota de implementación (corrección del Seguimiento #3): para los
+    límites que crean filas (servicios, usuarios, reservas), el guard
+    solo es un primer filtro rápido. Corre antes del handler y en otra
+    conexión, así que requests paralelas podían pasarlo todas a la vez.
+    La garantía real es un chequeo atómico central
+    (`LimitesPlanService.asegurarDentroDelLimite`) que el service invoca
+    dentro de la misma transacción del INSERT, con un advisory lock por
+    negocio. La lógica sigue escrita una sola vez; cada service solo la
+    llama.
 - Frontend: cuando una acción quede bloqueada por cualquiera de los dos
   estados, usa el mismo componente de Alert/Modal del punto 8 con un mensaje
   claro de por qué se bloqueó — nunca un botón deshabilitado sin
@@ -555,7 +601,7 @@ decidió mantenerlo limpio, solo código. El pipeline de CI (.github/workflows/c
 debe correr en cada Pull Request: lint, tests, y build de ambos apps —
 fallar el pipeline si algo de esto falla, para no mezclar código roto con `develop`.
 
-## 18. ORDEN DE TRABAJO — TAREAS EXACTAS DEL BACKLOG DE TRELLO (66 TARJETAS)
+## 18. ORDEN DE TRABAJO — TAREAS EXACTAS DEL BACKLOG DE TRELLO (69 TARJETAS)
 
 El equipo tiene el Seguimiento #2 el 24/09/2026 (Avance funcional 30%, Gestión
 del proyecto 25%, Calidad técnica 25%, Evidencia/presentación 20%), así que
@@ -620,6 +666,8 @@ flujo de reserva básico.
 - Frontend: Widget de chatbot flotante (tiempo real, contextual, responsive)
 - Frontend: Paso de onboarding tras el registro — selección de tipo de negocio + plantilla de servicios sugeridos
 - Frontend: Componente Input compartido — variante crear (foco verde) vs editar (foco azul)
+- Frontend: Integración de UserWay (widget de accesibilidad)
+- Frontend: Exponer enlace público de reserva en el panel del administrador
 
 ### Seguridad — aplicar DESDE EL PRIMER MÓDULO (Auth), no al final
 - Seguridad: Hasheo de contraseñas (bcrypt) + política de contraseña mínima
@@ -646,6 +694,7 @@ flujo de reserva básico.
 - QA: Prueba de que el nivel del cliente nunca desbloquea una función que el plan del negocio tiene bloqueada
 - QA: Prueba responsive en dispositivos reales para todas las pantallas
 - QA: Verificar que el flujo de plantillas por vertical no rompe el registro/onboarding ya existente
+- QA: Prueba de humo completa del flujo de demo en local
 
 ## 19. CONTINUIDAD DEL TRABAJO ANTE INTERRUPCIONES (INTERNET / LÍMITE DE TOKENS)
 

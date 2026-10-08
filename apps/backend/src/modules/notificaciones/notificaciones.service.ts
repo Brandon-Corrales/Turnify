@@ -17,8 +17,9 @@ import {
 } from '../../database/entities';
 import { formatearFechaHoraLocalCR } from '../../common/utils/zona-horaria-negocio';
 import { construirMensaje } from './mensajes-notificacion';
-import { ResendService } from './providers/resend.service';
+import { ResendService, type ResultadoEnvio } from './providers/resend.service';
 import { WhatsappCloudApiService } from './providers/whatsapp-cloud-api.service';
+import { MotivoFallo, motivoPublico } from './motivo-fallo';
 
 /** Después de este número de reintentos fallidos, la notificación se marca FALLIDA en vez de reintentar por siempre. */
 const MAX_REINTENTOS = 3;
@@ -118,6 +119,9 @@ export class NotificacionesService {
       .skip((page - 1) * limit)
       .take(limit)
       .getManyAndCount();
+    // Whitelist al leer: aunque la columna tuviera un valor viejo o
+    // inesperado, por la API solo sale un código conocido.
+    for (const n of data) n.ultimoError = motivoPublico(n.ultimoError);
     return { data, total, page, limit };
   }
 
@@ -201,17 +205,27 @@ export class NotificacionesService {
     const texto = resto.join('\n');
     const cliente = notificacion.cliente;
 
-    const resultado =
+    const resultado: ResultadoEnvio =
       notificacion.canal === CanalNotificacion.EMAIL
         ? await this.resend.enviarCorreo(cliente.correoElectronico, asunto, texto)
         : notificacion.canal === CanalNotificacion.WHATSAPP
           ? await this.whatsapp.enviarMensaje(cliente.telefono ?? '', texto)
-          : { exito: false, error: `Canal ${notificacion.canal} no tiene proveedor implementado` };
+          : {
+              exito: false,
+              error: `Canal ${notificacion.canal} no tiene proveedor implementado`,
+              motivo: MotivoFallo.CANAL_SIN_PROVEEDOR,
+            };
 
     if (resultado.exito) {
       await this.notificacionRepo.update(
         { idNotificacion: notificacion.idNotificacion },
-        { estado: EstadoNotificacion.ENVIADA, enviadoEn: new Date() },
+        {
+          estado: EstadoNotificacion.ENVIADA,
+          enviadoEn: new Date(),
+          ultimoError: null,
+          // Solo Resend lo devuelve hoy; lo usa el webhook de Resend.
+          idCorreoProveedor: resultado.idProveedor ?? null,
+        },
       );
       this.logger.log(
         `Notificación ${notificacion.idNotificacion} enviada por ${notificacion.canal}`,
@@ -223,7 +237,14 @@ export class NotificacionesService {
     const agotada = reintentos >= MAX_REINTENTOS;
     await this.notificacionRepo.update(
       { idNotificacion: notificacion.idNotificacion },
-      { reintentos, estado: agotada ? EstadoNotificacion.FALLIDA : EstadoNotificacion.PENDIENTE },
+      {
+        reintentos,
+        estado: agotada ? EstadoNotificacion.FALLIDA : EstadoNotificacion.PENDIENTE,
+        // Solo la categoría saneada (ver motivo-fallo.ts). El texto crudo del
+        // proveedor puede traer datos de terceros y queda únicamente en el
+        // log de abajo.
+        ultimoError: resultado.motivo ?? MotivoFallo.RECHAZADO_POR_PROVEEDOR,
+      },
     );
     this.logger.warn(
       `Notificación ${notificacion.idNotificacion} falló (intento ${reintentos}/${MAX_REINTENTOS}): ${resultado.error}`,

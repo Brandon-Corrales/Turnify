@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Bell, Check, Clock, Mail, MessageCircle, X } from 'lucide-react';
+import { Bell, Check, CheckCheck, Clock, Info, Mail, MessageCircle, X } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Boton } from '@/components/ui';
 import { SkeletonTable } from '@/components/ui/Skeleton';
@@ -27,6 +27,7 @@ const CLAVE_I18N_CANAL: Record<CanalNotificacion, string> = {
 
 const CLAVE_I18N_ESTADO: Record<EstadoNotificacion, string> = {
   enviada: 'notificaciones.estadoEnviada',
+  entregada: 'notificaciones.estadoEntregada',
   pendiente: 'notificaciones.estadoPendiente',
   fallida: 'notificaciones.estadoFallida',
 };
@@ -39,12 +40,14 @@ const ICONO_CANAL: Record<CanalNotificacion, typeof Mail> = {
 
 const ESTILO_ESTADO: Record<EstadoNotificacion, string> = {
   enviada: 'bg-secondary-50 text-secondary-700 dark:bg-secondary-900/30 dark:text-secondary-400',
+  entregada: 'bg-secondary-50 text-secondary-700 dark:bg-secondary-900/30 dark:text-secondary-400',
   pendiente: 'bg-amber-50 text-warning dark:bg-amber-900/30 dark:text-amber-400',
   fallida: 'bg-red-50 text-danger dark:bg-red-900/30 dark:text-red-400',
 };
 
 const ICONO_ESTADO: Record<EstadoNotificacion, typeof Check> = {
   enviada: Check,
+  entregada: CheckCheck,
   pendiente: Clock,
   fallida: X,
 };
@@ -123,6 +126,10 @@ export default function NotificacionesPage() {
               </span>
             </div>
           </div>
+          <p className="mt-3 flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            {t('notificaciones.ayudaDominioSinVerificar')}
+          </p>
         </div>
 
         {/* Historial */}
@@ -179,6 +186,23 @@ export default function NotificacionesPage() {
                             <IconoEstado className="h-3 w-3" aria-hidden="true" />
                             {t(CLAVE_I18N_ESTADO[n.estado])}
                           </span>
+                          {/* Categoría del motivo, traducida. El texto crudo del proveedor
+                              nunca llega al navegador (puede traer datos de terceros). */}
+                          {/* También en enviada/entregada: el webhook de Resend puede
+                              traer una demora o una queja de spam. */}
+                          {n.ultimoError && (
+                            <p className="mt-1 max-w-xs text-xs text-slate-500 dark:text-slate-400">
+                              {n.reintentos > 0 && (
+                                <>{t('notificaciones.intentos', { n: n.reintentos })} · </>
+                              )}
+                              {t('notificaciones.motivo')}{' '}
+                              <span className="text-slate-600 dark:text-slate-300">
+                                {t(`notificaciones.motivos.${n.ultimoError}`, {
+                                  defaultValue: t('notificaciones.motivos.RECHAZADO_POR_PROVEEDOR'),
+                                })}
+                              </span>
+                            </p>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
                           {formatearFechaHora(n.enviadoEn ?? n.programadoPara, i18n.language)}

@@ -1,11 +1,16 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { Not } from 'typeorm';
-import { InjectTenantRepository, TenantScopedRepository } from '../../common/tenant';
+import { DataSource, Not } from 'typeorm';
+import {
+  InjectTenantRepository,
+  TenantContextService,
+  TenantScopedRepository,
+} from '../../common/tenant';
 import { PaginatedResult, PaginationQueryDto } from '../../common/pagination';
 import { RolUsuario, Usuario } from '../../database/entities';
 import { CrearUsuarioDto } from './dto/crear-usuario.dto';
 import { ActualizarUsuarioDto } from './dto/actualizar-usuario.dto';
+import { LimitesPlanService } from '../suscripciones/limites-plan.service';
 
 interface UsuarioPublico {
   idUsuario: string;
@@ -27,21 +32,35 @@ export class UsuariosService {
 
   constructor(
     @InjectTenantRepository(Usuario) private readonly usuarioRepo: TenantScopedRepository<Usuario>,
+    private readonly dataSource: DataSource,
+    private readonly tenantContext: TenantContextService,
+    private readonly limitesPlan: LimitesPlanService,
   ) {}
 
+  /**
+   * Límite del Plan Gratis + INSERT en una sola transacción (ver
+   * `LimitesPlanService.asegurarDentroDelLimite()`); el hash de bcrypt va
+   * ANTES, fuera de la transacción, para no retener el lock mientras
+   * calcula.
+   */
   async crear(dto: CrearUsuarioDto): Promise<UsuarioPublico> {
     const contrasenaHash = await bcrypt.hash(dto.contrasena, BCRYPT_ROUNDS);
+    const idNegocio = this.tenantContext.idNegocio;
     try {
-      const usuario = await this.usuarioRepo.save(
-        this.usuarioRepo.create({
-          nombreCompleto: dto.nombreCompleto,
-          correoElectronico: dto.correoElectronico,
-          contrasenaHash,
-          rol: dto.rol,
-          telefono: dto.telefono,
-          activo: true,
-        }),
-      );
+      const usuario = await this.dataSource.transaction(async (manager) => {
+        await this.limitesPlan.asegurarDentroDelLimite(manager, 'usuarios', idNegocio);
+        return manager.save(
+          manager.create(Usuario, {
+            idNegocio,
+            nombreCompleto: dto.nombreCompleto,
+            correoElectronico: dto.correoElectronico,
+            contrasenaHash,
+            rol: dto.rol,
+            telefono: dto.telefono,
+            activo: true,
+          }),
+        );
+      });
       this.logger.log(`Usuario ${usuario.idUsuario} creado con rol ${usuario.rol}`);
       return this.aPublico(usuario);
     } catch (err) {

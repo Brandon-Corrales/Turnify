@@ -1,5 +1,5 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
+import { Test, type TestingModuleBuilder } from '@nestjs/testing';
 import { I18nService } from 'nestjs-i18n';
 import { AppModule } from '../app.module';
 import { AllExceptionsFilter } from '../common/errors/all-exceptions.filter';
@@ -16,9 +16,13 @@ import { validationExceptionFactory } from '../common/errors/validation-exceptio
  * haría un cliente real. Sin `app.listen()` — supertest habla
  * directamente con `app.getHttpServer()`, no hace falta un puerto real.
  */
-export async function bootstrapIntegrationApp(): Promise<INestApplication> {
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
-  const app = moduleRef.createNestApplication();
+export async function bootstrapIntegrationApp(
+  /** Opcional: reemplazar un proveedor externo (ej. Resend) por un doble de prueba. */
+  ajustar: (builder: TestingModuleBuilder) => TestingModuleBuilder = (b) => b,
+): Promise<INestApplication> {
+  const moduleRef = await ajustar(Test.createTestingModule({ imports: [AppModule] })).compile();
+  // rawBody: igual que main.ts (los webhooks verifican la firma sobre el body crudo).
+  const app = moduleRef.createNestApplication({ rawBody: true });
 
   app.useGlobalPipes(
     new ValidationPipe({

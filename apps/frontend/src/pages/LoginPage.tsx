@@ -7,6 +7,7 @@ import { Boton, Input, useToast } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/lib/api';
 import { crearLoginSchema, type LoginFormValues } from '@/lib/validation';
+import { ESPACIO_INFERIOR_WIDGETS } from '@/components/layout/espacio-widgets';
 
 export default function LoginPage() {
   const { t } = useTranslation();
@@ -35,7 +36,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-900">
+    <div
+      className={`flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-900 ${ESPACIO_INFERIOR_WIDGETS}`}
+    >
       <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <h1 className="text-center text-2xl font-semibold text-primary-600 dark:text-primary-400">
           {t('comun.turnify')}

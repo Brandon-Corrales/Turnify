@@ -40,26 +40,24 @@ function crearLimitesPlanMock() {
       (recurso: string) =>
         ({ usuarios: 1, servicios: 3, reservas: 20, mensajesChatbot: 10 })[recurso]!,
     ),
+    errorLimiteAlcanzado: vi.fn(
+      (recurso: string) =>
+        new ForbiddenException({ errorCode: 'LIMITE_PLAN_ALCANZADO', message: recurso }),
+    ),
   };
-}
-
-function crearI18nMock() {
-  return { translate: vi.fn((_key: string, opts: any) => opts.defaultValue) };
 }
 
 describe('LimitePlanGratisGuard', () => {
   let limitesPlan: ReturnType<typeof crearLimitesPlanMock>;
-  let i18n: ReturnType<typeof crearI18nMock>;
 
   function crearGuard(recurso?: string) {
     const { reflector, contexto } = crearContextoHttpMock(recurso);
-    const guard = new LimitePlanGratisGuard(reflector, limitesPlan as any, i18n as any);
+    const guard = new LimitePlanGratisGuard(reflector, limitesPlan as any);
     return { guard, contexto, reflector };
   }
 
   beforeEach(() => {
     limitesPlan = crearLimitesPlanMock();
-    i18n = crearI18nMock();
   });
 
   it('permite el paso si el endpoint no tiene @LimitePlan(...)', async () => {
@@ -112,10 +110,7 @@ describe('LimitePlanGratisGuard', () => {
     await expect(guard.canActivate(contexto)).rejects.toMatchObject({
       response: { errorCode: 'LIMITE_PLAN_ALCANZADO' },
     });
-    expect(i18n.translate).toHaveBeenCalledWith(
-      'errores.LIMITE_PLAN_MENSAJES_CHATBOT',
-      expect.objectContaining({ defaultValue: expect.any(String) }),
-    );
+    expect(limitesPlan.errorLimiteAlcanzado).toHaveBeenCalledWith('mensajesChatbot', undefined);
   });
 
   it('lee el idNegocio de request.user en un contexto HTTP', async () => {
@@ -130,7 +125,7 @@ describe('LimitePlanGratisGuard', () => {
     limitesPlan.estaEnPlanGratis.mockResolvedValue(true);
     limitesPlan.contar.mockResolvedValue(0);
     const { reflector, contexto } = crearContextoWsMock('mensajesChatbot');
-    const guard = new LimitePlanGratisGuard(reflector, limitesPlan as any, i18n as any);
+    const guard = new LimitePlanGratisGuard(reflector, limitesPlan as any);
     await guard.canActivate(contexto);
     expect(limitesPlan.estaEnPlanGratis).toHaveBeenCalledWith(NEGOCIO_ID);
   });

@@ -20,6 +20,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ChatbotWidget } from '@/components/chat/ChatbotWidget';
 import { ControlesGlobales } from './ControlesGlobales';
 import { useSincronizacionTiempoReal } from '@/lib/tiempo-real';
+import { ESPACIO_INFERIOR_WIDGETS } from './espacio-widgets';
 
 /**
  * Barra superior de las pantallas autenticadas. El grupo de controles
@@ -118,7 +119,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <div className="space-y-4 border-t border-white/10 p-4">
             <ControlesGlobales />
             <div className="flex items-center justify-between gap-3">
-              <span className="min-w-0 truncate text-sm text-slate-300">{usuario?.nombreCompleto}</span>
+              <span className="min-w-0 truncate text-sm text-slate-300">
+                {usuario?.nombreCompleto}
+              </span>
               <button
                 type="button"
                 onClick={alCerrarSesion}
@@ -147,7 +150,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <ControlesGlobales />
         </header>
 
-        <main className="min-w-0 lg:ml-64">{children}</main>
+        <main className={`min-w-0 lg:ml-64 ${ESPACIO_INFERIOR_WIDGETS}`}>{children}</main>
         <ChatbotWidget />
       </div>
     );
@@ -237,7 +240,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </button>
         </div>
       </header>
-      <main>{children}</main>
+      <main className={ESPACIO_INFERIOR_WIDGETS}>{children}</main>
       <ChatbotWidget />
     </div>
   );

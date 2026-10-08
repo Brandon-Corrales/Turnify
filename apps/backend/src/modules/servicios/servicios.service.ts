@@ -1,9 +1,15 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { InjectTenantRepository, TenantScopedRepository } from '../../common/tenant';
+import { DataSource } from 'typeorm';
+import {
+  InjectTenantRepository,
+  TenantContextService,
+  TenantScopedRepository,
+} from '../../common/tenant';
 import { PaginatedResult, PaginationQueryDto } from '../../common/pagination';
 import { Servicio } from '../../database/entities';
 import { CrearServicioDto } from './dto/crear-servicio.dto';
 import { ActualizarServicioDto } from './dto/actualizar-servicio.dto';
+import { LimitesPlanService } from '../suscripciones/limites-plan.service';
 
 @Injectable()
 export class ServiciosService {
@@ -12,12 +18,25 @@ export class ServiciosService {
   constructor(
     @InjectTenantRepository(Servicio)
     private readonly servicioRepo: TenantScopedRepository<Servicio>,
+    private readonly dataSource: DataSource,
+    private readonly tenantContext: TenantContextService,
+    private readonly limitesPlan: LimitesPlanService,
   ) {}
 
+  /**
+   * Transacción propia (y no `servicioRepo.save`) para que el chequeo del
+   * límite del Plan Gratis y el INSERT sean atómicos — ver
+   * `LimitesPlanService.asegurarDentroDelLimite()`. Por eso aquí se pone
+   * `idNegocio` a mano, igual que ReservasService.crear().
+   */
   async crear(dto: CrearServicioDto): Promise<Servicio> {
-    const servicio = await this.servicioRepo.save(
-      this.servicioRepo.create({ ...dto, precio: dto.precio.toFixed(2) }),
-    );
+    const idNegocio = this.tenantContext.idNegocio;
+    const servicio = await this.dataSource.transaction(async (manager) => {
+      await this.limitesPlan.asegurarDentroDelLimite(manager, 'servicios', idNegocio);
+      return manager.save(
+        manager.create(Servicio, { ...dto, precio: dto.precio.toFixed(2), idNegocio }),
+      );
+    });
     this.logger.log(`Servicio ${servicio.idServicio} creado`);
     return servicio;
   }

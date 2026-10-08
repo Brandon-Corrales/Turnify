@@ -31,13 +31,29 @@ function crearTenantRepoMock() {
   };
 }
 
+function crearManagerMock() {
+  return {
+    create: vi.fn((_entidad: unknown, data: object) => data),
+    save: vi.fn((entity: object) => Promise.resolve({ idUsuario: 'usuario-nuevo', ...entity })),
+  };
+}
+
 describe('UsuariosService', () => {
   let repoMock: ReturnType<typeof crearTenantRepoMock>;
+  let managerMock: ReturnType<typeof crearManagerMock>;
+  let limitesPlan: { asegurarDentroDelLimite: ReturnType<typeof vi.fn> };
   let service: UsuariosService;
 
   beforeEach(() => {
     repoMock = crearTenantRepoMock();
-    service = new UsuariosService(repoMock as any);
+    managerMock = crearManagerMock();
+    limitesPlan = { asegurarDentroDelLimite: vi.fn().mockResolvedValue(undefined) };
+    service = new UsuariosService(
+      repoMock as any,
+      { transaction: (cb: (m: unknown) => unknown) => cb(managerMock) } as any,
+      { idNegocio: 'negocio-1' } as any,
+      limitesPlan as any,
+    );
   });
 
   it('crear() hashea la contraseña y nunca la devuelve en la respuesta pública', async () => {
@@ -47,14 +63,19 @@ describe('UsuariosService', () => {
       contrasena: 'Turnify123',
       rol: RolUsuario.EMPLEADO,
     });
-    expect(repoMock.save).toHaveBeenCalled();
-    const entidadCreada = (repoMock.save as any).mock.calls[0][0];
+    expect(limitesPlan.asegurarDentroDelLimite).toHaveBeenCalledWith(
+      managerMock,
+      'usuarios',
+      'negocio-1',
+    );
+    expect(managerMock.save).toHaveBeenCalled();
+    const entidadCreada = (managerMock.save as any).mock.calls[0][0];
     expect(entidadCreada.contrasenaHash).not.toBe('Turnify123');
     expect(resultado).not.toHaveProperty('contrasenaHash');
   });
 
   it('crear() traduce una violación de unicidad en EMAIL_YA_REGISTRADO', async () => {
-    (repoMock.save as any).mockRejectedValue({ code: '23505' });
+    (managerMock.save as any).mockRejectedValue({ code: '23505' });
     await expect(
       service.crear({
         nombreCompleto: 'Dup',

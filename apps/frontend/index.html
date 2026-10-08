@@ -1,6 +1,23 @@
 <!doctype html>
 <html lang="es">
   <head>
+    <!-- Widget de accesibilidad UserWay (requisito del docente, Seguimiento #3).
+         Va como PRIMERA entrada del <head>, como indica UserWay. No se monta
+         desde JSX: verificado en navegador real que React 19 inserta un
+         <script> renderizado en el cliente sin ejecutarlo, y el widget nunca
+         carga. El data-account no es un secreto (es visible en cualquier
+         página que use el widget), por eso no va en variables de entorno.
+         data-position="4" (abajo al centro), elegido tras medirlo en navegador
+         real: la esquina por defecto (arriba a la derecha) cae sobre los
+         controles de tema/idioma del header en mobile y sobre los toasts;
+         abajo a la derecha está el chatbot; abajo a la izquierda, los
+         controles del sidebar del admin; y al centro-derecha tapaba el borde
+         de inputs y tarjetas en mobile (ej. Contraseña en Login). -->
+    <script
+      src="https://cdn.userway.org/widget.js"
+      data-account="f0W3dnHKyc"
+      data-position="4"
+    ></script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -16,6 +33,21 @@
             ? guardado === 'oscuro'
             : window.matchMedia('(prefers-color-scheme: dark)').matches;
           document.documentElement.classList.toggle('dark', oscuro);
+        } catch (e) {}
+      })();
+      // <html lang> con el idioma elegido ANTES de que UserWay se
+      // inicialice: su app carga async y solo lee `lang` al arrancar, así
+      // que no puede esperar a que React (módulo diferido) lo corrija.
+      // Mismo criterio que src/i18n/config.ts: preferencia guardada
+      // (turnify_idioma) y si no hay, idioma del navegador; español por
+      // defecto.
+      (function () {
+        try {
+          var idioma = localStorage.getItem('turnify_idioma');
+          if (idioma !== 'es' && idioma !== 'en') {
+            idioma = /^en\b/i.test(navigator.language) ? 'en' : 'es';
+          }
+          document.documentElement.lang = idioma;
         } catch (e) {}
       })();
     </script>

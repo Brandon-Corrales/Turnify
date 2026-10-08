@@ -33,6 +33,10 @@ const envSchema = z.object({
   // WhatsApp Cloud API, además, es de prueba y expira en 24h).
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM_EMAIL: z.string().default('onboarding@resend.dev'),
+  // Signing secret del webhook de Resend (empieza con "whsec_"; se copia
+  // del dashboard de Resend al registrar el endpoint). Sin él,
+  // POST /webhooks/resend responde 503 y no procesa nada.
+  RESEND_WEBHOOK_SECRET: z.string().optional(),
   WHATSAPP_ACCESS_TOKEN: z.string().optional(),
   WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
 

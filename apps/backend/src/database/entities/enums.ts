@@ -45,6 +45,8 @@ export enum CanalNotificacion {
 export enum EstadoNotificacion {
   PENDIENTE = 'pendiente',
   ENVIADA = 'enviada',
+  /** El proveedor confirmó la entrega al servidor del destinatario (webhook de Resend). */
+  ENTREGADA = 'entregada',
   FALLIDA = 'fallida',
 }
 

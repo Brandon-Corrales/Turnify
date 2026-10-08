@@ -10,6 +10,7 @@ describe('LimitesPlanService', () => {
   let servicioRepo: { count: ReturnType<typeof vi.fn> };
   let reservaRepo: { count: ReturnType<typeof vi.fn> };
   let mensajeChatbotRepo: { count: ReturnType<typeof vi.fn> };
+  let i18n: { translate: ReturnType<typeof vi.fn> };
   let service: LimitesPlanService;
 
   beforeEach(() => {
@@ -18,13 +19,61 @@ describe('LimitesPlanService', () => {
     servicioRepo = { count: vi.fn() };
     reservaRepo = { count: vi.fn() };
     mensajeChatbotRepo = { count: vi.fn() };
+    i18n = { translate: vi.fn((_clave: string, opts: any) => opts.defaultValue) };
     service = new LimitesPlanService(
       negocioRepo as any,
       usuarioRepo as any,
       servicioRepo as any,
       reservaRepo as any,
       mensajeChatbotRepo as any,
+      i18n as any,
     );
+  });
+
+  describe('asegurarDentroDelLimite() — chequeo atómico dentro de la transacción', () => {
+    function crearManagerMock(plan: PlanSuscripcion, conteo: number) {
+      const llamadas: string[] = [];
+      const manager = {
+        query: vi.fn(async (sql: string) => {
+          llamadas.push(sql.includes('pg_advisory_xact_lock') ? 'lock' : sql);
+        }),
+        getRepository: vi.fn(() => ({
+          findOne: vi.fn(async () => ({ planSuscripcion: plan })),
+          count: vi.fn(async () => {
+            llamadas.push('count');
+            return conteo;
+          }),
+        })),
+      };
+      return { manager, llamadas };
+    }
+
+    it('toma el advisory lock por (recurso, negocio) ANTES de contar', async () => {
+      const { manager, llamadas } = crearManagerMock(PlanSuscripcion.GRATIS, 2);
+      await service.asegurarDentroDelLimite(manager as any, 'servicios', NEGOCIO_ID);
+      expect(manager.query).toHaveBeenCalledWith('SELECT pg_advisory_xact_lock(hashtext($1))', [
+        `limite-plan:servicios:${NEGOCIO_ID}`,
+      ]);
+      expect(llamadas).toEqual(['lock', 'count']);
+    });
+
+    it('lanza LIMITE_PLAN_ALCANZADO con el mensaje traducido del recurso', async () => {
+      const { manager } = crearManagerMock(PlanSuscripcion.GRATIS, 3);
+      await expect(
+        service.asegurarDentroDelLimite(manager as any, 'servicios', NEGOCIO_ID),
+      ).rejects.toMatchObject({ response: { errorCode: 'LIMITE_PLAN_ALCANZADO' } });
+      expect(i18n.translate).toHaveBeenCalledWith(
+        'errores.LIMITE_PLAN_SERVICIOS',
+        expect.objectContaining({ defaultValue: expect.any(String) }),
+      );
+    });
+
+    it('en un plan de pago no toma lock ni cuenta', async () => {
+      const { manager, llamadas } = crearManagerMock(PlanSuscripcion.BASICO, 99);
+      await service.asegurarDentroDelLimite(manager as any, 'usuarios', NEGOCIO_ID);
+      expect(manager.query).not.toHaveBeenCalled();
+      expect(llamadas).toEqual([]);
+    });
   });
 
   it('estaEnPlanGratis() es true cuando el negocio tiene plan gratis', async () => {
