@@ -2924,6 +2924,63 @@ código lo actualizaba (ningún uso de `documentElement.lang` ni listener de
   fallaban por timeout), así que el idioma del menú se confirmó por la URL
   del iframe que carga UserWay (`/es/` vs `/en/`), no con una captura.
 
+### Bug 4 — El chatbot inventaba funciones y mostraba `**` sin formato ✅
+**Causa (confirmada):**
+- (a) `base-conocimiento.ts` describía Turnify a grandes rasgos, sin un
+  inventario de lo que existe ni una regla contra suponer funciones.
+  Incluso nombraba una sección "Disponibilidad" que en la interfaz vive
+  dentro de Configuración. El modelo rellenaba con lo típico de otras
+  apps ("Marcar todas como leídas", "Configuración > Notificaciones").
+- (b) `ChatbotWidget` pintaba el texto tal cual (`whitespace-pre-wrap`),
+  así que el Markdown del modelo se veía crudo.
+
+**Solución:**
+- (a) Base de conocimiento reescrita con un **inventario exhaustivo**
+  tomado del código, no de suposiciones: rutas de `App.tsx`, acciones de
+  cada página (claves i18n y botones), el worker de notificaciones
+  (reintentos = 3, recordatorio 24 h) y docs/spec.md. Se revisó contra el
+  código cada detalle dudoso: el filtro de Reservas incluye "ausente", el
+  detalle del Calendario solo permite cancelar, y Reportes sí muestra
+  ingresos estimados. Incluye el significado de los estados de
+  notificación, una lista de cosas que NO existen (confirmadas ausentes:
+  marcar leídas, configurar la anticipación del recordatorio, gestionar
+  empleados desde la UI —solo hay API—, bloquear fechas o vacaciones,
+  marcar "ausente" desde la UI) y reglas: describir solo lo del
+  inventario, decir "Turnify no tiene esa función" y ofrecer la
+  alternativa real; formato limitado a negritas y listas.
+- (b) `lib/markdown-basico.ts` (parser a una estructura de datos: negrita,
+  cursiva, listas con viñetas o numeradas, párrafos) +
+  `components/chat/MarkdownBasico.tsx` (la pinta con elementos de React).
+  **Seguro por construcción:** nunca se interpreta HTML, todo el texto
+  pasa por el escape de React, sin `dangerouslySetInnerHTML` ni
+  sanitizador. Se eligió esto en vez de `react-markdown` porque solo hace
+  falta lo que el prompt permite, sin agregar una dependencia grande.
+  Tolera Markdown a medias durante el streaming (un `**` sin cerrar se ve
+  como texto hasta que llega el cierre). Solo se aplica a las respuestas
+  del asistente; lo que escribe la persona se muestra tal cual.
+- 10 tests unitarios del parser (negrita, cursiva, `2 * 3 * 4` no es
+  cursiva, `**` sin cerrar, HTML queda como texto, listas, encabezados).
+
+**Verificación contra Groq real** (widget en Chrome, negocio de prueba,
+servidor con el prompt nuevo confirmado en `dist`):
+1. "¿Cómo marco todas las notificaciones como leídas?" → "Turnify no tiene
+   esa función. En la pantalla de **Notificaciones** solo puedes consultar
+   el historial…" (antes inventaba el botón).
+2. Algo que NO está en la lista de ejemplos, para ver si generaliza:
+   "¿Dónde activo que mis clientes paguen la reserva por adelantado…?" →
+   "Turnify no ofrece la posibilidad de cobrar por adelantado a través del
+   link público…".
+3. Función real: "Dame los pasos para que un día deje de recibir
+   reservas" → pasos correctos (Configuración → horario laboral →
+   desmarcar el día). Se pinta como `<ol>` de 4 ítems con `<strong>`.
+   Detalle menor: el paso 4 dice "Guarda el cambio" aunque aclara que se
+   guarda solo.
+- En las 3 respuestas: 0 asteriscos literales en el texto visible,
+  confirmado también con captura de pantalla.
+- Límite honesto: son 3 preguntas a un LLM, no una garantía. El prompt
+  reduce la invención, pero el modelo puede equivocarse con preguntas que
+  no se probaron.
+
 ## Cómo continuar si se corta la sesión
 Ver reglas de commit/pausa en el prompt original de arquitectura (punto 18
 del brief del equipo). Resumen: terminar hasta que compile, commitear con

@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, Bot, Loader2, Send, Sparkles, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useChatbotSocket, type MensajeChat } from '@/lib/chatbot-socket';
+import { MarkdownBasico } from './MarkdownBasico';
 
 const ETIQUETA_PANTALLA: Record<string, string> = {
   '/': 'Dashboard',
@@ -42,13 +43,21 @@ function BurbujaMensaje({
     <div className={cn('flex', esUsuario ? 'justify-end' : 'justify-start')}>
       <div
         className={cn(
-          'max-w-[85%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap',
+          'max-w-[85%] rounded-2xl px-3 py-2 text-sm',
           esUsuario
-            ? 'rounded-br-sm bg-primary-600 text-white'
+            ? 'rounded-br-sm bg-primary-600 whitespace-pre-wrap text-white'
             : 'rounded-bl-sm bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-100',
         )}
       >
-        {mensaje.texto || (mensaje.enProgreso ? textoPensando : '')}
+        {/* Solo las respuestas del asistente llevan formato (negritas y
+            listas); lo que escribe la persona se muestra tal cual. */}
+        {esUsuario ? (
+          mensaje.texto
+        ) : mensaje.texto ? (
+          <MarkdownBasico texto={mensaje.texto} />
+        ) : (
+          mensaje.enProgreso && textoPensando
+        )}
         {mensaje.enProgreso && (
           <span className="ml-0.5 inline-block h-3 w-1.5 animate-pulse bg-current align-middle" />
         )}
