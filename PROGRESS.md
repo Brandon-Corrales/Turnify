@@ -2981,15 +2981,25 @@ servidor con el prompt nuevo confirmado en `dist`):
   reduce la invención, pero el modelo puede equivocarse con preguntas que
   no se probaron.
 
+### Resultados de la verificación final (después de los 4 commits)
+| | Backend | Frontend |
+|---|---|---|
+| Tests | `npm test`: **222/222** (33 archivos, incluye integración contra la BD real) | `npm test`: **16/16** (2 archivos, nuevos) · `test:e2e` (Playwright, wizard público): **1/1** |
+| Lint | 0 errores, 45 warnings: todas existían antes; en los archivos tocados, mismo conteo antes y después | 0 errores, 2 warnings (ya existían, `AuthContext.tsx`) |
+| Typecheck / build | `tsc --noEmit` y `nest build` OK | `tsc -b` + `vite build` OK |
+
+docs/spec.md: nota en el punto 5 (Implementación) sobre el chequeo atómico
+de límites; el guard ya no es la única barrera. Ningún otro punto
+documentado cambió.
+
 ## Cómo continuar si se corta la sesión
 Ver reglas de commit/pausa en el prompt original de arquitectura (punto 18
 del brief del equipo). Resumen: terminar hasta que compile, commitear con
 mensaje honesto, actualizar este archivo, nunca reiniciar un módulo con
 avance ya commiteado.
 
-**Primera tarea a retomar la próxima sesión**: las 3 tarjetas del
-Seguimiento #3 están cerradas. Lo siguiente es decidir con el equipo cuáles
-de los 4 bugs de la prueba de humo se arreglan (ver "QA: Prueba de humo
-completa del flujo de demo en local" arriba). El más serio es el 1: el
-límite del Plan Gratis se salta con requests concurrentes. Ningún fix se
-empezó.
+**Primera tarea a retomar la próxima sesión**: los 4 bugs de la prueba
+de humo del Seguimiento #3 están corregidos y verificados (ver "Corrección
+de los 4 bugs" arriba). Pendiente del equipo: push y Pull Request de
+`feature/inicial`. Lo siguiente son las fricciones de uso de la prueba de
+humo, que todavía no se tocaron.

@@ -224,6 +224,15 @@ tiene ese canal habilitado.
   servicio. Al alcanzar un límite, responde con el formato estándar de
   error del punto 8 (ej: `errorCode: "LIMITE_PLAN_ALCANZADO"` o
   `errorCode: "PRIVILEGIO_CLIENTE_NO_DISPONIBLE"`).
+  - Nota de implementación (corrección del Seguimiento #3): para los
+    límites que crean filas (servicios, usuarios, reservas), el guard
+    solo es un primer filtro rápido. Corre antes del handler y en otra
+    conexión, así que requests paralelas podían pasarlo todas a la vez.
+    La garantía real es un chequeo atómico central
+    (`LimitesPlanService.asegurarDentroDelLimite`) que el service invoca
+    dentro de la misma transacción del INSERT, con un advisory lock por
+    negocio. La lógica sigue escrita una sola vez; cada service solo la
+    llama.
 - Frontend: cuando una acción quede bloqueada por cualquiera de los dos
   estados, usa el mismo componente de Alert/Modal del punto 8 con un mensaje
   claro de por qué se bloqueó — nunca un botón deshabilitado sin
