@@ -3202,6 +3202,37 @@ apertura, `scale(0.95)`, queda congelada en la pestaña oculta de la
 herramienta). Sin scroll horizontal. Captura en modo oscuro: el botón de
 cerrar en la esquina inferior derecha en ambos anchos.
 
+### Punto 7 — El botón de UserWay tapaba la última fila del calendario ✅
+**Estado previo (medido, no supuesto):** en escritorio (1280×720), con
+scroll hasta el final, UserWay quedaba encima de una celda de la última
+fila del calendario mensual. Ninguna pantalla tenía espacio inferior
+reservado para los botones flotantes.
+**Solución:** una sola constante `ESPACIO_INFERIOR_WIDGETS` (`pb-24` = 96
+px; `components/layout/espacio-widgets.ts`) que cubre el área de UserWay
+(~60 px) y del botón del chatbot (hasta 80 px). Se aplica al `<main>` de
+`AppLayout` (todas las pantallas del panel: Calendario, Clientes,
+Servicios, Reservas, Notificaciones, Reportes, Configuración, Suscripción,
+Inicio), a Landing, Login, Registro, Onboarding y al wizard público.
+(En `AppLayout`, Prettier además reacomodó una línea existente que
+excedía el ancho; es solo formato.)
+**Verificación en Chrome real** (iframes 1280×720 y 390×844, con UserWay
+presente, datos largos creados a propósito: 16 clientes y 11 reservas en
+el negocio de prueba). Se midió la distancia entre el final del
+contenido y el borde superior de UserWay con scroll al máximo, más los
+elementos que se superponen:
+- Escritorio: Calendario +78 px (antes tapaba una celda), Clientes +68 px.
+- 390 px: Clientes +68, Reservas +85, Notificaciones +90, Reportes +96,
+  Configuración +85; Landing +36 (sin sesión, también en escritorio).
+- Wizard público en 390 px, paso 2 con 18 horarios: botón "Siguiente"
+  +112 px.
+- Ningún elemento tapado en ninguna medición.
+- Nota de proceso: a mitad de la medición la sesión se cerró sola. Varios
+  iframes con la misma sesión refrescaron el token al mismo tiempo y la
+  detección de reuso de refresh token del backend (comportamiento de
+  seguridad correcto) revocó la sesión. Se volvió a iniciar sesión, se
+  repitieron las mediciones con un iframe a la vez y se valida que cada
+  iframe esté en la ruta pedida.
+
 ## Cómo continuar si se corta la sesión
 Ver reglas de commit/pausa en el prompt original de arquitectura (punto 18
 del brief del equipo). Resumen: terminar hasta que compile, commitear con

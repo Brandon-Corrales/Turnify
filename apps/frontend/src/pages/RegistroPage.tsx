@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/lib/api';
 import { crearRegistroSchema, type RegistroFormValues } from '@/lib/validation';
 import { crearEtiquetaTipoNegocio, TIPOS_NEGOCIO } from '@/lib/tipo-negocio';
+import { ESPACIO_INFERIOR_WIDGETS } from '@/components/layout/espacio-widgets';
 
 export default function RegistroPage() {
   const { t } = useTranslation();
@@ -48,7 +49,9 @@ export default function RegistroPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10 dark:bg-slate-900">
+    <div
+      className={`flex min-h-screen items-center justify-center bg-slate-50 px-4 pt-10 dark:bg-slate-900 ${ESPACIO_INFERIOR_WIDGETS}`}
+    >
       <div className="w-full max-w-lg rounded-xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <h1 className="text-center text-2xl font-semibold text-primary-600 dark:text-primary-400">
           {t('comun.turnify')}

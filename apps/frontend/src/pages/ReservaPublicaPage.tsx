@@ -15,6 +15,7 @@ import {
   type DatosClientePublicoFormValues,
 } from '@/lib/validation';
 import { hoyEnZonaNegocio } from '@/lib/fecha-negocio';
+import { ESPACIO_INFERIOR_WIDGETS } from '@/components/layout/espacio-widgets';
 
 function formatearHoraCR(iso: string, idioma: string): string {
   return new Date(iso).toLocaleTimeString(idioma.startsWith('en') ? 'en-US' : 'es-CR', {
@@ -153,7 +154,7 @@ export default function ReservaPublicaPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className={`min-h-screen bg-slate-50 dark:bg-slate-900 ${ESPACIO_INFERIOR_WIDGETS}`}>
       <header className="border-b border-slate-200 bg-white px-4 py-4 dark:border-slate-700 dark:bg-slate-800">
         <div className="mx-auto max-w-2xl">
           <p className="text-xs font-medium text-primary-600 dark:text-primary-400">
