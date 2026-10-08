@@ -3277,12 +3277,25 @@ se hace en Chrome real, usando el frontend.
   salir "enviada"), Reportes, idioma y tema en vivo. Después, negocios 2, 3
   y 4 (sin crear). Las credenciales están en el scratchpad de la sesión
   (`creds-frente3.txt`), no en el repo.
-- **Hallazgos del Frente 3 hasta ahora (NO corregidos, para el tablero):**
-  1. Calendario (ES, escritorio): una reserva cancelada sigue mostrando el
-     texto "Cita programada"; solo se distingue por el color gris y la
-     opacidad (el "(cancelada)" está solo en el tooltip). Reproducir:
-     cancelar una reserva desde su detalle y mirar la vista Semana.
-     Accesibilidad: distinción solo por color (WCAG 1.4.1).
+- **Hallazgos del Frente 3** (A y B se corrigen por pedido explícito; el
+  resto solo se registra para el tablero):
+  1. **(A, corregido ✅)** Calendario: una reserva cancelada seguía
+     diciendo "Cita programada" y se distinguía solo por color (WCAG
+     1.4.1). Ahora dice "Cancelada"/"Cancelled", lleva el ícono `Ban` y la
+     hora tachada, y el `aria-label` del evento incluye el estado ("08:00
+     · Cancelada · Tom Becker · Corte a máquina (fade) (cancelada)").
+     Verificado en Chrome, vista Semana, ES y EN (las activas siguen "Cita
+     programada"/"Scheduled appointment"), con capturas.
+  3. **(nuevo, NO corregido)** Calendario (ES/EN, escritorio), tras
+     arrastrar una reserva: el bloque queda en el día/hora nuevos pero
+     sigue mostrando la hora VIEJA (ej. "08:00" en la franja de las 11:00)
+     hasta recargar la página. Reproducir: Calendario → Semana → arrastrar
+     una cita a otra hora → toast "Reserva reprogramada", la etiqueta
+     conserva la hora anterior. Causa probable: `renderizarEvento` usa
+     `reserva.fechaHoraInicio` de los datos ya cargados y el arrastre llama
+     a `reservasApi.reprogramar` fuera de un `useMutation`, así que nada
+     invalida la query. El dato en el servidor sí queda bien (verificado en
+     Reservas: 15 oct 11:00).
   2. Calendario → Nueva reserva (ES): al llegar al límite de 20 reservas
      del mes, el error sale solo como toast. En Servicios el mismo tipo de
      límite se muestra además como banner dentro del modal. Inconsistencia

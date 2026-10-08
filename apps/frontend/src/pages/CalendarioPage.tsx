@@ -11,7 +11,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { UserPlus } from 'lucide-react';
+import { Ban, UserPlus } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Boton, ConfirmDialog, Input, Modal, Select, useToast } from '@/components/ui';
 import { crearEtiquetaEstadoReserva, reservasApi, type Reserva } from '@/lib/reservas-api';
@@ -202,11 +202,18 @@ export default function CalendarioPage() {
       // navegador) para la hora GUARDADA de la reserva — mismo tipo de
       // inconsistencia ya corregida en el modal de detalle, ahora también acá.
       const horaInicio = formatearHoraCR(new Date(reserva.fechaHoraInicio));
-      // La celda muestra solo "hora + Cita programada" (diseño de la vista
-      // interna del calendario); el detalle "Cliente · Servicio" que trae
+      // La celda muestra "hora + estado" (diseño de la vista interna del
+      // calendario); el detalle "Cliente · Servicio" que trae
       // info.event.title queda como tooltip nativo y en el modal de detalle.
+      // Una cancelada NO se distingue solo por color (WCAG 1.4.1): dice
+      // "Cancelada", lleva ícono y la hora tachada, y el texto accesible
+      // (aria-label) trae el estado real.
+      const textoEstado = cancelada
+        ? etiquetaEstadoReserva.cancelada
+        : t('calendario.citaProgramada');
       return (
         <div
+          aria-label={`${horaInicio} · ${textoEstado} · ${info.event.title}`}
           className={`flex min-w-0 items-center gap-1.5 rounded-md border-l-2 px-2 py-1 text-xs leading-5 ${
             cancelada
               ? 'bg-slate-100 text-slate-600 dark:bg-slate-700/70 dark:text-slate-300'
@@ -219,12 +226,15 @@ export default function CalendarioPage() {
           }}
           title={info.event.title}
         >
-          <span className="shrink-0 font-semibold">{horaInicio}</span>
-          <span className="min-w-0 truncate">{t('calendario.citaProgramada')}</span>
+          {cancelada && <Ban className="h-3 w-3 shrink-0" aria-hidden="true" />}
+          <span className={`shrink-0 font-semibold ${cancelada ? 'line-through' : ''}`}>
+            {horaInicio}
+          </span>
+          <span className="min-w-0 truncate">{textoEstado}</span>
         </div>
       );
     },
-    [t],
+    [t, etiquetaEstadoReserva],
   );
 
   const eventos = useMemo(
