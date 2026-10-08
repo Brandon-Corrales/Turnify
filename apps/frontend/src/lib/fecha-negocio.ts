@@ -21,3 +21,17 @@ export function hoyEnZonaNegocio(ahora: Date = new Date()): string {
   const valor = (tipo: Intl.DateTimeFormatPartTypes) => partes.find((p) => p.type === tipo)!.value;
   return `${valor('year')}-${valor('month')}-${valor('day')}`;
 }
+
+/**
+ * Mes y año en el idioma de la interfaz y en la zona del negocio, tal como
+ * los da Intl: "octubre de 2026" / "October 2026". Se usa dentro de una
+ * frase ("Resumen de octubre de 2026"), así que NO se capitaliza cada
+ * palabra: en español el mes y "de" van en minúscula.
+ */
+export function mesYAnioEnZonaNegocio(idioma: string, fecha: Date = new Date()): string {
+  return fecha.toLocaleDateString(idioma.startsWith('en') ? 'en-US' : 'es-CR', {
+    timeZone: ZONA_HORARIA_NEGOCIO,
+    month: 'long',
+    year: 'numeric',
+  });
+}

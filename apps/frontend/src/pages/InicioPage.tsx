@@ -8,6 +8,7 @@ import { Banner, Boton } from '@/components/ui';
 import { Skeleton, SkeletonCard } from '@/components/ui/Skeleton';
 import { useAuth } from '@/context/AuthContext';
 import { disponibilidadApi } from '@/lib/disponibilidad-api';
+import { mesYAnioEnZonaNegocio } from '@/lib/fecha-negocio';
 import { negociosApi } from '@/lib/negocios-api';
 import { reportesApi, type ResumenReportes } from '@/lib/reportes-api';
 
@@ -115,13 +116,7 @@ export default function InicioPage() {
   const esPlanGratis = negocioQuery.data?.planSuscripcion === 'gratis';
   const resumen = resumenQuery.data;
   const total = resumen ? totalReservas(resumen.reservasPorEstado) : 0;
-  const nombreMes = new Date().toLocaleDateString(
-    i18n.language.startsWith('en') ? 'en-US' : 'es-CR',
-    {
-      month: 'long',
-      year: 'numeric',
-    },
-  );
+  const nombreMes = mesYAnioEnZonaNegocio(i18n.language);
 
   return (
     <AppLayout>
@@ -131,7 +126,7 @@ export default function InicioPage() {
             <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">
               {t('dashboard.hola', { nombre: usuario?.nombreCompleto?.split(' ')[0] })}
             </h1>
-            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400 capitalize">
+            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
               {t('dashboard.resumenDe', { mes: nombreMes })}
             </p>
           </div>

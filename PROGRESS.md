@@ -3130,6 +3130,19 @@ se crea con correo). Un correo repetido responde
    (sin duplicado).
 4. EN: "New client" / "Full name" / "Choose an existing client".
 
+### Punto 4 — Subtítulo del Dashboard con mayúsculas incorrectas ✅
+**Causa (confirmada):** el texto era correcto ("Resumen de" + `octubre de
+2026` de Intl), pero el `<p>` tenía la clase CSS `capitalize`, que pone en
+mayúscula la primera letra de CADA palabra ("Resumen De Octubre De 2026").
+**Solución:** sin `capitalize`. El mes se formatea con la nueva
+`mesYAnioEnZonaNegocio(idioma)` en `lib/fecha-negocio.ts` (zona del
+negocio, misma convención del bug 2). Inglés: "Summary for October 2026",
+el formato natural ya existente en `en.json`, sin cambios de texto.
+3 tests nuevos (minúsculas en ES, formato EN, mes de Costa Rica y no de UTC
+en el borde de fin de mes).
+**Verificación en Chrome real:** Dashboard → "Resumen de octubre de 2026"
+(`text-transform: none`); en EN → "Summary for October 2026".
+
 ## Cómo continuar si se corta la sesión
 Ver reglas de commit/pausa en el prompt original de arquitectura (punto 18
 del brief del equipo). Resumen: terminar hasta que compile, commitear con
