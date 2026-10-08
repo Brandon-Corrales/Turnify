@@ -3244,14 +3244,24 @@ elementos que se superponen:
   repitieron las mediciones con un iframe a la vez y se valida que cada
   iframe esté en la ruta pedida.
 
+### Resultados de la verificación final (después de los 8 commits del cierre)
+| | Backend | Frontend |
+|---|---|---|
+| Tests | `npm test`: **222/222** (33 archivos, incluye integración contra la BD real) | `npm test`: **24/24** (3 archivos) · `test:e2e` (Playwright, wizard público): **1/1** |
+| Lint | 0 errores, 45 warnings (los mismos de antes) | 0 errores, 2 warnings (los mismos de antes, `AuthContext.tsx`) |
+| Typecheck / build | `tsc --noEmit` y `nest build` OK | `tsc -b` + `vite build` OK |
+
+docs/spec.md: punto 1 (NOTIFICACION gana `ultimo_error`). Migración nueva
+aplicada: `1791426021912-NotificacionUltimoError`.
+
 ## Cómo continuar si se corta la sesión
 Ver reglas de commit/pausa en el prompt original de arquitectura (punto 18
 del brief del equipo). Resumen: terminar hasta que compile, commitear con
 mensaje honesto, actualizar este archivo, nunca reiniciar un módulo con
 avance ya commiteado.
 
-**Primera tarea a retomar la próxima sesión**: los 4 bugs de la prueba
-de humo del Seguimiento #3 están corregidos y verificados (ver "Corrección
-de los 4 bugs" arriba). Pendiente del equipo: push y Pull Request de
-`feature/inicial`. Lo siguiente son las fricciones de uso de la prueba de
-humo, que todavía no se tocaron.
+**Primera tarea a retomar la próxima sesión**: la lista "Bugs y
+observaciones — Seguimiento #3" quedó cerrada (7 puntos, ver arriba).
+Pendiente del equipo: push y Pull Request de `feature/inicial`, y decidir
+si el historial de Notificaciones debe seguir mostrando el texto literal
+de Resend, que incluye el correo dueño de la cuenta (ver punto 5).
