@@ -211,7 +211,7 @@ export class NotificacionesService {
     if (resultado.exito) {
       await this.notificacionRepo.update(
         { idNotificacion: notificacion.idNotificacion },
-        { estado: EstadoNotificacion.ENVIADA, enviadoEn: new Date() },
+        { estado: EstadoNotificacion.ENVIADA, enviadoEn: new Date(), ultimoError: null },
       );
       this.logger.log(
         `Notificación ${notificacion.idNotificacion} enviada por ${notificacion.canal}`,
@@ -223,7 +223,13 @@ export class NotificacionesService {
     const agotada = reintentos >= MAX_REINTENTOS;
     await this.notificacionRepo.update(
       { idNotificacion: notificacion.idNotificacion },
-      { reintentos, estado: agotada ? EstadoNotificacion.FALLIDA : EstadoNotificacion.PENDIENTE },
+      {
+        reintentos,
+        estado: agotada ? EstadoNotificacion.FALLIDA : EstadoNotificacion.PENDIENTE,
+        // El texto que devolvió el proveedor, sin reinterpretarlo: es lo que
+        // ve el negocio en el historial de Notificaciones.
+        ultimoError: resultado.error?.slice(0, 1000) ?? null,
+      },
     );
     this.logger.warn(
       `Notificación ${notificacion.idNotificacion} falló (intento ${reintentos}/${MAX_REINTENTOS}): ${resultado.error}`,

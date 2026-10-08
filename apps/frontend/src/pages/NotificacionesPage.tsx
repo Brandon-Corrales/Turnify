@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Bell, Check, Clock, Mail, MessageCircle, X } from 'lucide-react';
+import { Bell, Check, Clock, Info, Mail, MessageCircle, X } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Boton } from '@/components/ui';
 import { SkeletonTable } from '@/components/ui/Skeleton';
@@ -123,6 +123,10 @@ export default function NotificacionesPage() {
               </span>
             </div>
           </div>
+          <p className="mt-3 flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            {t('notificaciones.ayudaDominioSinVerificar')}
+          </p>
         </div>
 
         {/* Historial */}
@@ -179,6 +183,20 @@ export default function NotificacionesPage() {
                             <IconoEstado className="h-3 w-3" aria-hidden="true" />
                             {t(CLAVE_I18N_ESTADO[n.estado])}
                           </span>
+                          {/* Motivo tal cual lo devolvió el proveedor (sin
+                              traducirlo ni reinterpretarlo). */}
+                          {n.estado !== 'enviada' && n.ultimoError && (
+                            <p
+                              className="mt-1 max-w-xs text-xs text-slate-500 dark:text-slate-400"
+                              title={n.ultimoError}
+                            >
+                              {t('notificaciones.intentos', { n: n.reintentos })} ·{' '}
+                              {t('notificaciones.motivoProveedor')}{' '}
+                              <span className="line-clamp-2 break-words text-slate-600 dark:text-slate-300">
+                                {n.ultimoError}
+                              </span>
+                            </p>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
                           {formatearFechaHora(n.enviadoEn ?? n.programadoPara, i18n.language)}

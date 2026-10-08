@@ -153,7 +153,7 @@ describe('NotificacionesService', () => {
     );
     expect(notificacionRepo.update).toHaveBeenCalledWith(
       { idNotificacion: 'notif-1' },
-      expect.objectContaining({ estado: EstadoNotificacion.ENVIADA }),
+      expect.objectContaining({ estado: EstadoNotificacion.ENVIADA, ultimoError: null }),
     );
   });
 
@@ -191,7 +191,7 @@ describe('NotificacionesService', () => {
 
     expect(notificacionRepo.update).toHaveBeenCalledWith(
       { idNotificacion: 'notif-3' },
-      { reintentos: 1, estado: EstadoNotificacion.PENDIENTE },
+      { reintentos: 1, estado: EstadoNotificacion.PENDIENTE, ultimoError: 'timeout' },
     );
   });
 
@@ -211,7 +211,7 @@ describe('NotificacionesService', () => {
 
     expect(notificacionRepo.update).toHaveBeenCalledWith(
       { idNotificacion: 'notif-4' },
-      { reintentos: 3, estado: EstadoNotificacion.FALLIDA },
+      { reintentos: 3, estado: EstadoNotificacion.FALLIDA, ultimoError: 'timeout' },
     );
   });
 

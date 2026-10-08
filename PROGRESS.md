@@ -3143,6 +3143,47 @@ en el borde de fin de mes).
 **Verificación en Chrome real:** Dashboard → "Resumen de octubre de 2026"
 (`text-transform: none`); en EN → "Summary for October 2026".
 
+### Punto 5 — Correos rechazados quedaban "pendiente" sin explicación ✅
+**Investigación (antes de cambiar nada):** al fallar un envío,
+`NotificacionesService.enviarUna()` solo actualizaba `reintentos` y
+`estado`. El motivo de Resend (`error.message` del SDK) iba **únicamente
+al log** del servidor (`logger.warn`) y se perdía. La entidad no tenía
+dónde guardarlo.
+**Cambio en el modelo (mínimo):** columna nueva `notificaciones.ultimo_error`
+(`text`, nullable), migración escrita a mano
+`1791426021912-NotificacionUltimoError` (`ALTER TABLE "notificaciones" ADD
+"ultimo_error" text`), aplicada con `npm run migration:run` en la BD del
+`.env`. Entidad: `Notificacion.ultimoError?: string | null`. docs/spec.md
+(punto 1) actualizado.
+**Qué se guarda:** el texto que devuelve la capa de envío, sin
+reinterpretarlo. Con Resend es su `error.message` literal; con WhatsApp,
+el status y el cuerpo de la Graph API. Hay dos casos locales que NO son
+del proveedor y se guardan igual porque son el motivo real: falta de
+credenciales en `.env` y canal sin proveedor. Se limpia (`null`) al
+enviarse bien. Tope de 1000 caracteres.
+**Pantalla:** en el historial, si la notificación no se envió y hay
+motivo, debajo del estado aparece "Intentos: N · Motivo del proveedor:
+<texto>" (2 líneas + tooltip con el texto completo; el texto del
+proveedor no se traduce). Además, un aviso breve en el panel de canales:
+con el remitente de prueba de Resend (sin dominio verificado) solo se
+entrega a la dirección dueña de la cuenta. ES/EN, paridad 369/369.
+**Verificación con un caso real:** cliente nuevo con correo
+`ajeno-…@ejemplo-externo.com` + reserva → en el siguiente tick Resend
+rechazó de verdad ("You can only send testing emails to your own email
+address…") → el historial muestra "pendiente · Intentos: 1 · Motivo del
+proveedor: You can only send testing emails…" (ES y EN). Una notificación
+de antes de la migración muestra "fallida" sin motivo: no se inventa uno
+que nunca se guardó. Tests ajustados para verificar que se guarda el
+motivo al fallar y se limpia al enviar (12/12).
+**Observaciones honestas:**
+- El texto de Resend incluye el correo de la persona dueña de la cuenta
+  de Resend del equipo. Mostrarlo tal cual (como se pidió) lo expone a
+  cualquier administrador de negocio. Con un dominio verificado en
+  producción este error no ocurriría, pero conviene decidirlo.
+- Solo se registran los rechazos que el proveedor devuelve al momento de
+  enviar. Un correo aceptado por Resend que luego rebota no se detecta:
+  haría falta el webhook de eventos de Resend, que no existe en Turnify.
+
 ## Cómo continuar si se corta la sesión
 Ver reglas de commit/pausa en el prompt original de arquitectura (punto 18
 del brief del equipo). Resumen: terminar hasta que compile, commitear con

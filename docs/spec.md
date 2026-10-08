@@ -35,7 +35,10 @@ nombre literal para que el equipo la mueva de "Backlog técnico" a
 - NOTIFICACION(id_notificacion PK, id_reserva FK, id_cliente FK,
   tipo[recordatorio|confirmacion|cancelacion], canal[email|whatsapp|sms],
   estado[pendiente|enviada|fallida], programado_para, enviado_en, mensaje,
-  reintentos)
+  reintentos, ultimo_error)
+  - `ultimo_error` (agregado en el cierre del Seguimiento #3, nullable): el
+    motivo que devolvió el proveedor (Resend / Meta) en el último intento
+    fallido, para mostrarlo en el historial de Notificaciones.
 - DISPONIBILIDAD(id_disponibilidad PK, id_usuario FK, id_negocio FK,
   dia_semana[0-6], hora_inicio, hora_fin, activo)
 - EXCEPCION_DISPONIBILIDAD(id_excepcion PK, id_usuario FK, fecha, bloqueado, motivo)

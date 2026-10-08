@@ -403,6 +403,9 @@
     "canalSms": "SMS",
     "estadoEnviada": "sent",
     "estadoPendiente": "pending",
-    "estadoFallida": "failed"
+    "estadoFallida": "failed",
+    "intentos": "Attempts: {{n}}",
+    "motivoProveedor": "Provider's reason:",
+    "ayudaDominioSinVerificar": "While emails are sent with the provider's test sender (Resend, without your own verified domain), they're only delivered to the address that owns that account. The provider rejects any other recipient: the notification stays pending, is retried up to 3 times, and the reason shows up in the history."
   }
 }

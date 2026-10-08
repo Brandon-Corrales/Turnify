@@ -13,6 +13,8 @@ export interface Notificacion {
   enviadoEn?: string | null;
   mensaje: string;
   reintentos: number;
+  /** Motivo del último intento fallido, tal como lo devolvió el proveedor (Resend / Meta). */
+  ultimoError?: string | null;
   creadoEn: string;
   cliente: { idCliente: string; nombreCompleto: string };
   reserva?: { fechaHoraInicio: string; servicio?: { nombre: string } };

@@ -67,8 +67,13 @@ pantalla; no hay otros botones de crear, guardar ni íconos "+".
   "pendiente" = todavía no se ha enviado o se está reintentando (el
   sistema reintenta automáticamente hasta 3 veces), "enviada" = se
   entregó al proveedor de correo o WhatsApp, "fallida" = no se pudo
-  enviar tras los reintentos. En esta pantalla no se puede hacer nada más
-  que consultar.
+  enviar tras los reintentos. Si un intento falló, debajo del estado se
+  ve el número de intentos y el motivo que devolvió el proveedor de correo
+  o WhatsApp, tal cual (puede venir en inglés). Un aviso explica que, con el
+  remitente de prueba del proveedor (sin dominio propio verificado), el
+  correo solo se entrega a la dirección dueña de esa cuenta. En esta
+  pantalla no se puede hacer nada más que consultar (no se puede
+  reenviar).
 - Reportes: período Este mes / Mes pasado / Últimos 3 meses; reservas
   totales, tasa de cancelación, ingresos estimados, gráfico de reservas
   por día y gráfico de reservas por estado. Botón "Exportar" a CSV: en el

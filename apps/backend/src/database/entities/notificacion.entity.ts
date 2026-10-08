@@ -52,4 +52,12 @@ export class Notificacion extends AuditableEntity {
 
   @Column({ name: 'reintentos', type: 'int', default: 0 })
   reintentos!: number;
+
+  /**
+   * Motivo del último intento fallido, tal como lo devolvió la capa de
+   * envío (el mensaje de Resend o de la Graph API de Meta). Se limpia al
+   * enviarse bien.
+   */
+  @Column({ name: 'ultimo_error', type: 'text', nullable: true })
+  ultimoError?: string | null;
 }

@@ -403,6 +403,9 @@
     "canalSms": "SMS",
     "estadoEnviada": "enviada",
     "estadoPendiente": "pendiente",
-    "estadoFallida": "fallida"
+    "estadoFallida": "fallida",
+    "intentos": "Intentos: {{n}}",
+    "motivoProveedor": "Motivo del proveedor:",
+    "ayudaDominioSinVerificar": "Mientras el correo se envíe con el remitente de prueba del proveedor (Resend, sin dominio propio verificado), solo se entrega a la dirección dueña de esa cuenta. A cualquier otro destinatario el proveedor lo rechaza: la notificación queda pendiente, se reintenta hasta 3 veces y el motivo aparece en el historial."
   }
 }
