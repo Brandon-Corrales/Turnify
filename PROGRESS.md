@@ -3248,7 +3248,7 @@ elementos que se superponen:
 | | Backend | Frontend |
 |---|---|---|
 | Tests | `npm test`: **222/222** (33 archivos, incluye integración contra la BD real) | `npm test`: **24/24** (3 archivos) · `test:e2e` (Playwright, wizard público): **1/1** |
-| Lint | 0 errores, 45 warnings (los mismos de antes) | 0 errores, 2 warnings (los mismos de antes, `AuthContext.tsx`) |
+| Lint | 0 errores, 45 warnings (los mismos de antes) | 0 errores, 2 warnings (ya existían: `react-refresh/only-export-components` en `AuthContext.tsx` y `ToastProvider.tsx`) |
 | Typecheck / build | `tsc --noEmit` y `nest build` OK | `tsc -b` + `vite build` OK |
 
 docs/spec.md: punto 1 (NOTIFICACION gana `ultimo_error`). Migración nueva
