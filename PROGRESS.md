@@ -3259,8 +3259,8 @@ Rama `feature/inicial`, un commit por tarea. Toda verificación de interfaz
 se hace en Chrome real, usando el frontend.
 
 ### PUNTO DE CONTROL (actualizar al cerrar cada tarea)
-- **Frente en curso:** 1 (chatbot), bloqueado temporalmente por la cuota
-  diaria de Groq (ver abajo). Se avanza al Frente 2 y se vuelve después.
+- **Frente en curso:** 3 (datos de prueba). Frente 2 ✅ cerrado (ver abajo).
+  Frente 1 sigue parcial: se retoma cuando se libere la cuota de Groq.
 - **Hecho en Frente 1:** prompt ajustado (#4 app móvil, #8 descuento, y
   correcciones de #6 y #14 encontradas en esta ronda). Preguntas 1–16
   hechas en el widget, en Chrome.
@@ -3302,6 +3302,49 @@ con historial). Resultado parcial con el prompt nuevo:
 | 15 | Mover cita | Arrastrar en Mes o Semana; no envía aviso | ✅ |
 | 16 | Capital de Australia | Se niega y redirige | ✅ |
 | 17–27 | — | pendientes (cuota de Groq) | — |
+
+### Frente 2 — Datos de terceros en el motivo de las notificaciones ✅
+**Estado previo (confirmado):** `ultimo_error` guardaba el `error.message`
+crudo de Resend, y `GET /notificaciones` lo devolvía tal cual. En la BD de
+desarrollo había 54 filas con motivo; 10 contenían un correo (el de la
+persona dueña de la cuenta de Resend del equipo).
+**Elección: categoría legible, no texto enmascarado.** Se guarda y se
+expone solo un código (`MotivoFallo`: `DESTINATARIO_NO_HABILITADO`,
+`CREDENCIALES_FALTANTES`, `CANAL_SIN_PROVEEDOR`,
+`RECHAZADO_POR_PROVEEDOR`) que el frontend traduce. Es lo más simple y
+seguro: al no guardar texto libre no hay nada que pueda filtrarse, sea
+cual sea el formato del proveedor. Enmascarar con expresiones regulares
+dependería de atrapar cada formato (correos, teléfonos, IDs). Es además el
+mismo patrón de `errorCode` de toda la API, y arregla que el motivo
+saliera en inglés con la interfaz en español. El texto crudo sigue en el
+log del servidor (`logger.warn`).
+- Clasificación en la fuente: `ResendService` y `WhatsappCloudApiService`
+  devuelven `motivo` además del `error` crudo
+  (`clasificarRechazoProveedor()`: el sandbox de Resend y el 131030 de
+  Meta → destinatario no habilitado; credenciales faltantes; canal sin
+  proveedor; el resto → rechazado).
+- **Registros viejos:** migración de DATOS
+  `1791430080850-NotificacionMotivoSaneado` (UPDATE con las mismas reglas;
+  `down` irreversible a propósito), aplicada a la BD del `.env`: antes 54
+  con motivo / 10 con "@"; después 54 categorías / 0 con "@". Además, una
+  whitelist al leer (`motivoPublico()`): cualquier valor desconocido sale
+  como `RECHAZADO_POR_PROVEEDOR`, como segunda barrera.
+- Frontend: "Intentos: N · Motivo: <categoría traducida>" (ES/EN, 373
+  claves con paridad).
+- Tests: `motivo-fallo.spec.ts` (6), un caso nuevo en
+  `notificaciones.service.spec.ts` (el UPDATE nunca lleva el texto crudo
+  ni "@") y **test de integración**
+  `notificaciones-sin-datos-terceros.integration.spec.ts`: app y BD reales,
+  Resend reemplazado por un doble que devuelve el texto real del sandbox
+  con un correo de dueña de cuenta; `GET /notificaciones` del admin no
+  contiene ese correo, ni "testing emails", ni ningún correo. **Con el
+  comportamiento anterior restaurado a propósito, el test falla**; se
+  restauró el código y vuelve a pasar.
+- **Verificación en Chrome real:** negocio "Cierre" → Notificaciones: 11
+  filas "fallida · Intentos: 3 · Motivo: destinatario no habilitado en el
+  entorno de prueba del proveedor", 0 correos en el texto de la pantalla.
+  En EN: "Reason: recipient not allowed in the provider's test
+  environment". Capturas en ES y EN.
 
 ## Cómo continuar si se corta la sesión
 Ver reglas de commit/pausa en el prompt original de arquitectura (punto 18

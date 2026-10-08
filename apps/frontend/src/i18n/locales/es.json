@@ -405,7 +405,13 @@
     "estadoPendiente": "pendiente",
     "estadoFallida": "fallida",
     "intentos": "Intentos: {{n}}",
-    "motivoProveedor": "Motivo del proveedor:",
-    "ayudaDominioSinVerificar": "Mientras el correo se envíe con el remitente de prueba del proveedor (Resend, sin dominio propio verificado), solo se entrega a la dirección dueña de esa cuenta. A cualquier otro destinatario el proveedor lo rechaza: la notificación queda pendiente, se reintenta hasta 3 veces y el motivo aparece en el historial."
+    "ayudaDominioSinVerificar": "Mientras el correo se envíe con el remitente de prueba del proveedor (Resend, sin dominio propio verificado), solo se entrega a la dirección dueña de esa cuenta. A cualquier otro destinatario el proveedor lo rechaza: la notificación queda pendiente, se reintenta hasta 3 veces y el motivo aparece en el historial.",
+    "motivo": "Motivo:",
+    "motivos": {
+      "DESTINATARIO_NO_HABILITADO": "destinatario no habilitado en el entorno de prueba del proveedor",
+      "CREDENCIALES_FALTANTES": "faltan las credenciales del proveedor en el servidor",
+      "CANAL_SIN_PROVEEDOR": "este canal no tiene proveedor configurado",
+      "RECHAZADO_POR_PROVEEDOR": "rechazado por el proveedor"
+    }
   }
 }

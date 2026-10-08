@@ -36,9 +36,14 @@ nombre literal para que el equipo la mueva de "Backlog técnico" a
   tipo[recordatorio|confirmacion|cancelacion], canal[email|whatsapp|sms],
   estado[pendiente|enviada|fallida], programado_para, enviado_en, mensaje,
   reintentos, ultimo_error)
-  - `ultimo_error` (agregado en el cierre del Seguimiento #3, nullable): el
-    motivo que devolvió el proveedor (Resend / Meta) en el último intento
-    fallido, para mostrarlo en el historial de Notificaciones.
+  - `ultimo_error` (agregado en el cierre del Seguimiento #3, nullable): la
+    CATEGORÍA del motivo del último intento fallido
+    (`DESTINATARIO_NO_HABILITADO` | `CREDENCIALES_FALTANTES` |
+    `CANAL_SIN_PROVEEDOR` | `RECHAZADO_POR_PROVEEDOR`), que el frontend
+    traduce. Nunca el texto crudo del proveedor: puede traer datos de
+    terceros (Resend incluye el correo de la persona dueña de la cuenta), y
+    ese texto solo va al log del servidor. Migración de datos
+    `NotificacionMotivoSaneado` para los registros viejos.
 - DISPONIBILIDAD(id_disponibilidad PK, id_usuario FK, id_negocio FK,
   dia_semana[0-6], hora_inicio, hora_fin, activo)
 - EXCEPCION_DISPONIBILIDAD(id_excepcion PK, id_usuario FK, fecha, bloqueado, motivo)

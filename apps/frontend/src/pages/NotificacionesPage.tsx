@@ -183,17 +183,16 @@ export default function NotificacionesPage() {
                             <IconoEstado className="h-3 w-3" aria-hidden="true" />
                             {t(CLAVE_I18N_ESTADO[n.estado])}
                           </span>
-                          {/* Motivo tal cual lo devolvió el proveedor (sin
-                              traducirlo ni reinterpretarlo). */}
+                          {/* Categoría del motivo, traducida. El texto crudo del proveedor
+                              nunca llega al navegador (puede traer datos de terceros). */}
                           {n.estado !== 'enviada' && n.ultimoError && (
-                            <p
-                              className="mt-1 max-w-xs text-xs text-slate-500 dark:text-slate-400"
-                              title={n.ultimoError}
-                            >
+                            <p className="mt-1 max-w-xs text-xs text-slate-500 dark:text-slate-400">
                               {t('notificaciones.intentos', { n: n.reintentos })} ·{' '}
-                              {t('notificaciones.motivoProveedor')}{' '}
-                              <span className="line-clamp-2 break-words text-slate-600 dark:text-slate-300">
-                                {n.ultimoError}
+                              {t('notificaciones.motivo')}{' '}
+                              <span className="text-slate-600 dark:text-slate-300">
+                                {t(`notificaciones.motivos.${n.ultimoError}`, {
+                                  defaultValue: t('notificaciones.motivos.RECHAZADO_POR_PROVEEDOR'),
+                                })}
                               </span>
                             </p>
                           )}

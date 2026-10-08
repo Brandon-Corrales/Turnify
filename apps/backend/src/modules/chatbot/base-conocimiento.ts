@@ -74,8 +74,10 @@ pantalla; no hay otros botones de crear, guardar ni íconos "+".
   sistema reintenta automáticamente hasta 3 veces), "enviada" = se
   entregó al proveedor de correo o WhatsApp, "fallida" = no se pudo
   enviar tras los reintentos. Si un intento falló, debajo del estado se
-  ve el número de intentos y el motivo que devolvió el proveedor de correo
-  o WhatsApp, tal cual (puede venir en inglés). Un aviso explica que, con el
+  ve el número de intentos y un motivo resumido (por ejemplo
+  "destinatario no habilitado en el entorno de prueba del proveedor",
+  "faltan las credenciales del proveedor en el servidor" o "rechazado por
+  el proveedor"), en el idioma de la pantalla. Un aviso explica que, con el
   remitente de prueba del proveedor (sin dominio propio verificado), el
   correo solo se entrega a la dirección dueña de esa cuenta. En esta
   pantalla no se puede hacer nada más que consultar (no se puede

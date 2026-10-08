@@ -2,10 +2,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
 import type { Env } from '../../../config/env.schema';
+import { clasificarRechazoProveedor, MotivoFallo } from '../motivo-fallo';
 
 export interface ResultadoEnvio {
   exito: boolean;
+  /** Texto crudo, SOLO para el log del servidor (puede traer datos de terceros). */
   error?: string;
+  /** Categoría saneada: lo único que se guarda en BD y sale por la API. */
+  motivo?: MotivoFallo;
 }
 
 /**
@@ -28,7 +32,11 @@ export class ResendService {
 
   async enviarCorreo(destinatario: string, asunto: string, html: string): Promise<ResultadoEnvio> {
     if (!this.cliente) {
-      return { exito: false, error: 'RESEND_API_KEY no configurada' };
+      return {
+        exito: false,
+        error: 'RESEND_API_KEY no configurada',
+        motivo: MotivoFallo.CREDENCIALES_FALTANTES,
+      };
     }
     const { error } = await this.cliente.emails.send({
       from: this.remitente,
@@ -38,7 +46,11 @@ export class ResendService {
     });
     if (error) {
       this.logger.warn(`Envío de correo a ${destinatario} falló: ${error.message}`);
-      return { exito: false, error: error.message };
+      return {
+        exito: false,
+        error: error.message,
+        motivo: clasificarRechazoProveedor(error.message),
+      };
     }
     return { exito: true };
   }

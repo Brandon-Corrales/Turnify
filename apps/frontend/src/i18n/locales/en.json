@@ -405,7 +405,13 @@
     "estadoPendiente": "pending",
     "estadoFallida": "failed",
     "intentos": "Attempts: {{n}}",
-    "motivoProveedor": "Provider's reason:",
-    "ayudaDominioSinVerificar": "While emails are sent with the provider's test sender (Resend, without your own verified domain), they're only delivered to the address that owns that account. The provider rejects any other recipient: the notification stays pending, is retried up to 3 times, and the reason shows up in the history."
+    "ayudaDominioSinVerificar": "While emails are sent with the provider's test sender (Resend, without your own verified domain), they're only delivered to the address that owns that account. The provider rejects any other recipient: the notification stays pending, is retried up to 3 times, and the reason shows up in the history.",
+    "motivo": "Reason:",
+    "motivos": {
+      "DESTINATARIO_NO_HABILITADO": "recipient not allowed in the provider's test environment",
+      "CREDENCIALES_FALTANTES": "the provider's credentials are missing on the server",
+      "CANAL_SIN_PROVEEDOR": "this channel has no provider configured",
+      "RECHAZADO_POR_PROVEEDOR": "rejected by the provider"
+    }
   }
 }

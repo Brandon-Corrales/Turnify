@@ -54,9 +54,10 @@ export class Notificacion extends AuditableEntity {
   reintentos!: number;
 
   /**
-   * Motivo del último intento fallido, tal como lo devolvió la capa de
-   * envío (el mensaje de Resend o de la Graph API de Meta). Se limpia al
-   * enviarse bien.
+   * Motivo del último intento fallido, como CATEGORÍA (`MotivoFallo`, ver
+   * `modules/notificaciones/motivo-fallo.ts`), nunca el texto crudo del
+   * proveedor (puede traer datos de terceros; ese texto solo va al log).
+   * Se limpia al enviarse bien.
    */
   @Column({ name: 'ultimo_error', type: 'text', nullable: true })
   ultimoError?: string | null;

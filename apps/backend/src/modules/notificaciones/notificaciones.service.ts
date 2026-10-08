@@ -19,6 +19,7 @@ import { formatearFechaHoraLocalCR } from '../../common/utils/zona-horaria-negoc
 import { construirMensaje } from './mensajes-notificacion';
 import { ResendService } from './providers/resend.service';
 import { WhatsappCloudApiService } from './providers/whatsapp-cloud-api.service';
+import { MotivoFallo, motivoPublico } from './motivo-fallo';
 
 /** Después de este número de reintentos fallidos, la notificación se marca FALLIDA en vez de reintentar por siempre. */
 const MAX_REINTENTOS = 3;
@@ -118,6 +119,9 @@ export class NotificacionesService {
       .skip((page - 1) * limit)
       .take(limit)
       .getManyAndCount();
+    // Whitelist al leer: aunque la columna tuviera un valor viejo o
+    // inesperado, por la API solo sale un código conocido.
+    for (const n of data) n.ultimoError = motivoPublico(n.ultimoError);
     return { data, total, page, limit };
   }
 
@@ -206,7 +210,11 @@ export class NotificacionesService {
         ? await this.resend.enviarCorreo(cliente.correoElectronico, asunto, texto)
         : notificacion.canal === CanalNotificacion.WHATSAPP
           ? await this.whatsapp.enviarMensaje(cliente.telefono ?? '', texto)
-          : { exito: false, error: `Canal ${notificacion.canal} no tiene proveedor implementado` };
+          : {
+              exito: false,
+              error: `Canal ${notificacion.canal} no tiene proveedor implementado`,
+              motivo: MotivoFallo.CANAL_SIN_PROVEEDOR,
+            };
 
     if (resultado.exito) {
       await this.notificacionRepo.update(
@@ -226,9 +234,10 @@ export class NotificacionesService {
       {
         reintentos,
         estado: agotada ? EstadoNotificacion.FALLIDA : EstadoNotificacion.PENDIENTE,
-        // El texto que devolvió el proveedor, sin reinterpretarlo: es lo que
-        // ve el negocio en el historial de Notificaciones.
-        ultimoError: resultado.error?.slice(0, 1000) ?? null,
+        // Solo la categoría saneada (ver motivo-fallo.ts). El texto crudo del
+        // proveedor puede traer datos de terceros y queda únicamente en el
+        // log de abajo.
+        ultimoError: resultado.motivo ?? MotivoFallo.RECHAZADO_POR_PROVEEDOR,
       },
     );
     this.logger.warn(

@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Env } from '../../../config/env.schema';
 import type { ResultadoEnvio } from './resend.service';
+import { clasificarRechazoProveedor, MotivoFallo } from '../motivo-fallo';
 
 /**
  * Versión de Graph API vigente al momento de escribir esto (verificada en
@@ -46,6 +47,7 @@ export class WhatsappCloudApiService {
       return {
         exito: false,
         error: 'WHATSAPP_ACCESS_TOKEN o WHATSAPP_PHONE_NUMBER_ID no configurados',
+        motivo: MotivoFallo.CREDENCIALES_FALTANTES,
       };
     }
 
@@ -72,7 +74,11 @@ export class WhatsappCloudApiService {
       this.logger.warn(
         `Envío de WhatsApp a ${telefonoDestino} falló (${respuesta.status}): ${cuerpo}`,
       );
-      return { exito: false, error: `Graph API ${respuesta.status}: ${cuerpo}` };
+      return {
+        exito: false,
+        error: `Graph API ${respuesta.status}: ${cuerpo}`,
+        motivo: clasificarRechazoProveedor(cuerpo),
+      };
     }
     return { exito: true };
   }
