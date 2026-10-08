@@ -3261,22 +3261,29 @@ se hace en Chrome real, usando el frontend.
 ### PUNTO DE CONTROL (actualizar al cerrar cada tarea)
 - **Frente en curso:** 3 (datos de prueba). Frente 2 ✅ cerrado (ver abajo).
   Frente 1 sigue parcial: se retoma cuando se libere la cuota de Groq.
-- **Frente 3, negocio 1 "Barbería El Sabanero" (Nicoya, barbería):**
-  registro + onboarding (3 plantillas) ✅, precios editados ✅, bloqueo del
-  4.º servicio ✅, horario L–V 08–19 y S 08–14 (persistido tras recargar)
-  ✅, 13 clientes ✅ (uno con el correo real autorizado), 6 reservas por el
-  link público ✅, 14 reservas manuales en el Calendario ✅ (una con cliente
-  nuevo creado en el formulario: Allan Pizarro Ruiz) = 20 en el mes; la
-  21.ª se bloqueó en pantalla ✅ ("El Plan Gratis permite hasta 20 reservas
-  por mes"). Cancelación desde el Calendario ✅ (Carlos Arias, 8/10
-  10:15).
-  **Siguiente tarea exacta:** cancelar a Tom Becker desde la pantalla
-  Reservas (el botón "Cancelar reserva de Tom Becker" no se encontró por
-  aria-label exacto: revisar el label real antes de repetir), reprogramar
-  una cita (arrastre), Notificaciones (la de Brandon Núñez del 13/10 debe
-  salir "enviada"), Reportes, idioma y tema en vivo. Después, negocios 2, 3
-  y 4 (sin crear). Las credenciales están en el scratchpad de la sesión
-  (`creds-frente3.txt`), no en el repo.
+- **Frente 3, negocio 1 "Barbería El Sabanero" (Nicoya, barbería) ✅**
+  (salvo las 3 preguntas al chatbot: pendientes por la cuota de Groq).
+  Recorrido en Chrome real, como usuario:
+  | Flujo | Resultado |
+  |---|---|
+  | Registro + onboarding (3 de 7 plantillas) | OK |
+  | Editar precios de servicios (₡4 500 / ₡6 500 / ₡5 000) | OK |
+  | 4.º servicio → bloqueo del Plan Gratis en pantalla | OK |
+  | Horario L–V 08–19, S 08–14, D cerrado (persiste tras recargar) | OK |
+  | 13 clientes (2 en inglés, 3 Premium, 1 con el correo real autorizado) | OK |
+  | 6 reservas por el link público (2 clientes nuevos, 3 existentes, 1 real) | OK |
+  | 14 reservas manuales en el Calendario (una con cliente nuevo en el formulario) | OK |
+  | Reserva 21 del mes → bloqueo en pantalla (toast + banner, ver fix B) | OK |
+  | Cancelar desde el detalle del Calendario y desde Reservas (página 2) | OK |
+  | Reprogramar arrastrando (14/10 08:00 → 15/10 11:00) | OK (dato correcto; ver hallazgo 3 sobre la etiqueta) |
+  | Notificaciones: confirmación al correo real → "enviada"; el resto (example.com) "fallida · rechazado por el proveedor", sin correos visibles | OK |
+  | Reportes "Este mes": 20 reservas, ₡93 000, 10 % cancelación, gráficos con datos reales | OK |
+  | Idioma EN: 9 pantallas recorridas, sin textos de interfaz en español (único marcado: "Premium", que también es inglés) | OK |
+  | Tema oscuro en vivo (persiste en `turnify_tema`) | OK (ver hallazgo 4) |
+  | 3 preguntas al chatbot sobre el negocio | **pendiente (Groq 429)** |
+  | Pago (Stripe) | no probable (limitación geográfica) |
+- **Negocios 2, 3 y 4:** sin crear. **Siguiente tarea exacta:** registrar
+  "Clínica Dental Sonrisa Pampeña" (Liberia).
 - **Hallazgos del Frente 3** (A y B se corrigen por pedido explícito; el
   resto solo se registra para el tablero):
   1. **(A, corregido ✅)** Calendario: una reserva cancelada seguía
@@ -3298,6 +3305,11 @@ se hace en Chrome real, usando el frontend.
      backend, siempre en español). Verificado en Chrome llegando al
      límite real: reserva 21 → banner en ES y EN; al reabrir el
      formulario ya no está; 4.º servicio → mismo banner. Capturas.
+  4. **(nuevo, NO corregido, visual menor)** Calendario en tema oscuro
+     (EN/ES, escritorio, vista Mes): los días fuera del horario laboral
+     (ej. domingo cerrado) se sombrean con un gris claro que choca con el
+     fondo oscuro. Reproducir: tema oscuro → Calendario → Mes en un negocio
+     con domingo cerrado.
   3. **(nuevo, NO corregido)** Calendario (ES/EN, escritorio), tras
      arrastrar una reserva: el bloque queda en el día/hora nuevos pero
      sigue mostrando la hora VIEJA (ej. "08:00" en la franja de las 11:00)
