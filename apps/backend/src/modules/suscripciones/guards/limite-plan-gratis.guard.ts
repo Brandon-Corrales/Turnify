@@ -1,25 +1,10 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { I18nContext, I18nService } from 'nestjs-i18n';
+import { I18nContext } from 'nestjs-i18n';
 import type { Socket } from 'socket.io';
 import type { AuthenticatedRequest, JwtPayload } from '../../auth/interfaces/jwt-payload.interface';
 import { LimitesPlanService } from '../limites-plan.service';
 import { LIMITE_PLAN_KEY, RecursoLimitado } from '../decorators/limite-plan.decorator';
-
-/**
- * errorCode siempre 'LIMITE_PLAN_ALCANZADO' (el que da de ejemplo el
- * brief), pero el MENSAJE varía por recurso — un solo código con 4
- * traducciones distintas, no 4 códigos. Traducido explícito aquí (no vía
- * AllExceptionsFilter.traducir()) porque ese mecanismo busca una única
- * clave `errores.<errorCode>`, y aquí necesitamos elegir la clave según
- * el `recurso`, no según el errorCode.
- */
-const CLAVE_I18N_POR_RECURSO: Record<RecursoLimitado, string> = {
-  usuarios: 'errores.LIMITE_PLAN_USUARIOS',
-  servicios: 'errores.LIMITE_PLAN_SERVICIOS',
-  reservas: 'errores.LIMITE_PLAN_RESERVAS',
-  mensajesChatbot: 'errores.LIMITE_PLAN_MENSAJES_CHATBOT',
-};
 
 /**
  * Guard transversal (mismo patrón que el guard multi-tenant del punto 1):
@@ -43,13 +28,18 @@ const CLAVE_I18N_POR_RECURSO: Record<RecursoLimitado, string> = {
  * de TypeORM directamente, fallaría en cualquier módulo que no tenga ese
  * TypeOrmModule.forFeature(...) propio (otro gotcha real de NestJS,
  * también encontrado durante las pruebas de esta tarjeta).
+ *
+ * **Es un fast-fail, NO la garantía del límite.** Corre antes del
+ * handler y en otra conexión que el INSERT, así que requests paralelas
+ * pueden pasarlo todas a la vez. La garantía atómica es
+ * `LimitesPlanService.asegurarDentroDelLimite()`, que cada service llama
+ * dentro de la transacción que crea el registro.
  */
 @Injectable()
 export class LimitePlanGratisGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly limitesPlan: LimitesPlanService,
-    private readonly i18n: I18nService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -64,13 +54,7 @@ export class LimitePlanGratisGuard implements CanActivate {
 
     const conteo = await this.limitesPlan.contar(recurso, idNegocio);
     if (conteo >= this.limitesPlan.limite(recurso)) {
-      throw new ForbiddenException({
-        errorCode: 'LIMITE_PLAN_ALCANZADO',
-        message: this.i18n.translate(CLAVE_I18N_POR_RECURSO[recurso], {
-          lang: I18nContext.current(context)?.lang,
-          defaultValue: `Límite del Plan Gratis alcanzado (${recurso})`,
-        }),
-      });
+      throw this.limitesPlan.errorLimiteAlcanzado(recurso, I18nContext.current(context)?.lang);
     }
     return true;
   }

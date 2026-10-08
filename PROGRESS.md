@@ -2795,6 +2795,65 @@ Humo 1791346399" (admin `humo.admin.1791346399@test.turnify.app`), 4
 servicios, 6 franjas de horario, 1 cliente y 2 reservas (7 y 8 oct). No se
 borró nada.
 
+## Corrección de los 4 bugs de la prueba de humo (Seguimiento #3, 08/10/2026)
+Un commit por bug, en orden de prioridad, cada uno verificado contra el
+sistema real corriendo antes de pasar al siguiente.
+
+### Bug 1 — Límites del Plan Gratis saltables con requests paralelas ✅
+**Causa (confirmada en el código):** `LimitePlanGratisGuard` contaba con
+`LimitesPlanService.contar()` y el service insertaba después, en otra
+conexión y sin bloqueo. N requests simultáneas contaban todas por debajo
+del límite antes de que ninguna insertara. Afectaba a los 3 recursos que
+crean filas: `servicios` (el caso del onboarding), `reservas` (el lock por
+usuario de `ReservasService` evita traslapes, no el cupo mensual del
+negocio) y `usuarios`.
+
+**Solución:** `LimitesPlanService.asegurarDentroDelLimite(manager, recurso,
+idNegocio)`, llamado por `ServiciosService.crear`, `UsuariosService.crear`
+y `ReservasService.crear` **dentro de la misma transacción que hace el
+INSERT**: `pg_advisory_xact_lock(hashtext('limite-plan:<recurso>:<idNegocio>'))`
+→ COUNT → INSERT. El lock se libera al confirmar, así que la siguiente
+request ya cuenta la fila nueva.
+- **Por qué advisory lock y no una constraint:** es el mismo mecanismo que
+  ya usa `ReservasService` contra el doble-booking. Una constraint no
+  puede expresar "máximo 3 activos solo si el plan es gratis" sin un
+  trigger que duplique en SQL los límites que viven en
+  `LimitesPlanService` (única fuente, también la lee la Landing).
+- El guard se queda como fast-fail (responde 403 sin hacer trabajo, ej.
+  sin calcular bcrypt). Ya no es la garantía. El error se construye en un
+  solo lugar (`LimitesPlanService.errorLimiteAlcanzado`).
+- Servicios y Usuarios ahora insertan con `manager` (antes con
+  `TenantScopedRepository`), así que ponen `idNegocio` del contexto a mano,
+  igual que ya hacía `ReservasService.crear`.
+- Orden de locks en Reservas: primero el del límite (por negocio), después
+  el de traslapes (por usuario). Ningún camino los toma al revés, así que
+  no hay deadlock. La reserva pública queda cubierta porque crea vía
+  `ReservasService.crear`.
+- Usuarios: con el límite actual (1 = el admin) el cupo ya está lleno
+  desde el registro, así que la carrera no era explotable hoy. Se aplicó
+  el mismo mecanismo igual, por consistencia y por si el número cambia.
+- No cubierto (fuera del alcance pedido): `mensajesChatbot` usa el mismo
+  guard sin chequeo atómico. Su riesgo ya lo acota el throttler del
+  WebSocket (5 mensajes/10 s por socket).
+
+**Verificación:**
+- Test de integración nuevo `limite-plan-concurrencia.integration.spec.ts`
+  (app y BD reales, requests de verdad en paralelo): 6 `POST /servicios`
+  simultáneos → exactamente 3×201 y 3×403 `LIMITE_PLAN_ALCANZADO`, `GET
+  /servicios` = 3; 23 `POST /reservas` simultáneos → exactamente 20
+  creadas y 3 bloqueadas. **Con el chequeo atómico desactivado a propósito
+  el mismo test falla: 6/6 servicios y 23/23 reservas creados**, lo que
+  confirma que el test detecta la carrera y que también afectaba a reservas.
+- Contra el servidor de desarrollo real (`npm run backend:dev`), negocio
+  nuevo + 6 `POST /servicios` en paralelo: 3×201, 3×403, 3 activos en BD.
+  3 `POST /usuarios` paralelos: 3×403. (Nota operativa: un primer intento
+  dio 6/6 porque en el puerto 3000 seguía vivo el proceso `node dist/main`
+  de la sesión anterior, con el código viejo. Al cortar el `npm` por falta
+  de memoria, el `node` hijo sobrevivió. Se detuvo y se repitió.)
+- 8 tests unitarios nuevos o ajustados (lock antes del COUNT, sin lock en
+  plan de pago, error traducido; cada service llama el chequeo dentro de
+  la transacción y no inserta si se alcanzó el límite).
+
 ## Cómo continuar si se corta la sesión
 Ver reglas de commit/pausa en el prompt original de arquitectura (punto 18
 del brief del equipo). Resumen: terminar hasta que compile, commitear con

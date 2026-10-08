@@ -48,6 +48,7 @@ describe('ReservasService', () => {
     programarConfirmacion: ReturnType<typeof vi.fn>;
     programarCancelacion: ReturnType<typeof vi.fn>;
   };
+  let limitesPlan: { asegurarDentroDelLimite: ReturnType<typeof vi.fn> };
   let service: ReservasService;
 
   beforeEach(() => {
@@ -67,6 +68,7 @@ describe('ReservasService', () => {
       programarConfirmacion: vi.fn().mockResolvedValue(undefined),
       programarCancelacion: vi.fn().mockResolvedValue(undefined),
     };
+    limitesPlan = { asegurarDentroDelLimite: vi.fn().mockResolvedValue(undefined) };
     service = new ReservasService(
       dataSourceMock as any,
       reservaRepo as any,
@@ -76,6 +78,7 @@ describe('ReservasService', () => {
       disponibilidadRepo as any,
       tenantContext,
       notificaciones as any,
+      limitesPlan as any,
     );
   });
 
@@ -105,6 +108,26 @@ describe('ReservasService', () => {
     expect(managerMock.query).toHaveBeenCalledWith('SELECT pg_advisory_xact_lock(hashtext($1))', [
       USUARIO_ID,
     ]);
+  });
+
+  it('crear() verifica el límite del Plan Gratis dentro de la transacción, antes del lock por usuario', async () => {
+    await comoAdmin(() => service.crear(dtoValido));
+    expect(limitesPlan.asegurarDentroDelLimite).toHaveBeenCalledWith(
+      managerMock,
+      'reservas',
+      NEGOCIO_ID,
+    );
+    expect(limitesPlan.asegurarDentroDelLimite.mock.invocationCallOrder[0]).toBeLessThan(
+      managerMock.query.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('crear() no inserta la reserva si el límite del Plan Gratis ya se alcanzó', async () => {
+    limitesPlan.asegurarDentroDelLimite.mockRejectedValue(new Error('LIMITE_PLAN_ALCANZADO'));
+    await expect(comoAdmin(() => service.crear(dtoValido))).rejects.toThrow(
+      'LIMITE_PLAN_ALCANZADO',
+    );
+    expect(managerMock.save).not.toHaveBeenCalled();
   });
 
   it('crear() rechaza si el cliente no existe', async () => {
