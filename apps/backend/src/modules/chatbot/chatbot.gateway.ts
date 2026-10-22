@@ -30,7 +30,14 @@ const MAX_TURNOS_HISTORIAL = 20;
  */
 @WebSocketGateway({
   namespace: 'chatbot',
-  cors: { origin: process.env.CORS_ORIGIN ?? 'http://localhost:5173', credentials: true },
+  cors: {
+    origin: process.env.CORS_ORIGIN
+      ? process.env.CORS_ORIGIN.split(',')
+          .map((o) => o.trim().replace(/\/+$/, ''))
+          .filter(Boolean)
+      : 'http://localhost:5173',
+    credentials: true,
+  },
 })
 export class ChatbotGateway implements OnGatewayDisconnect {
   private readonly logger = new Logger(ChatbotGateway.name);
