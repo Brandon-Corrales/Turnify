@@ -1,11 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import {
-  OnGatewayConnection,
-  WebSocketGateway,
-  WebSocketServer,
-} from '@nestjs/websockets';
+import { OnGatewayConnection, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import type { Namespace, Socket } from 'socket.io';
 import type { Env } from '../../config/env.schema';
 import type { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
@@ -31,7 +27,14 @@ export interface CambioDatos {
  */
 @WebSocketGateway({
   namespace: 'eventos',
-  cors: { origin: process.env.CORS_ORIGIN ?? 'http://localhost:5173', credentials: true },
+  cors: {
+    origin: process.env.CORS_ORIGIN
+      ? process.env.CORS_ORIGIN.split(',')
+          .map((o) => o.trim().replace(/\/+$/, ''))
+          .filter(Boolean)
+      : 'http://localhost:5173',
+    credentials: true,
+  },
 })
 export class TiempoRealGateway implements OnGatewayConnection {
   private readonly logger = new Logger(TiempoRealGateway.name);

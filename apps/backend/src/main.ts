@@ -20,7 +20,7 @@ async function bootstrap() {
   const configuredOrigins = config
     .get('CORS_ORIGIN', { infer: true })
     .split(',')
-    .map((origin) => origin.trim())
+    .map((origin) => origin.trim().replace(/\/+$/, ''))
     .filter(Boolean);
   const allowedOrigins = new Set(
     config.get('NODE_ENV', { infer: true }) === 'development'
@@ -30,7 +30,8 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.has(origin)) {
+      const normalized = origin ? origin.replace(/\/+$/, '') : origin;
+      if (!origin || allowedOrigins.has(origin) || (normalized && allowedOrigins.has(normalized))) {
         callback(null, true);
         return;
       }
