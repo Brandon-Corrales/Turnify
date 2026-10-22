@@ -166,7 +166,16 @@
     "bannerPlanGratisDescripcion": "Actualiza para desbloquear usuarios ilimitados, WhatsApp y más.",
     "bannerPlanGratisBoton": "Ver planes",
     "graficoAriaLabel": "Reservas por día del mes",
-    "tooltipDia": "{{fecha}}: {{n}} reserva(s)"
+    "graficoAyuda": "Toca una barra para ver las citas de ese día.",
+    "barraDiaAriaLabel_one": "{{fecha}}: {{count}} cita",
+    "barraDiaAriaLabel_other": "{{fecha}}: {{count}} citas",
+    "citasDelDia": "Citas del {{fecha}}",
+    "cantidadCitas_one": "{{count}} cita",
+    "cantidadCitas_other": "{{count}} citas",
+    "diaAnterior": "Día anterior",
+    "diaSiguiente": "Día siguiente",
+    "sinCitasEsteDia": "No hay citas este día.",
+    "errorCitasDelDia": "No se pudieron cargar las citas de este día. Intenta de nuevo más tarde."
   },
   "suscripcion": {
     "titulo": "Tu suscripción",

@@ -14,6 +14,14 @@ export function crearEtiquetaEstadoReserva(t: TFunction): Record<EstadoReserva, 
   };
 }
 
+/** Colores del badge de estado, compartidos por Reservas y el Dashboard. */
+export const ESTILO_ESTADO_RESERVA: Record<EstadoReserva, string> = {
+  pendiente: 'bg-amber-50 text-warning dark:bg-amber-900/30 dark:text-amber-400',
+  confirmada: 'bg-secondary-50 text-secondary-700 dark:bg-secondary-900/30 dark:text-secondary-400',
+  cancelada: 'bg-red-50 text-danger dark:bg-red-900/30 dark:text-red-400',
+  ausente: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
+};
+
 export interface Reserva {
   idReserva: string;
   idNegocio: string;
