@@ -307,6 +307,7 @@ export default function ReservaPublicaPage() {
                   <Input
                     label={t('clientes.nombreCompleto')}
                     requerido
+                    maxLength={60}
                     error={errors.nombreCompleto?.message}
                     {...register('nombreCompleto')}
                   />
@@ -314,12 +315,16 @@ export default function ReservaPublicaPage() {
                     label={t('comun.correoElectronico')}
                     type="email"
                     requerido
+                    maxLength={100}
                     error={errors.correoElectronico?.message}
                     {...register('correoElectronico')}
                   />
                   <Input
                     label={t('clientes.telefono')}
                     type="tel"
+                    maxLength={15}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     error={errors.telefono?.message}
                     {...register('telefono')}
                   />

@@ -65,6 +65,7 @@ export default function RegistroPage() {
             <Input
               label={t('registro.nombreNegocio')}
               variante="crear"
+              maxLength={60}
               requerido
               error={errors.nombreNegocio?.message}
               {...register('nombreNegocio')}
@@ -82,6 +83,7 @@ export default function RegistroPage() {
           <Input
             label={t('registro.correoNegocio')}
             type="email"
+            maxLength={100}
             variante="crear"
             requerido
             error={errors.correoNegocio?.message}
@@ -90,6 +92,9 @@ export default function RegistroPage() {
           <Input
             label={t('registro.telefonoNegocio')}
             type="tel"
+            maxLength={15}
+            inputMode="numeric"
+            pattern="[0-9]*"
             variante="crear"
             hint={t('comun.opcional')}
             error={errors.telefonoNegocio?.message}
@@ -100,6 +105,7 @@ export default function RegistroPage() {
 
           <Input
             label={t('registro.nombreCompletoAdmin')}
+            maxLength={60}
             variante="crear"
             requerido
             error={errors.nombreCompletoAdmin?.message}
@@ -108,6 +114,7 @@ export default function RegistroPage() {
           <Input
             label={t('registro.correoAdmin')}
             type="email"
+            maxLength={100}
             autoComplete="email"
             variante="crear"
             requerido
@@ -117,6 +124,7 @@ export default function RegistroPage() {
           <Input
             label={t('comun.contrasena')}
             type="password"
+            maxLength={128}
             autoComplete="new-password"
             variante="crear"
             requerido

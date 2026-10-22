@@ -13,7 +13,7 @@
   "RESERVA_YA_CANCELADA": "This booking was already cancelled",
   "RESERVA_CANCELADA": "A cancelled booking cannot be rescheduled",
   "RESERVA_CRUZA_MEDIANOCHE": "A booking cannot cross midnight",
-  "FUERA_DE_DISPONIBILIDAD": "That time is outside the staff member's registered availability",
+  "FUERA_DE_DISPONIBILIDAD": "This booking is outside the available working hours. Choose another time.",
   "RESERVA_NO_ENCONTRADA": "Booking not found",
   "TOKEN_FALTANTE": "Missing access token",
   "TOKEN_INVALIDO": "Invalid or expired access token",

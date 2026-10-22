@@ -85,11 +85,11 @@ export function Modal({ abierto, onCerrar, titulo, children, className }: ModalP
             exit={{ opacity: 0, scale: 0.95, y: 8 }}
             transition={{ duration: 0.15 }}
             className={cn(
-              'relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-slate-800',
+              'relative flex max-h-[calc(100vh-2rem)] w-full max-w-md flex-col overflow-hidden rounded-xl bg-white p-6 shadow-xl dark:bg-slate-800',
               className,
             )}
           >
-            <div className="mb-4 flex items-start justify-between gap-4">
+            <div className="mb-4 flex shrink-0 items-start justify-between gap-4">
               <h2
                 id="modal-titulo"
                 className="text-lg font-semibold text-slate-900 dark:text-slate-100"
@@ -105,7 +105,7 @@ export function Modal({ abierto, onCerrar, titulo, children, className }: ModalP
                 <X className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
-            {children}
+            <div className="min-h-0 flex-1 overflow-y-auto pr-1">{children}</div>
           </motion.div>
         </div>
       )}

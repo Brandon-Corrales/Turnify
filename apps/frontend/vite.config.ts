@@ -20,6 +20,7 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    strictPort: true,
   },
   // Tests unitarios (Vitest) solo en src/**/*.test.ts: e2e/ es de Playwright.
   test: {
