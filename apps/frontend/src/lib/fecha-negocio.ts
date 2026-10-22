@@ -35,3 +35,34 @@ export function mesYAnioEnZonaNegocio(idioma: string, fecha: Date = new Date()):
     year: 'numeric',
   });
 }
+
+/** Desfase fijo de Costa Rica (sin horario de verano), igual que `OFFSET_CR_MS` del backend. */
+const OFFSET_ZONA_NEGOCIO = '-06:00';
+
+/** Primer y último instante de un día `YYYY-MM-DD` en la zona del negocio, como ISO UTC para los filtros `desde`/`hasta` del backend. */
+function rangoDiaEnZonaNegocio(fecha: string): { desde: string; hasta: string } {
+  return {
+    desde: new Date(`${fecha}T00:00:00.000${OFFSET_ZONA_NEGOCIO}`).toISOString(),
+    hasta: new Date(`${fecha}T23:59:59.999${OFFSET_ZONA_NEGOCIO}`).toISOString(),
+  };
+}
+
+/** Todos los días (`YYYY-MM-DD`) del mes en curso en la zona del negocio. */
+export function diasDelMesEnZonaNegocio(ahora: Date = new Date()): string[] {
+  const [anio, mes] = hoyEnZonaNegocio(ahora).split('-').map(Number);
+  const totalDias = new Date(Date.UTC(anio, mes, 0)).getUTCDate();
+  const prefijo = `${anio}-${String(mes).padStart(2, '0')}`;
+  return Array.from(
+    { length: totalDias },
+    (_, i) => `${prefijo}-${String(i + 1).padStart(2, '0')}`,
+  );
+}
+
+/** Rango del mes en curso en la zona del negocio. Con UTC, el mes empezaba el día anterior a las 18:00 hora local. */
+export function rangoMesEnZonaNegocio(ahora: Date = new Date()): { desde: string; hasta: string } {
+  const dias = diasDelMesEnZonaNegocio(ahora);
+  return {
+    desde: rangoDiaEnZonaNegocio(dias[0]).desde,
+    hasta: rangoDiaEnZonaNegocio(dias[dias.length - 1]).hasta,
+  };
+}

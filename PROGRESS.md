@@ -3574,6 +3574,80 @@ que usa el SDK `resend@6.28.1`.
   momento seguía vivo un watcher huérfano de la sesión de las 08:38 que
   pudo haber intentado el mismo envío. Se detuvo, sin investigar más.
 
+## Dashboard: gráfica de reservas por día con las citas de cada día ✅
+Pedido de Brenda (21/10/2026), rama `brenda`.
+- **Antes:** la gráfica del Dashboard solo dibujaba barras para los días
+  CON reservas, pegadas a la izquierda, sin número de día ni forma de ver
+  qué citas había (solo un `title` al pasar el mouse, que no existe en
+  móvil ni en lector de pantalla).
+- **Ahora:** una barra por cada día del mes (los vacíos también, para que
+  cada barra caiga sobre su número), con el conteo encima. Cada barra es un
+  botón: al tocarla, debajo aparece "Citas del <día>" con hora inicio–fin,
+  cliente, servicio (con su color), quién atiende y el badge de estado (la
+  cancelada con la hora tachada, igual que el Calendario). Flechas de día
+  anterior/siguiente (44 px) y "Ver calendario". Por defecto se elige hoy.
+  Teclado: un solo tab stop, flechas/Inicio/Fin (patrón radiogroup). En
+  móvil solo se muestran los números 1, 5, 10…, hoy y el elegido, sin que
+  se peguen entre sí.
+- **Regla del equipo: el backend guarda y calcula todo en UTC; la
+  conversión a hora de Costa Rica (`America/Costa_Rica`) se hace solo en
+  la capa de presentación.** El backend NO se modificó. Como
+  `reservasPorDia` del resumen agrupa por día UTC (una cita a las 18:00
+  hora CR o más tarde cae en el día UTC siguiente), la gráfica y la lista
+  del Dashboard no lo usan: piden las reservas del mes con
+  `GET /reservas?desde&hasta` (instantes UTC, recorriendo las páginas de
+  100) y las agrupan por día de CR en el frontend al mostrarlas. Los KPI
+  siguen saliendo de `/reportes/resumen`. El rango "este mes" se arma en
+  el frontend como el mes de CR expresado en instantes UTC
+  (`rangoMesEnZonaNegocio`).
+- **Pendiente de decidir con el equipo (no se tocó):** la gráfica de
+  Reportes sigue usando `reservasPorDia` del backend, así que ahí una
+  cita de las 18:00 en adelante se cuenta en el día siguiente.
+- `ESTILO_ESTADO_RESERVA` pasó de `ReservasPage` a `lib/reservas-api.ts`
+  para que Reservas y el Dashboard usen el mismo badge.
+- i18n: 10 claves nuevas en ES/EN (plurales `_one`/`_other`), se quitó
+  `dashboard.tooltipDia`; 391 claves con paridad.
+- **Verificado en Chrome real** con el negocio de prueba "QA Brenda
+  1792623553" (11 reservas, una cancelada, dos después de las 18:00): la
+  cita del 21/10 a las 18:30 sale en el 21, no en el 22;
+  clic en el 22 → 3 citas con la cancelada tachada; flechas de teclado
+  → 27/10 con 1 solo tab stop; EN + tema oscuro; móvil 390 px (iframe)
+  sin desborde, filas con la hora arriba y el nombre completo.
+- `tsc`, ESLint y tests del frontend (24) pasan. En la
+  corrida completa del backend fallan 2 tests de
+  `reservas-limite-plan-gratis.integration.spec.ts` por timeout (30 s)
+  creando 20 reservas contra Supabase remoto: no tocan este cambio.
+
+## Calendario: resaltar el día de hoy ✅
+Pedido de Brenda (21/10/2026), rama `brenda`. Solo CSS (`index.css`), sin
+lógica nueva.
+- El Calendario es **FullCalendar 6.1.21** (no un componente propio).
+  FullCalendar ya marca el día actual con la clase `fc-day-today`: usa la
+  fecha del sistema (opción `now`, por defecto `new Date()`), compara solo
+  el día dentro de la zona del calendario (`timeZone="America/Costa_Rica"`,
+  capa de presentación) y se re-renderiza solo al cambiar de día
+  (`NowTimer` con unidad `day` en dayGrid/timeGrid/list). No se duplicó esa
+  comparación. El resaltado no se veía porque `index.css` pinta todos los
+  días del mes con el mismo fondo blanco.
+- **Mes:** el número de hoy va en un círculo `primary-600` (en oscuro
+  `primary-500`) con texto blanco en negrita. La celda no se tiñe, así no
+  se confunde con los chips de las reservas (que van debajo con el color
+  de su servicio).
+- **Semana:** el encabezado de hoy va en una píldora del mismo color, y la
+  columna lleva un tinte `primary-600` al 6 % (antes, el amarillo por
+  defecto de FullCalendar). Los bloques de las citas tapan el tinte con su
+  propio color.
+- **Agenda (vista de móvil):** el encabezado del día de hoy en `primary-50`
+  con texto `primary-700` en negrita; en oscuro `primary-600` al 25 % con
+  `primary-200`.
+- **"Día seleccionado":** el Calendario no tiene un estado de día
+  seleccionado; un clic en un día abre el formulario "Nueva reserva". No
+  hay nada que se pise con el resaltado.
+- Verificado en Chrome real (negocio "QA Brenda 1792623553"): Mes, Semana
+  y Agenda, en tema claro y oscuro. En oscuro la Agenda no mostraba el
+  fondo porque el `div.fc-list-day-cushion` tiene un fondo opaco; se aplicó
+  al cushion.
+
 ## Cómo continuar si se corta la sesión
 Ver reglas de commit/pausa en el prompt original de arquitectura (punto 18
 del brief del equipo). Resumen: terminar hasta que compile, commitear con

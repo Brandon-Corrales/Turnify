@@ -9,19 +9,13 @@ import { useVistaPreferida } from '@/lib/vista-preferida';
 import { ApiError } from '@/lib/api';
 import {
   crearEtiquetaEstadoReserva,
+  ESTILO_ESTADO_RESERVA,
   reservasApi,
   type EstadoReserva,
   type Reserva,
 } from '@/lib/reservas-api';
 
 const LIMITE = 12;
-
-const ESTILO_ESTADO: Record<EstadoReserva, string> = {
-  pendiente: 'bg-amber-50 text-warning dark:bg-amber-900/30 dark:text-amber-400',
-  confirmada: 'bg-secondary-50 text-secondary-700 dark:bg-secondary-900/30 dark:text-secondary-400',
-  cancelada: 'bg-red-50 text-danger dark:bg-red-900/30 dark:text-red-400',
-  ausente: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
-};
 
 function formatearFechaHora(iso: string, idioma: string): string {
   return new Date(iso).toLocaleString(idioma.startsWith('en') ? 'en-US' : 'es-CR', {
@@ -168,7 +162,7 @@ export default function ReservasPage() {
                       </td>
                       <td className="px-4 py-3">
                         <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${ESTILO_ESTADO[reserva.estado]}`}
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${ESTILO_ESTADO_RESERVA[reserva.estado]}`}
                         >
                           {etiquetaEstado[reserva.estado]}
                         </span>
@@ -268,7 +262,7 @@ function ReservaCard({ reserva, onCancelar }: { reserva: Reserva; onCancelar: ()
       </p>
       <div className="flex flex-wrap items-center gap-2">
         <span
-          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${ESTILO_ESTADO[reserva.estado]}`}
+          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${ESTILO_ESTADO_RESERVA[reserva.estado]}`}
         >
           {etiquetaEstado[reserva.estado]}
         </span>
