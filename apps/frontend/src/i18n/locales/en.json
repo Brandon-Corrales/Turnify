@@ -166,7 +166,16 @@
     "bannerPlanGratisDescripcion": "Upgrade to unlock unlimited users, WhatsApp, and more.",
     "bannerPlanGratisBoton": "View plans",
     "graficoAriaLabel": "Bookings by day of the month",
-    "tooltipDia": "{{fecha}}: {{n}} booking(s)"
+    "graficoAyuda": "Tap a bar to see that day's appointments.",
+    "barraDiaAriaLabel_one": "{{fecha}}: {{count}} appointment",
+    "barraDiaAriaLabel_other": "{{fecha}}: {{count}} appointments",
+    "citasDelDia": "Appointments on {{fecha}}",
+    "cantidadCitas_one": "{{count}} appointment",
+    "cantidadCitas_other": "{{count}} appointments",
+    "diaAnterior": "Previous day",
+    "diaSiguiente": "Next day",
+    "sinCitasEsteDia": "No appointments this day.",
+    "errorCitasDelDia": "Couldn't load this day's appointments. Please try again later."
   },
   "suscripcion": {
     "titulo": "Your subscription",

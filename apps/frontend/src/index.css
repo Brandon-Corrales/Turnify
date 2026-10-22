@@ -172,3 +172,65 @@
   background-color: rgb(124 58 237 / 0.2);
   color: #ddd6fe;
 }
+
+/*
+ * Día de hoy. FullCalendar ya marca la celda con .fc-day-today usando la
+ * fecha del sistema (opción `now`, por defecto new Date()), compara solo el
+ * día dentro de la zona del calendario (timeZone="America/Costa_Rica") y
+ * se re-renderiza solo al cambiar de día. Aquí solo se le da estilo, sin
+ * teñir la celda completa del mes (todos los días comparten fondo, ver
+ * arriba): el número va en un círculo del color principal y en negrita,
+ * así no se confunde con los chips de las reservas, que van debajo y
+ * llevan el color de su servicio.
+ */
+.fc {
+  /* Columna de hoy en Semana; el valor por defecto de FullCalendar es amarillo. */
+  --fc-today-bg-color: rgb(79 70 229 / 0.06); /* primary-600 @ 6% */
+}
+
+.fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  margin: 0.25rem;
+  padding: 0 0.375rem;
+  border-radius: 9999px;
+  background-color: #4f46e5; /* primary-600 */
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.fc .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion {
+  margin: 0.25rem 0;
+  border-radius: 9999px;
+  background-color: #4f46e5; /* primary-600 */
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.fc .fc-list-day.fc-day-today .fc-list-day-cushion {
+  background-color: #eef2ff; /* primary-50 */
+}
+
+.fc .fc-list-day.fc-day-today .fc-list-day-text,
+.fc .fc-list-day.fc-day-today .fc-list-day-side-text {
+  color: #4338ca; /* primary-700 */
+  font-weight: 700;
+}
+
+.dark .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number,
+.dark .fc .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion {
+  background-color: #6366f1; /* primary-500: más visible sobre slate-800 */
+  color: #ffffff;
+}
+
+.dark .fc .fc-list-day.fc-day-today .fc-list-day-cushion {
+  background-color: rgb(79 70 229 / 0.25);
+}
+
+.dark .fc .fc-list-day.fc-day-today .fc-list-day-text,
+.dark .fc .fc-list-day.fc-day-today .fc-list-day-side-text {
+  color: #c7d2fe; /* primary-200 */
+}
