@@ -308,6 +308,7 @@ export default function ServiciosPage() {
           <Input
             label={t('servicios.nombreServicio')}
             variante={servicioEditando ? 'editar' : 'crear'}
+            maxLength={60}
             requerido
             error={errors.nombre?.message}
             {...register('nombre')}
@@ -315,6 +316,7 @@ export default function ServiciosPage() {
           <Input
             label={t('servicios.descripcion')}
             variante={servicioEditando ? 'editar' : 'crear'}
+            maxLength={500}
             hint={t('comun.opcional')}
             error={errors.descripcion?.message}
             {...register('descripcion')}

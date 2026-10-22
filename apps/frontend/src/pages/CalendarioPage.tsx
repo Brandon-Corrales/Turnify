@@ -399,6 +399,7 @@ export default function CalendarioPage() {
         });
         return;
       }
+      if (error instanceof ApiError) return;
       mostrarToast({
         variante: 'error',
         titulo: error instanceof ApiError ? error.message : t('calendario.errorCrear'),
@@ -414,6 +415,29 @@ export default function CalendarioPage() {
       : crearReservaMutation.error;
   const limiteReservasAlcanzado =
     errorDeReserva instanceof ApiError && errorDeReserva.errorCode === 'LIMITE_PLAN_ALCANZADO';
+  const errorReservaEnFormulario =
+    errorDeReserva instanceof ApiError &&
+    !errorDeReserva.field &&
+    !limiteReservasAlcanzado &&
+    !(crearReservaMutation.error instanceof ErrorReservaConClienteCreado)
+      ? errorDeReserva
+      : null;
+  const anclaErrorNuevaReservaRef = useRef<HTMLDivElement>(null);
+  const cantidadErroresNuevaReserva = Object.keys(erroresNuevaReserva).length;
+
+  useEffect(() => {
+    if (!modalNuevaReservaAbierto) return;
+    if (!crearReservaMutation.error && cantidadErroresNuevaReserva === 0) return;
+
+    const desplazarAlError = window.requestAnimationFrame(() => {
+      anclaErrorNuevaReservaRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    });
+
+    return () => window.cancelAnimationFrame(desplazarAlError);
+  }, [modalNuevaReservaAbierto, crearReservaMutation.error, cantidadErroresNuevaReserva]);
 
   // Abre el formulario de reserva manual precargado con una fecha/hora —
   // bug real reportado probando la app: "no me deja seleccionar dentro del
@@ -641,6 +665,7 @@ export default function CalendarioPage() {
           noValidate
           className="flex flex-col gap-4"
         >
+          <div ref={anclaErrorNuevaReservaRef} aria-hidden="true" />
           {limiteReservasAlcanzado && (
             <Banner
               variante="advertencia"
@@ -653,6 +678,13 @@ export default function CalendarioPage() {
               }
             />
           )}
+          {errorReservaEnFormulario && (
+            <Banner
+              variante="error"
+              titulo={errorReservaEnFormulario.message}
+              onCerrar={() => crearReservaMutation.reset()}
+            />
+          )}
           {modoCliente === 'existente' ? (
             <div className="flex flex-col gap-2">
               <Select
@@ -660,6 +692,7 @@ export default function CalendarioPage() {
                 variante="crear"
                 requerido
                 placeholder={t('validacion.seleccionaCliente')}
+                hint={t('calendario.ayudaCliente')}
                 opciones={clientesActivos.map((c) => ({
                   value: c.idCliente,
                   label: c.nombreCompleto,
@@ -687,7 +720,9 @@ export default function CalendarioPage() {
                 label={t('clientes.nombreCompleto')}
                 variante="crear"
                 requerido
+                maxLength={60}
                 autoComplete="off"
+                hint={t('calendario.ayudaNombreCliente')}
                 error={erroresNuevaReserva.nuevoCliente?.nombreCompleto?.message}
                 {...registerNuevaReserva('nuevoCliente.nombreCompleto')}
               />
@@ -696,7 +731,9 @@ export default function CalendarioPage() {
                 type="email"
                 variante="crear"
                 requerido
+                maxLength={100}
                 autoComplete="off"
+                hint={t('calendario.ayudaCorreoCliente')}
                 error={erroresNuevaReserva.nuevoCliente?.correoElectronico?.message}
                 {...registerNuevaReserva('nuevoCliente.correoElectronico')}
               />
@@ -704,6 +741,9 @@ export default function CalendarioPage() {
                 label={t('clientes.telefono')}
                 type="tel"
                 variante="crear"
+                maxLength={15}
+                inputMode="numeric"
+                pattern="[0-9]*"
                 hint={t('comun.opcional')}
                 autoComplete="off"
                 error={erroresNuevaReserva.nuevoCliente?.telefono?.message}
@@ -727,6 +767,7 @@ export default function CalendarioPage() {
             variante="crear"
             requerido
             placeholder={t('validacion.seleccionaServicio')}
+            hint={t('calendario.ayudaServicio')}
             opciones={serviciosActivos.map((s) => ({ value: s.idServicio, label: s.nombre }))}
             error={erroresNuevaReserva.idServicio?.message}
             {...registerNuevaReserva('idServicio')}
@@ -736,6 +777,7 @@ export default function CalendarioPage() {
             variante="crear"
             requerido
             placeholder={t('validacion.seleccionaEmpleado')}
+            hint={t('calendario.ayudaAtiende')}
             opciones={empleadosActivos.map((e) => ({
               value: e.idUsuario,
               label: e.nombreCompleto,
@@ -749,6 +791,7 @@ export default function CalendarioPage() {
               type="date"
               variante="crear"
               requerido
+              hint={t('calendario.ayudaFecha')}
               error={erroresNuevaReserva.fecha?.message}
               {...registerNuevaReserva('fecha')}
             />
@@ -757,6 +800,7 @@ export default function CalendarioPage() {
               type="time"
               variante="crear"
               requerido
+              hint={t('calendario.ayudaHora')}
               error={erroresNuevaReserva.hora?.message}
               {...registerNuevaReserva('hora')}
             />
@@ -764,6 +808,7 @@ export default function CalendarioPage() {
           <Input
             label={t('clientes.notas')}
             variante="crear"
+            maxLength={500}
             hint={t('comun.opcional')}
             error={erroresNuevaReserva.notas?.message}
             {...registerNuevaReserva('notas')}

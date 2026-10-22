@@ -154,6 +154,7 @@ export function ChatbotWidget() {
             <div className="flex shrink-0 items-center gap-2 border-t border-slate-200 p-3 dark:border-slate-700">
               <input
                 type="text"
+                maxLength={2000}
                 value={borrador}
                 onChange={(e) => setBorrador(e.target.value)}
                 onKeyDown={(e) => {

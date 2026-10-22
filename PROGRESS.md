@@ -3659,3 +3659,26 @@ observaciones — Seguimiento #3" quedó cerrada (7 puntos, ver arriba).
 Pendiente del equipo: push y Pull Request de `feature/inicial`, y decidir
 si el historial de Notificaciones debe seguir mostrando el texto literal
 de Resend, que incluye el correo dueño de la cuenta (ver punto 5).
+
+## Correcciones del Seguimiento #3 — feedback de reserva, idioma y saludo
+
+Se corrigieron los tres puntos que estaban marcados como no resueltos en
+la revisión del 21/10/2026:
+
+- **Error de reserva fuera de horario**: el error de API ahora aparece como
+  `Banner` dentro del modal de Nueva reserva, completamente visible y sin
+  depender del apilamiento de toasts. Los errores ligados a un campo siguen
+  mostrándose junto al campo correspondiente.
+- **Idioma de errores del backend**: `apiFetch` envía `Accept-Language`
+  (`es`/`en`) según el idioma activo de i18n. La terminología de
+  `FUERA_DE_DISPONIBILIDAD` usa "profesional" en ambos idiomas.
+- **Saludo del Dashboard**: se eliminan títulos profesionales reconocidos
+  al inicio del nombre (`Lic.`, `Dra.`, `Dr.`, `Ing.`, `M.Sc.`, `MBA` y
+  `Prof.`), sin alterar nombres que no tienen título.
+
+Validación: backend `247/247` tests, frontend `31/31` tests, builds de
+ambos proyectos, `/health` `200` con base de datos activa, frontend en
+`http://localhost:5173/` sin errores de consola, y comprobación real de
+mensajes ES/EN mediante `Accept-Language`. No se ejecutaron migraciones,
+resets ni operaciones destructivas sobre Supabase; la restricción
+`EXCLUDE` de `reservas` no fue modificada.

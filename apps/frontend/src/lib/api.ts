@@ -4,6 +4,7 @@ import {
   obtenerAccessToken,
   obtenerRefreshToken,
 } from './token-storage';
+import i18n from '@/i18n/config';
 
 /** Exportado para el socket del Chatbot (lib/chatbot-socket.ts) — mismo origen que el HTTP, una sola fuente. */
 export const BASE_URL = import.meta.env.VITE_API_URL;
@@ -71,6 +72,7 @@ export async function apiFetch<T>(path: string, opciones: OpcionesApi = {}): Pro
   const ejecutar = (): Promise<Response> => {
     const headers = new Headers(resto.headers);
     headers.set('Content-Type', 'application/json');
+    headers.set('Accept-Language', i18n.resolvedLanguage?.startsWith('en') ? 'en' : 'es');
     if (autenticado) {
       const token = obtenerAccessToken();
       if (token) headers.set('Authorization', `Bearer ${token}`);

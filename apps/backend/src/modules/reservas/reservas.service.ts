@@ -296,7 +296,7 @@ export class ReservasService {
     if (disponibilidad.length === 0) {
       throw new ConflictException({
         errorCode: 'FUERA_DE_DISPONIBILIDAD',
-        message: 'Ese horario está fuera de la disponibilidad registrada del usuario',
+        message: 'Esta reserva está fuera del horario laboral disponible. Selecciona otra hora.',
       });
     }
   }

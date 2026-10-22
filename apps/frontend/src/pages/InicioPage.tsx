@@ -25,6 +25,7 @@ import {
   ZONA_HORARIA_NEGOCIO,
 } from '@/lib/fecha-negocio';
 import { negociosApi } from '@/lib/negocios-api';
+import { nombreParaSaludo } from '@/lib/nombre-saludo';
 import { reportesApi, type ResumenReportes } from '@/lib/reportes-api';
 import {
   crearEtiquetaEstadoReserva,
@@ -443,7 +444,7 @@ export default function InicioPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">
-              {t('dashboard.hola', { nombre: usuario?.nombreCompleto?.split(' ')[0] })}
+              {t('dashboard.hola', { nombre: nombreParaSaludo(usuario?.nombreCompleto) })}
             </h1>
             <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
               {t('dashboard.resumenDe', { mes: nombreMes })}

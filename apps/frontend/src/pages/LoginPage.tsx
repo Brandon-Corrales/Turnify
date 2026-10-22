@@ -51,6 +51,7 @@ export default function LoginPage() {
           <Input
             label={t('comun.correoElectronico')}
             type="email"
+            maxLength={100}
             autoComplete="email"
             requerido
             error={errors.correoElectronico?.message}
@@ -59,6 +60,7 @@ export default function LoginPage() {
           <Input
             label={t('comun.contrasena')}
             type="password"
+            maxLength={128}
             autoComplete="current-password"
             requerido
             error={errors.contrasena?.message}

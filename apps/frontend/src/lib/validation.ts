@@ -11,6 +11,8 @@ import { TIPOS_NEGOCIO } from './tipo-negocio';
  * usuario cambia de idioma con el formulario abierto.
  */
 const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d).+$/;
+const NOMBRE_REGEX = /^[\p{L}]+(?:[ '\u002D][\p{L}]+)*$/u;
+const TELEFONO_REGEX = /^\d+$/;
 
 /**
  * Misma política que EsContrasenaValida() en el backend (apps/backend/src/
@@ -32,8 +34,9 @@ export function crearLoginSchema(t: TFunction) {
     correoElectronico: z
       .string()
       .min(1, t('validacion.correoObligatorio'))
+      .max(100)
       .email(t('validacion.correoInvalido')),
-    contrasena: z.string().min(1, t('validacion.contrasenaObligatoria')),
+    contrasena: z.string().min(1, t('validacion.contrasenaObligatoria')).max(128),
   });
 }
 
@@ -41,19 +44,30 @@ export type LoginFormValues = z.infer<ReturnType<typeof crearLoginSchema>>;
 
 export function crearRegistroSchema(t: TFunction) {
   return z.object({
-    nombreNegocio: z.string().min(2, t('validacion.minimo2Caracteres')).max(150),
+    nombreNegocio: z.string().min(2, t('validacion.minimo2Caracteres')).max(60),
     tipoNegocio: z.enum(TIPOS_NEGOCIO, t('validacion.tipoNegocioObligatorio')),
     correoNegocio: z
       .string()
       .min(1, t('validacion.correoObligatorio'))
+      .max(100)
       .email(t('validacion.correoInvalido')),
-    telefonoNegocio: z.string().max(30).optional().or(z.literal('')),
-    nombreCompletoAdmin: z.string().min(2, t('validacion.minimo2Caracteres')).max(150),
+    telefonoNegocio: z
+      .string()
+      .max(15)
+      .regex(TELEFONO_REGEX, t('validacion.soloNumeros'))
+      .optional()
+      .or(z.literal('')),
+    nombreCompletoAdmin: z
+      .string()
+      .min(2, t('validacion.minimo2Caracteres'))
+      .max(60)
+      .regex(NOMBRE_REGEX, t('validacion.soloLetras')),
     correoAdmin: z
       .string()
       .min(1, t('validacion.correoObligatorio'))
+      .max(100)
       .email(t('validacion.correoInvalido')),
-    contrasena: crearContrasenaSchema(t),
+    contrasena: crearContrasenaSchema(t).max(128),
   });
 }
 
@@ -61,12 +75,22 @@ export type RegistroFormValues = z.infer<ReturnType<typeof crearRegistroSchema>>
 
 export function crearDatosClientePublicoSchema(t: TFunction) {
   return z.object({
-    nombreCompleto: z.string().min(2, t('validacion.minimo2Caracteres')).max(150),
+    nombreCompleto: z
+      .string()
+      .min(2, t('validacion.minimo2Caracteres'))
+      .max(60)
+      .regex(NOMBRE_REGEX, t('validacion.soloLetras')),
     correoElectronico: z
       .string()
       .min(1, t('validacion.correoObligatorio'))
+      .max(100)
       .email(t('validacion.correoInvalido')),
-    telefono: z.string().max(30).optional().or(z.literal('')),
+    telefono: z
+      .string()
+      .max(15)
+      .regex(TELEFONO_REGEX, t('validacion.soloNumeros'))
+      .optional()
+      .or(z.literal('')),
   });
 }
 
@@ -76,12 +100,22 @@ export type DatosClientePublicoFormValues = z.infer<
 
 export function crearClienteSchema(t: TFunction) {
   return z.object({
-    nombreCompleto: z.string().min(2, t('validacion.minimo2Caracteres')).max(150),
+    nombreCompleto: z
+      .string()
+      .min(2, t('validacion.minimo2Caracteres'))
+      .max(60)
+      .regex(NOMBRE_REGEX, t('validacion.soloLetras')),
     correoElectronico: z
       .string()
       .min(1, t('validacion.correoObligatorio'))
+      .max(100)
       .email(t('validacion.correoInvalido')),
-    telefono: z.string().max(30).optional().or(z.literal('')),
+    telefono: z
+      .string()
+      .max(15)
+      .regex(TELEFONO_REGEX, t('validacion.soloNumeros'))
+      .optional()
+      .or(z.literal('')),
     notas: z.string().max(500).optional().or(z.literal('')),
     canalPreferido: z.enum(['email', 'whatsapp']),
     idiomaPreferido: z.enum(['es', 'en']),
@@ -93,7 +127,7 @@ export type ClienteFormValues = z.infer<ReturnType<typeof crearClienteSchema>>;
 
 export function crearServicioSchema(t: TFunction) {
   return z.object({
-    nombre: z.string().min(2, t('validacion.minimo2Caracteres')).max(150),
+    nombre: z.string().min(2, t('validacion.minimo2Caracteres')).max(60),
     descripcion: z.string().max(500).optional().or(z.literal('')),
     // Mismos límites que CrearServicioDto en el backend (IsInt, Min(1), Max(1440)).
     // Sin z.coerce: el input usa registro con {valueAsNumber: true} (RHF ya
@@ -134,12 +168,16 @@ export function crearNuevaReservaSchema(t: TFunction) {
       modoCliente: z.enum(['existente', 'nuevo']),
       idCliente: z.string(),
       nuevoCliente: z.object({
-        nombreCompleto: z.string(),
-        correoElectronico: z.string(),
-        telefono: z.string().optional(),
+        nombreCompleto: z.string().max(60),
+        correoElectronico: z.string().max(100),
+        telefono: z
+          .string()
+          .max(15)
+          .optional()
+          .or(z.literal('')),
       }),
-      idServicio: z.string().min(1, t('validacion.seleccionaServicio')),
-      idUsuario: z.string().min(1, t('validacion.seleccionaEmpleado')),
+      idServicio: z.string().max(100).min(1, t('validacion.seleccionaServicio')),
+      idUsuario: z.string().max(100).min(1, t('validacion.seleccionaEmpleado')),
       fecha: z.string().min(1, t('validacion.fechaObligatoria')),
       hora: z.string().min(1, t('validacion.horaObligatoria')),
       notas: z.string().max(500).optional().or(z.literal('')),

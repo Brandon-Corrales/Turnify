@@ -17,7 +17,27 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
   const config = app.get(ConfigService<Env, true>);
 
-  app.enableCors({ origin: config.get('CORS_ORIGIN', { infer: true }), credentials: true });
+  const configuredOrigins = config
+    .get('CORS_ORIGIN', { infer: true })
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  const allowedOrigins = new Set(
+    config.get('NODE_ENV', { infer: true }) === 'development'
+      ? [...configuredOrigins, 'http://localhost:5173', 'http://127.0.0.1:5173']
+      : configuredOrigins,
+  );
+
+  app.enableCors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.has(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error(`Origen CORS no permitido: ${origin}`), false);
+    },
+    credentials: true,
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({

@@ -307,6 +307,7 @@ export default function ClientesPage() {
           <Input
             label={t('clientes.nombreCompleto')}
             variante={clienteEditando ? 'editar' : 'crear'}
+            maxLength={60}
             requerido
             error={errors.nombreCompleto?.message}
             {...register('nombreCompleto')}
@@ -314,6 +315,7 @@ export default function ClientesPage() {
           <Input
             label={t('comun.correoElectronico')}
             type="email"
+            maxLength={100}
             variante={clienteEditando ? 'editar' : 'crear'}
             requerido
             error={errors.correoElectronico?.message}
@@ -322,6 +324,9 @@ export default function ClientesPage() {
           <Input
             label={t('clientes.telefono')}
             type="tel"
+            maxLength={15}
+            inputMode="numeric"
+            pattern="[0-9]*"
             variante={clienteEditando ? 'editar' : 'crear'}
             hint={t('comun.opcional')}
             error={errors.telefono?.message}
@@ -354,6 +359,7 @@ export default function ClientesPage() {
           <Input
             label={t('clientes.notas')}
             variante={clienteEditando ? 'editar' : 'crear'}
+            maxLength={500}
             hint={t('comun.opcional')}
             error={errors.notas?.message}
             {...register('notas')}
