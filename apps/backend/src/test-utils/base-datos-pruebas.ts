@@ -1,6 +1,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
+import { esHostLocal } from '../database/host-local';
+
+export { esHostLocal };
 
 /**
  * Protección de la base de datos de pruebas (Bloque 6, punto 6.1).
@@ -16,14 +19,8 @@ import * as dotenv from 'dotenv';
  * contraseña), solo el nombre de la variable y el host.
  */
 
-const HOSTS_LOCALES = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
-
 /** Ruta del `.env` único del monorepo (mismo criterio que app.module.ts). */
 const RUTA_ENV_RAIZ = path.resolve(__dirname, '../../../../.env');
-
-export function esHostLocal(host: string): boolean {
-  return HOSTS_LOCALES.has(host.toLowerCase());
-}
 
 /** Host de una cadena de conexión, o `null` si no se puede interpretar. */
 export function hostDeUrl(url: string): string | null {

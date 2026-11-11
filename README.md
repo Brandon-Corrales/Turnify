@@ -60,6 +60,47 @@ npm run backend:dev       # http://localhost:3000 (Swagger en /docs)
 npm run frontend:dev
 ```
 
+## Ambientes
+| Variable | Desarrollo | Pruebas (integración/E2E) | Producción |
+|---|---|---|---|
+| `NODE_ENV` | `development` | `test` (lo fijan los scripts) | `production` |
+| Base de datos | `DATABASE_URL` del `.env` compartido (hoy, Supabase) o `DB_*` locales | `TEST_DATABASE_URL`, solo local (ver [Pruebas](#pruebas)) | `DATABASE_URL` en el entorno del servidor |
+| `DB_SSL_CA` / `DB_SSL_CA_PATH` | No | No | Recomendado (ver abajo) |
+| `MIGRATIONS_RUN_ON_START` | `false` | No aplica (los scripts migran) | `false` (migraciones a mano) |
+| i18n con recarga de archivos (`watch`) | Sí | No | No |
+| Proveedores (Resend, WhatsApp, Stripe, Groq) | Claves de prueba del `.env` | Vacías: no se llama a ninguno | Claves del entorno del servidor |
+
+Cómo se separan: cada ambiente define sus propias variables (el `.env` local para
+desarrollo, las variables del proceso para pruebas y el panel del hosting para
+producción). Hoy **desarrollo y producción comparten la misma base de Supabase**: no
+hay una base separada para desarrollo. Por eso, al arrancar con
+`NODE_ENV=development` y una base remota, el backend deja esta advertencia en el log;
+también avisa si `NODE_ENV=production` apunta a una base local. La advertencia no
+bloquea el arranque ni muestra el host ni la cadena de conexión.
+
+### Migraciones en producción
+Las migraciones **no** se aplican solas al arrancar. Procedimiento manual:
+1. Respaldar la base (ver "Respaldos" abajo).
+2. Ver qué falta aplicar, desde una máquina con el `DATABASE_URL` de producción en el
+   entorno: `npm run migration:show --workspace=apps/backend` (`[X]` aplicada, `[ ]`
+   pendiente).
+3. Aplicar: `npm run backend:migrate` (una transacción por migración; si una falla,
+   se detiene ahí).
+4. Repetir el paso 2 y comprobar que todas quedaron en `[X]`.
+5. Para deshacer la última: `npm run migration:revert --workspace=apps/backend`.
+
+Modo opcional: con `MIGRATIONS_RUN_ON_START=true`, el backend aplica las pendientes al
+arrancar, antes de aceptar solicitudes (usa las migraciones compiladas en
+`dist/database/migrations`). Está desactivado por defecto; si una migración falla, el
+backend no arranca.
+
+### Respaldos
+El repositorio no define una estrategia de respaldos. Para documentarla hace falta
+revisar en el panel de Supabase: qué respaldos automáticos incluye el plan actual y con
+qué frecuencia y retención, si está disponible la recuperación a un punto en el tiempo
+(PITR) y cómo se restaura un respaldo. Mientras tanto, antes de cada migración en
+producción se recomienda un respaldo manual (por ejemplo, con `pg_dump`).
+
 ### Conexión segura a la base de datos (SSL)
 Por defecto, con `DATABASE_URL` la conexión va cifrada pero **no valida el
 certificado** del servidor (`rejectUnauthorized: false`), como siempre lo ha hecho.

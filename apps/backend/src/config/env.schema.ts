@@ -44,6 +44,14 @@ const envSchema = z
         .optional(),
     ),
 
+    // Migraciones al arrancar (Bloque 6, punto 6.4). Desactivado por
+    // defecto: en producción se aplican a mano (ver README). Solo "true"
+    // lo activa.
+    MIGRATIONS_RUN_ON_START: z
+      .enum(['true', 'false', ''])
+      .default('false')
+      .transform((valor) => valor === 'true'),
+
     JWT_ACCESS_SECRET: z.string().min(1, 'JWT_ACCESS_SECRET es obligatorio'),
     JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
     JWT_REFRESH_SECRET: z.string().min(1, 'JWT_REFRESH_SECRET es obligatorio'),
