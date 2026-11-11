@@ -1,3 +1,4 @@
 {
-  "CONTRASENA_INVALIDA": "Password must be 12-64 characters long, include at least one letter and one number, and not be a common password."
+  "CONTRASENA_INVALIDA": "Password must be 12-64 characters long, include at least one letter and one number, and not be a common password.",
+  "TERMINO_BLOQUEADO": "The text contains disallowed terms"
 }

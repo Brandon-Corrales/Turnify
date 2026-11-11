@@ -29,6 +29,7 @@
   "DEMASIADAS_SOLICITUDES": "Too many requests. Wait a minute and try again.",
   "ERROR_INTERNO": "An unexpected error occurred. Please try again later.",
   "SOLICITUD_INVALIDA": "Invalid request",
+  "VALIDACION_FALLIDA": "Invalid input data",
   "NO_AUTENTICADO": "Not authenticated",
   "NO_AUTORIZADO": "Not authorized",
   "NO_ENCONTRADO": "Not found",

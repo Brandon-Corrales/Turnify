@@ -29,6 +29,7 @@
   "DEMASIADAS_SOLICITUDES": "Demasiadas solicitudes. Espera un minuto e intenta de nuevo.",
   "ERROR_INTERNO": "Ocurrió un error inesperado. Intenta de nuevo más tarde.",
   "SOLICITUD_INVALIDA": "Solicitud inválida",
+  "VALIDACION_FALLIDA": "Datos de entrada inválidos",
   "NO_AUTENTICADO": "No autenticado",
   "NO_AUTORIZADO": "No autorizado",
   "NO_ENCONTRADO": "No encontrado",

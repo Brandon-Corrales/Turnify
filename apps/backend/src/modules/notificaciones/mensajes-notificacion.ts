@@ -32,6 +32,15 @@ const CLAVES: Record<TipoMensajeReserva, { asunto: string; texto: string }> = {
  * request (que podría ser el idioma del admin creando la reserva, no el
  * del cliente que la recibe).
  */
+export function escaparHtml(texto: string): string {
+  return texto
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export function construirMensaje(
   i18n: I18nService,
   tipo: TipoMensajeReserva,
@@ -39,8 +48,12 @@ export function construirMensaje(
   datos: DatosMensajeReserva,
 ): { asunto: string; texto: string } {
   const claves = CLAVES[tipo];
+  const datosSaneados: DatosMensajeReserva = {
+    ...datos,
+    nombreServicio: escaparHtml(datos.nombreServicio),
+  };
   return {
     asunto: i18n.translate(claves.asunto, { lang: idioma }),
-    texto: i18n.translate(claves.texto, { lang: idioma, args: datos }),
+    texto: i18n.translate(claves.texto, { lang: idioma, args: datosSaneados }),
   };
 }

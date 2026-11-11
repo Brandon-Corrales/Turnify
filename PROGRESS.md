@@ -3725,3 +3725,21 @@ resets ni operaciones destructivas sobre Supabase; la restricción
   - Se mapea a nivel de raíz como `honeypot` para evitar violar `forbidNonWhitelisted` en el DTO de cliente.
   - Rechazo con `SOLICITUD_INVALIDA` si el honeypot viene lleno y límite de reservas por correo (`DEMASIADAS_SOLICITUDES` tras 5 reservas consecutivas) en `reserva-publica.service.ts`.
   - Pruebas unitarias agregadas en `reserva-publica.service.spec.ts`.
+
+## Bloque 7 — Moderación, sanitización y reportes técnicos
+- **Punto 7.1 (Moderación mínima propia)**: Implementado `terminos-permitidos.validator.ts` con decorador `@TerminosPermitidos()`, configurable mediante la variable de entorno `TERMINOS_BLOQUEADOS` (vacía por defecto). Normaliza texto insensible a mayúsculas y acentos. Se aplica a campos de texto libre de reserva pública (`nombreCompleto`) y a la entrada del chatbot (`MensajeChatbotDto`), con límite de longitud reducido a 500 caracteres y mensajes de error traducidos (`validacion.TERMINO_BLOQUEADO`). Se adaptó `validation-exception-factory.ts` con búsqueda recursiva de nodos hoja (`findFirstLeaf`) para extraer mensajes y campos anidados en DTOs complejos, y `all-exceptions.filter.ts` para resolver las claves de validación traducidas.
+- **Punto 7.2 (Sanitización y texto de usuario)**: `mensajes-notificacion.ts` incluye la función `escaparHtml()` que sanea caracteres peligrosos (`<`, `>`, `&`, `"`, `'`) en campos provistos por usuarios (ej. nombre del servicio) antes de inyectarlos en las plantillas de correo de Resend. Pruebas unitarias completas en `mensajes-notificacion.spec.ts`.
+- **Punto 7.3 (Informe técnico: Tokens en localStorage vs Cookies HttpOnly en Render)**:
+  - *Contexto de despliegue*: Tanto el frontend como el backend de Turnify se despliegan en subdominios independientes bajo `onrender.com` (ej. `turnify-front.onrender.com` y `turnify-api.onrender.com`).
+  - *Restricción de la Public Suffix List (PSL)*: `onrender.com` está registrado en la PSL de Mozilla como un sufijo público. Por ende, los navegadores tratan a diferentes subdominios de `onrender.com` como dominios de tercer nivel totalmente separados (cross-site), lo cual impide compartir cookies con directivas estándar `SameSite=Lax` o `SameSite=Strict`.
+  - *Implicaciones de seguridad de Cookies*: Para usar cookies HttpOnly entre subdominios de Render, se requeriría configurar obligatoriamente `SameSite=None; Secure`. Esto convierte a la cookie en una credencial enviada automáticamente en peticiones cross-site, lo cual exige implementar protección CSRF robusta (tokens anti-CSRF, headers personalizados) y reconfigurar la autenticación por handshake de Socket.IO para el chatbot en tiempo real.
+  - *Conclusión académica y recomendación*: Mantener los tokens JWT en memoria y almacenamiento local con rotación de refresh tokens (`UsuarioRefreshTokenHash` con SHA-256) y caducidad corta (15 min) es la decisión técnica correcta y más segura para la arquitectura actual, evitando vulnerabilidades de CSRF y complejidades operativas en plataformas PaaS multi-tenant.
+- **Punto 7.4 (Informe técnico: Verificación de correo en reserva pública)**:
+  - *Requerimientos de implementación*: Implementar verificación previa de correo electrónico en la reserva pública requeriría:
+    1. Un nuevo estado transitorio de reserva: `PENDIENTE_CONFIRMACION`.
+    2. Generación y firma de un token efímero con tiempo de expiración (ej. 15 minutos).
+    3. Envío de un correo de verificación transaccional con enlace único a `/reservar/confirmar/:token`.
+    4. Un worker o cron recurrente que libere el horario y limpie la reserva no confirmada para no bloquear la disponibilidad a otros clientes.
+    5. Modificación de las reglas de cálculo en `LimitesPlanService` para decidir si las reservas no confirmadas consumen o no la cuota del Plan Gratis.
+  - *Impacto en UX y conversión*: Añadir fricción de confirmación obligatoria por correo reduce severamente la tasa de conversión en reservas espontáneas para pymes.
+  - *Recomendación*: Se recomienda mantener la reserva directa con notificación inmediata de confirmación, mitigando bots y spam mediante el honeypot invisible y el rate limiting por correo/IP ya implementados en el Bloque 3.

@@ -10,12 +10,14 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import { TerminosPermitidos } from '../../../common/validation/terminos-permitidos.validator';
 
 export class DatosClientePublicoDto {
   @ApiProperty({ example: 'María Rodríguez' })
   @IsString()
   @MinLength(2)
   @MaxLength(150)
+  @TerminosPermitidos()
   nombreCompleto!: string;
 
   @ApiProperty({ example: 'maria@example.com' })
