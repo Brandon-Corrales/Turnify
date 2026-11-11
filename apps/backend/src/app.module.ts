@@ -8,6 +8,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 import { validateEnv, Env } from './config/env.schema';
 import { listaEntidades } from './database/entity-list';
+import { construirOpcionesConexion } from './database/opciones-conexion';
 import { HealthModule } from './health/health.module';
 import { TenantModule } from './common/tenant';
 import { RegistroSolicitudesMiddleware } from './common/logging/registro-solicitudes.middleware';
@@ -39,18 +40,19 @@ import { AppThrottlerGuard } from './common/throttler/ws-aware-throttler.guard';
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService<Env, true>) => {
-        const databaseUrl = config.get('DATABASE_URL', { infer: true });
         return {
           type: 'postgres' as const,
-          ...(databaseUrl
-            ? { url: databaseUrl, ssl: { rejectUnauthorized: false } }
-            : {
-                host: config.get('DB_HOST', { infer: true }),
-                port: config.get('DB_PORT', { infer: true }),
-                username: config.get('DB_USERNAME', { infer: true }),
-                password: config.get('DB_PASSWORD', { infer: true }),
-                database: config.get('DB_NAME', { infer: true }),
-              }),
+          // SSL y validación opcional del certificado: ver opciones-conexion.ts.
+          ...construirOpcionesConexion({
+            DATABASE_URL: config.get('DATABASE_URL', { infer: true }),
+            DB_HOST: config.get('DB_HOST', { infer: true }),
+            DB_PORT: config.get('DB_PORT', { infer: true }),
+            DB_USERNAME: config.get('DB_USERNAME', { infer: true }),
+            DB_PASSWORD: config.get('DB_PASSWORD', { infer: true }),
+            DB_NAME: config.get('DB_NAME', { infer: true }),
+            DB_SSL_CA: config.get('DB_SSL_CA', { infer: true }),
+            DB_SSL_CA_PATH: config.get('DB_SSL_CA_PATH', { infer: true }),
+          }),
           entities: listaEntidades,
           synchronize: false,
           logging: config.get('NODE_ENV', { infer: true }) === 'development',

@@ -60,6 +60,23 @@ npm run backend:dev       # http://localhost:3000 (Swagger en /docs)
 npm run frontend:dev
 ```
 
+### Conexión segura a la base de datos (SSL)
+Por defecto, con `DATABASE_URL` la conexión va cifrada pero **no valida el
+certificado** del servidor (`rejectUnauthorized: false`), como siempre lo ha hecho.
+Para validarlo (CA y nombre del host, equivalente a `sslmode=verify-full`, lo que
+recomienda [Supabase](https://supabase.com/docs/guides/platform/ssl-enforcement)):
+1. Descargar la CA del proyecto en el panel de Supabase: **Database Settings → SSL
+   Configuration**.
+2. Definir **una** de estas variables en el entorno del backend:
+   - `DB_SSL_CA`: el contenido PEM (en una sola línea, con `\n` entre líneas).
+   - `DB_SSL_CA_PATH`: la ruta a ese archivo `.crt`.
+3. Reiniciar el backend. Si el certificado no corresponde, el backend no conecta
+   (falla al arrancar, no a medio uso).
+
+La app y el CLI de migraciones usan la misma configuración
+(`apps/backend/src/database/opciones-conexion.ts`). Si la CA no está definida, nada
+cambia.
+
 ## Pruebas
 | Comando (desde la raíz) | Qué corre | Base de datos |
 |---|---|---|
