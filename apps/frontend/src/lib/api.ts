@@ -29,10 +29,15 @@ interface OpcionesApi extends Omit<RequestInit, 'body'> {
 }
 
 let alSesionExpirada: (() => void) | null = null;
+let alDespertandoServidor: (() => void) | null = null;
 
 /** AuthProvider se suscribe aquí para reaccionar cuando el refresh token también expiró/fue revocado. */
 export function registrarAlSesionExpirada(cb: () => void): void {
   alSesionExpirada = cb;
+}
+
+export function registrarAlDespertandoServidor(cb: () => void): void {
+  alDespertandoServidor = cb;
 }
 
 let refrescoEnCurso: Promise<string | null> | null = null;
@@ -48,7 +53,9 @@ async function refrescarSesion(): Promise<string | null> {
       body: JSON.stringify({ refreshToken }),
     });
     if (!res.ok) {
-      limpiarTokens();
+      if (res.status === 401) {
+        limpiarTokens();
+      }
       return null;
     }
     const data: { accessToken: string; refreshToken: string } = await res.json();
@@ -69,6 +76,12 @@ async function refrescarSesion(): Promise<string | null> {
 export async function apiFetch<T>(path: string, opciones: OpcionesApi = {}): Promise<T> {
   const { autenticado = true, body, ...resto } = opciones;
 
+  const controller = new AbortController();
+  const idTimeout = setTimeout(() => controller.abort(), 75_000);
+  const idAviso = setTimeout(() => {
+    alDespertandoServidor?.();
+  }, 6_000);
+
   const ejecutar = (): Promise<Response> => {
     const headers = new Headers(resto.headers);
     headers.set('Content-Type', 'application/json');
@@ -79,41 +92,61 @@ export async function apiFetch<T>(path: string, opciones: OpcionesApi = {}): Pro
     }
     return fetch(`${BASE_URL}${path}`, {
       ...resto,
+      signal: controller.signal,
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   };
 
-  let res = await ejecutar();
+  try {
+    let res = await ejecutar();
 
-  if (res.status === 401 && autenticado) {
-    refrescoEnCurso ??= refrescarSesion().finally(() => {
-      refrescoEnCurso = null;
-    });
-    const nuevoAccessToken = await refrescoEnCurso;
+    if (res.status === 401 && autenticado) {
+      refrescoEnCurso ??= refrescarSesion().finally(() => {
+        refrescoEnCurso = null;
+      });
+      const nuevoAccessToken = await refrescoEnCurso;
 
-    if (nuevoAccessToken) {
-      res = await ejecutar();
-    } else {
-      alSesionExpirada?.();
+      if (nuevoAccessToken) {
+        res = await ejecutar();
+      } else {
+        alSesionExpirada?.();
+      }
     }
-  }
 
-  if (!res.ok) {
-    let cuerpo: Partial<{ errorCode: string; message: string; field: string }> = {};
-    try {
-      cuerpo = await res.json();
-    } catch {
-      // respuesta sin cuerpo JSON (ej. error de red/proxy)
+    if (!res.ok) {
+      let cuerpo: Partial<{ errorCode: string; message: string; field: string }> = {};
+      try {
+        cuerpo = await res.json();
+      } catch {
+        // respuesta sin cuerpo JSON (ej. error de red/proxy)
+      }
+      throw new ApiError(
+        res.status,
+        cuerpo.errorCode ?? 'ERROR_DESCONOCIDO',
+        cuerpo.message ?? 'Ocurrió un error inesperado. Intenta de nuevo.',
+        cuerpo.field,
+      );
+    }
+
+    if (res.status === 204) return undefined as T;
+    return res.json() as Promise<T>;
+  } catch (err: unknown) {
+    if (err instanceof ApiError) throw err;
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new ApiError(
+        0,
+        'TIEMPO_AGOTADO',
+        i18n.t('errores.tiempoAgotado', 'El servidor tardó demasiado en responder. Intenta de nuevo.'),
+      );
     }
     throw new ApiError(
-      res.status,
-      cuerpo.errorCode ?? 'ERROR_DESCONOCIDO',
-      cuerpo.message ?? 'Ocurrió un error inesperado. Intenta de nuevo.',
-      cuerpo.field,
+      0,
+      'ERROR_RED',
+      i18n.t('errores.errorConexion', 'No se pudo conectar con el servidor. Revisa tu conexión a internet.'),
     );
+  } finally {
+    clearTimeout(idTimeout);
+    clearTimeout(idAviso);
   }
-
-  if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
 }

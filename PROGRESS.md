@@ -3690,3 +3690,16 @@ resets ni operaciones destructivas sobre Supabase; la restricción
 - **Punto 8.3 (Saludo del Dashboard)**: Se ampliaron los títulos profesionales omitidos (`Lic.`, `Licda.`, `Dr.`, `Dra.`, `Ing.`, `Arq.`, `Abg.`, `M.Sc.`, `Msc`, `Prof.`) en `nombre-saludo.ts` y se agregaron 12 casos de prueba unitaria en `nombre-saludo.test.ts`.
 - **Punto 8.4 (Diagnóstico correo duplicado)**: `notificaciones.service.ts` no resetea `reintentos = 0` al tener éxito en un segundo intento, conservando `reintentos = 1` en la fila. El cron de pendientes carece de bloqueo de concurrencia a nivel de BD, lo que ante instancias simultáneas o procesos duplicados en Render puede originar reintentos no registrados en el log del proceso activo. No se editó `notificaciones.service.ts` por respeto a las fronteras del Bloque 4.
 - **Parte B (Chatbot con Groq)**: Se verificó la respuesta activa de la API de Groq (`GROQ_STATUS_OK`). Las preguntas 1 a 16 y reglas #6 y #14 ya contaban con reglas en `base-conocimiento.ts`.
+
+
+## Bloque 2 — Frontend: Sesión, retroalimentación de carga y repositorio
+- **Punto 2.1 (Resiliencia de sesión)**: En `api.ts` y `AuthContext.tsx`, los tokens se preservan ante errores de red, 429 o 5xx del servidor. Solo se eliminan si el backend responde con un 401 explícito de token inválido. Se agregó pantalla de error transitorio con botones "Reintentar" y "Cerrar sesión" y tests unitarios en `api.test.ts`.
+- **Punto 2.2 (Feedback de carga y code splitting)**:
+  - Spinner y texto ("Cargando Turnify…" / "Loading Turnify…") insertado en `#root` de `index.html` con CSS puro, respetando el tema claro/oscuro y el idioma antes de montar React.
+  - División del bundle por ruta en `App.tsx` con `React.lazy` y `<Suspense fallback={<PantallaCargando />}>`. El bundle inicial se redujo de 2.3 MB a ~430 KB.
+  - Creado `ErrorBoundary.tsx` global y por ruta con botón para reintentar.
+  - Creada página `NoEncontradoPage.tsx` accesible y traducida para la ruta `*`.
+  - Timeout de 75 segundos en `api.ts` con `AbortController` y aviso si el servidor tarda más de 6 segundos en responder (cold start de Render).
+- **Punto 2.3 (CI y plantillas de GitHub)**: Creado `.github/workflows/ci.yml` con Node 20, caché de npm, lint, typecheck, tests y build. Creados `.github/pull_request_template.md`, `.github/ISSUE_TEMPLATE/error.md` y `.github/ISSUE_TEMPLATE/tarea.md`.
+- **Punto 2.4 (Cobertura de pruebas)**: Instalado `@vitest/coverage-v8`, configurados scripts `test:cov` y reporte en frontend y backend. `.gitignore` ya ignora `coverage`.
+- **Punto 2.5 (README factual)**: Actualizado el proveedor de hosting en `README.md` a Render para frontend y backend.

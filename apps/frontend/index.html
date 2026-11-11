@@ -53,7 +53,58 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div
+        role="status"
+        aria-live="polite"
+        id="cargador-raiz"
+        style="
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background-color: #f8fafc;
+          color: #0f172a;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        "
+      >
+        <style>
+          .dark #cargador-raiz {
+            background-color: #0f172a !important;
+            color: #f8fafc !important;
+          }
+          @keyframes giro-carga-raiz {
+            to {
+              transform: rotate(360deg);
+            }
+          }
+          .spinner-carga-raiz {
+            width: 44px;
+            height: 44px;
+            border: 4px solid rgba(79, 70, 229, 0.2);
+            border-top-color: #4f46e5;
+            border-radius: 50%;
+            animation: giro-carga-raiz 0.8s linear infinite;
+          }
+          .dark .spinner-carga-raiz {
+            border-color: rgba(99, 102, 241, 0.2);
+            border-top-color: #818cf8;
+          }
+          html[lang='en'] .texto-es,
+          html:not([lang='en']) .texto-en {
+            display: none !important;
+          }
+        </style>
+        <div class="spinner-carga-raiz" aria-hidden="true"></div>
+        <p class="texto-es" style="margin-top: 16px; font-size: 15px; font-weight: 500;">
+          Cargando Turnify…
+        </p>
+        <p class="texto-en" style="margin-top: 16px; font-size: 15px; font-weight: 500;">
+          Loading Turnify…
+        </p>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
