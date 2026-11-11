@@ -10,12 +10,14 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import { TerminosPermitidos } from '../../../common/validation/terminos-permitidos.validator';
 
 export class DatosClientePublicoDto {
   @ApiProperty({ example: 'María Rodríguez' })
   @IsString()
   @MinLength(2)
   @MaxLength(150)
+  @TerminosPermitidos()
   nombreCompleto!: string;
 
   @ApiProperty({ example: 'maria@example.com' })
@@ -27,6 +29,10 @@ export class DatosClientePublicoDto {
   @IsString()
   @MaxLength(30)
   telefono?: string;
+
+  @IsOptional()
+  @IsString()
+  sitioWeb?: string;
 }
 
 export class CrearReservaPublicaDto {
@@ -42,4 +48,13 @@ export class CrearReservaPublicaDto {
   @ValidateNested()
   @Type(() => DatosClientePublicoDto)
   cliente!: DatosClientePublicoDto;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  honeypot?: string;
+
+  @IsOptional()
+  @IsString()
+  sitioWeb?: string;
 }

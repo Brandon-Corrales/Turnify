@@ -8,7 +8,7 @@
   "ULTIMO_ADMIN_REQUERIDO": "At least one active admin must remain in the business",
   "CLIENTE_CORREO_YA_REGISTRADO": "A client with that email already exists for this business",
   "CLIENTE_NO_ENCONTRADO": "Client not found",
-  "RESERVA_TRASLAPADA": "That staff member already has a booking at that time",
+  "RESERVA_TRASLAPADA": "The selected team member already has a booking at that time. Please choose another time or team member.",
   "SERVICIO_NO_ENCONTRADO": "Service not found",
   "RESERVA_YA_CANCELADA": "This booking was already cancelled",
   "RESERVA_CANCELADA": "A cancelled booking cannot be rescheduled",
@@ -29,6 +29,7 @@
   "DEMASIADAS_SOLICITUDES": "Too many requests. Wait a minute and try again.",
   "ERROR_INTERNO": "An unexpected error occurred. Please try again later.",
   "SOLICITUD_INVALIDA": "Invalid request",
+  "VALIDACION_FALLIDA": "Invalid input data",
   "NO_AUTENTICADO": "Not authenticated",
   "NO_AUTORIZADO": "Not authorized",
   "NO_ENCONTRADO": "Not found",
@@ -40,5 +41,6 @@
   "PRIVILEGIO_CLIENTE_PLAN_NEGOCIO": "The business's current plan does not have WhatsApp enabled",
   "LIMITE_PLAN_MENSAJES_CHATBOT": "The Free Plan allows up to 10 chatbot messages per day. Upgrade to a paid plan to keep asking today.",
   "WEBHOOK_FIRMA_INVALIDA": "Invalid or expired webhook signature",
-  "WEBHOOK_NO_CONFIGURADO": "The webhook is not configured on this server"
+  "WEBHOOK_NO_CONFIGURADO": "The webhook is not configured on this server",
+  "HORARIO_NO_DISPONIBLE": "That time slot is no longer available. Please choose another time."
 }

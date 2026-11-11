@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { I18nContext } from 'nestjs-i18n';
 import { AllExceptionsFilter } from './all-exceptions.filter';
 import { ErrorCodeException } from './api-error.interface';
@@ -75,6 +75,32 @@ describe('AllExceptionsFilter', () => {
       expect.objectContaining({
         errorCode: 'RESERVA_YA_CANCELADA',
         message: 'This booking was already cancelled',
+      }),
+    );
+  });
+
+  it('traduce mensajes con clave de validación (i18nValidationMessage)', () => {
+    i18n.translate.mockReturnValue('The text contains forbidden terms.');
+    const { host, jsonMock } = crearHostMock('en');
+
+    filter.catch(
+      new BadRequestException({
+        errorCode: 'VALIDACION_FALLIDA',
+        message: 'validacion.TERMINO_BLOQUEADO|{}',
+        field: 'nombreCompleto',
+      }),
+      host,
+    );
+
+    expect(i18n.translate).toHaveBeenCalledWith('validacion.TERMINO_BLOQUEADO', {
+      lang: 'en',
+      defaultValue: 'validacion.TERMINO_BLOQUEADO|{}',
+    });
+    expect(jsonMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        errorCode: 'VALIDACION_FALLIDA',
+        message: 'The text contains forbidden terms.',
+        field: 'nombreCompleto',
       }),
     );
   });

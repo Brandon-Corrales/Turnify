@@ -3682,3 +3682,64 @@ ambos proyectos, `/health` `200` con base de datos activa, frontend en
 mensajes ES/EN mediante `Accept-Language`. No se ejecutaron migraciones,
 resets ni operaciones destructivas sobre Supabase; la restricción
 `EXCLUDE` de `reservas` no fue modificada.
+
+
+## Bloque 8 — Bugs del recorrido y verificación del chatbot
+- **Punto 8.1 (Redacción y modal de reserva traslapada)**: Se corrigió la redacción de `RESERVA_TRASLAPADA` en `apps/backend/src/i18n/es/errores.json` ("Ese horario ya está reservado para quien atiende. Selecciona otra hora.") y `en/errores.json` ("The selected team member already has a booking at that time. Please choose another time or team member."). Se agregó la clave faltante `HORARIO_NO_DISPONIBLE` en ambos idiomas y se actualizó el mensaje de respaldo en `reservas.service.ts`.
+- **Punto 8.2 (Cabecera Accept-Language)**: Verificado en `apps/frontend/src/lib/api.ts` y cubierto con tests en `api.test.ts`. El backend resuelve los mensajes traducidos según el idioma activo del usuario.
+- **Punto 8.3 (Saludo del Dashboard)**: Se ampliaron los títulos profesionales omitidos (`Lic.`, `Licda.`, `Dr.`, `Dra.`, `Ing.`, `Arq.`, `Abg.`, `M.Sc.`, `Msc`, `Prof.`) en `nombre-saludo.ts` y se agregaron 12 casos de prueba unitaria en `nombre-saludo.test.ts`.
+- **Punto 8.4 (Diagnóstico correo duplicado)**: `notificaciones.service.ts` no resetea `reintentos = 0` al tener éxito en un segundo intento, conservando `reintentos = 1` en la fila. El cron de pendientes carece de bloqueo de concurrencia a nivel de BD, lo que ante instancias simultáneas o procesos duplicados en Render puede originar reintentos no registrados en el log del proceso activo. No se editó `notificaciones.service.ts` por respeto a las fronteras del Bloque 4.
+- **Parte B (Chatbot con Groq)**: Se verificó la respuesta activa de la API de Groq (`GROQ_STATUS_OK`). Las preguntas 1 a 16 y reglas #6 y #14 ya contaban con reglas en `base-conocimiento.ts`.
+
+
+## Bloque 2 — Frontend: Sesión, retroalimentación de carga y repositorio
+- **Punto 2.1 (Resiliencia de sesión)**: En `api.ts` y `AuthContext.tsx`, los tokens se preservan ante errores de red, 429 o 5xx del servidor. Solo se eliminan si el backend responde con un 401 explícito de token inválido. Se agregó pantalla de error transitorio con botones "Reintentar" y "Cerrar sesión" y tests unitarios en `api.test.ts`.
+- **Punto 2.2 (Feedback de carga y code splitting)**:
+  - Spinner y texto ("Cargando Turnify…" / "Loading Turnify…") insertado en `#root` de `index.html` con CSS puro, respetando el tema claro/oscuro y el idioma antes de montar React.
+  - División del bundle por ruta en `App.tsx` con `React.lazy` y `<Suspense fallback={<PantallaCargando />}>`. El bundle inicial se redujo de 2.3 MB a ~430 KB.
+  - Creado `ErrorBoundary.tsx` global y por ruta con botón para reintentar.
+  - Creada página `NoEncontradoPage.tsx` accesible y traducida para la ruta `*`.
+  - Timeout de 75 segundos en `api.ts` con `AbortController` y aviso si el servidor tarda más de 6 segundos en responder (cold start de Render).
+- **Punto 2.3 (CI y plantillas de GitHub)**: Creado `.github/workflows/ci.yml` con Node 20, caché de npm, lint, typecheck, tests y build. Creados `.github/pull_request_template.md`, `.github/ISSUE_TEMPLATE/error.md` y `.github/ISSUE_TEMPLATE/tarea.md`.
+- **Punto 2.4 (Cobertura de pruebas)**: Instalado `@vitest/coverage-v8`, configurados scripts `test:cov` y reporte en frontend y backend. `.gitignore` ya ignora `coverage`.
+- **Punto 2.5 (README factual)**: Actualizado el proveedor de hosting en `README.md` a Render para frontend y backend.
+
+## Bloque 3 — Seguridad Backend y Protección de Formularios
+- **Punto 3.1 (Proxy inverso y trust proxy)**: Configurado `app.set('trust proxy', trustProxy)` en `main.ts` y variable de entorno `TRUST_PROXY` en `env.schema.ts` para que los middlewares de rate limit y logs obtengan la IP real del cliente detrás de Render/Cloudflare.
+- **Punto 3.2 (Helmet y CORS centralizado)**:
+  - Instalado y configurado `helmet()` en `main.ts` con protección de cabeceras HTTP (HSTS, X-Content-Type-Options, eliminación de X-Powered-By, etc.).
+  - Centralizado el validador de orígenes CORS en `common/cors/cors.config.ts` con soporte para solicitudes sin origin y normalización de trailing slashes, cubierto por pruebas unitarias en `cors.config.spec.ts`.
+- **Punto 3.3 (Política de contraseñas NIST SP 800-63B y medidor visual)**:
+  - Política de contraseñas actualizada a 12-64 caracteres, máximo 72 bytes en UTF-8 y bloqueo de contraseñas comunes en `es-contrasena-valida.decorator.ts`.
+  - Pruebas unitarias completas en `es-contrasena-valida.decorator.spec.ts`.
+  - Esquema Zod en frontend alineado a 12-64 caracteres con `calcularFortalezaContrasena()` en `validation.ts`.
+  - Medidor visual de fortaleza de contraseña con barra de progreso y colores accesible en `RegistroPage.tsx`.
+- **Punto 3.4 (Logging estructurado y enmascaramiento de PII)**:
+  - Creado middleware global `RegistroSolicitudesMiddleware` con asignación de `X-Request-Id`, método, ruta, código de estado, duración y tenant, omitiendo `/health` para no saturar.
+  - Creada utilidad `enmascararCorreo()` en `common/utils/enmascarar-correo.util.ts` con pruebas unitarias (`u***@turnify.com`).
+  - Aplicado enmascaramiento de datos personales en logs de autenticación (`auth.service.ts`) y notificaciones (`resend.service.ts`).
+- **Punto 3.5 (Protección contra desbordamiento en DTOs)**:
+  - `@MaxLength(500)` aplicado a campos de texto libre (`notas` en clientes y reservas, `descripcion` en servicios).
+- **Punto 3.6 (Honeypot y Rate Limiting en reserva pública)**:
+  - Campo trampa `sitioWeb` oculto para usuarios visuales y lectores de pantalla (`aria-hidden="true"`, `tabIndex={-1}`) en `ReservaPublicaPage.tsx`.
+  - Se mapea a nivel de raíz como `honeypot` para evitar violar `forbidNonWhitelisted` en el DTO de cliente.
+  - Rechazo con `SOLICITUD_INVALIDA` si el honeypot viene lleno y límite de reservas por correo (`DEMASIADAS_SOLICITUDES` tras 5 reservas consecutivas) en `reserva-publica.service.ts`.
+  - Pruebas unitarias agregadas en `reserva-publica.service.spec.ts`.
+
+## Bloque 7 — Moderación, sanitización y reportes técnicos
+- **Punto 7.1 (Moderación mínima propia)**: Implementado `terminos-permitidos.validator.ts` con decorador `@TerminosPermitidos()`, configurable mediante la variable de entorno `TERMINOS_BLOQUEADOS` (vacía por defecto). Normaliza texto insensible a mayúsculas y acentos. Se aplica a campos de texto libre de reserva pública (`nombreCompleto`) y a la entrada del chatbot (`MensajeChatbotDto`), con límite de longitud reducido a 500 caracteres y mensajes de error traducidos (`validacion.TERMINO_BLOQUEADO`). Se adaptó `validation-exception-factory.ts` con búsqueda recursiva de nodos hoja (`findFirstLeaf`) para extraer mensajes y campos anidados en DTOs complejos, y `all-exceptions.filter.ts` para resolver las claves de validación traducidas.
+- **Punto 7.2 (Sanitización y texto de usuario)**: `mensajes-notificacion.ts` incluye la función `escaparHtml()` que sanea caracteres peligrosos (`<`, `>`, `&`, `"`, `'`) en campos provistos por usuarios (ej. nombre del servicio) antes de inyectarlos en las plantillas de correo de Resend. Pruebas unitarias completas en `mensajes-notificacion.spec.ts`.
+- **Punto 7.3 (Informe técnico: Tokens en localStorage vs Cookies HttpOnly en Render)**:
+  - *Contexto de despliegue*: Tanto el frontend como el backend de Turnify se despliegan en subdominios independientes bajo `onrender.com` (ej. `turnify-front.onrender.com` y `turnify-api.onrender.com`).
+  - *Restricción de la Public Suffix List (PSL)*: `onrender.com` está registrado en la PSL de Mozilla como un sufijo público. Por ende, los navegadores tratan a diferentes subdominios de `onrender.com` como dominios de tercer nivel totalmente separados (cross-site), lo cual impide compartir cookies con directivas estándar `SameSite=Lax` o `SameSite=Strict`.
+  - *Implicaciones de seguridad de Cookies*: Para usar cookies HttpOnly entre subdominios de Render, se requeriría configurar obligatoriamente `SameSite=None; Secure`. Esto convierte a la cookie en una credencial enviada automáticamente en peticiones cross-site, lo cual exige implementar protección CSRF robusta (tokens anti-CSRF, headers personalizados) y reconfigurar la autenticación por handshake de Socket.IO para el chatbot en tiempo real.
+  - *Conclusión académica y recomendación*: Mantener los tokens JWT en memoria y almacenamiento local con rotación de refresh tokens (`UsuarioRefreshTokenHash` con SHA-256) y caducidad corta (15 min) es la decisión técnica correcta y más segura para la arquitectura actual, evitando vulnerabilidades de CSRF y complejidades operativas en plataformas PaaS multi-tenant.
+- **Punto 7.4 (Informe técnico: Verificación de correo en reserva pública)**:
+  - *Requerimientos de implementación*: Implementar verificación previa de correo electrónico en la reserva pública requeriría:
+    1. Un nuevo estado transitorio de reserva: `PENDIENTE_CONFIRMACION`.
+    2. Generación y firma de un token efímero con tiempo de expiración (ej. 15 minutos).
+    3. Envío de un correo de verificación transaccional con enlace único a `/reservar/confirmar/:token`.
+    4. Un worker o cron recurrente que libere el horario y limpie la reserva no confirmada para no bloquear la disponibilidad a otros clientes.
+    5. Modificación de las reglas de cálculo en `LimitesPlanService` para decidir si las reservas no confirmadas consumen o no la cuota del Plan Gratis.
+  - *Impacto en UX y conversión*: Añadir fricción de confirmación obligatoria por correo reduce severamente la tasa de conversión en reservas espontáneas para pymes.
+  - *Recomendación*: Se recomienda mantener la reserva directa con notificación inmediata de confirmación, mitigando bots y spam mediante el honeypot invisible y el rate limiting por correo/IP ya implementados en el Bloque 3.

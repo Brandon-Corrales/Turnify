@@ -195,4 +195,35 @@ describe('ReservaPublicaService', () => {
     });
     expect(ctx.reservasService.crear).not.toHaveBeenCalled();
   });
+
+  it('crearReserva() rechaza solicitudes que completen el campo trampa honeypot', async () => {
+    const promesa = ctx.service.crearReserva(NEGOCIO_ID, {
+      idServicio: SERVICIO_ID,
+      fechaHoraInicio: '2099-01-04T15:00:00.000Z',
+      cliente: { nombreCompleto: 'Bot Spam', correoElectronico: 'bot@spam.com' },
+      honeypot: 'http://spam-link.com',
+    });
+    await expect(promesa).rejects.toMatchObject({
+      response: { errorCode: 'SOLICITUD_INVALIDA' },
+    });
+    expect(ctx.reservasService.crear).not.toHaveBeenCalled();
+  });
+
+  it('crearReserva() frena abusos por exceso de reservas por correo (rate limiting)', async () => {
+    const payload = {
+      idServicio: SERVICIO_ID,
+      fechaHoraInicio: '2099-01-04T15:00:00.000Z',
+      cliente: { nombreCompleto: 'Usuario Frecuente', correoElectronico: 'frecuente@test.com' },
+    };
+
+    // Crear 5 reservas consecutivas (límite permitido)
+    for (let i = 0; i < 5; i++) {
+      await ctx.service.crearReserva(NEGOCIO_ID, payload);
+    }
+
+    // La 6ta reserva en la misma ventana debe ser rechazada
+    await expect(ctx.service.crearReserva(NEGOCIO_ID, payload)).rejects.toMatchObject({
+      response: { errorCode: 'DEMASIADAS_SOLICITUDES' },
+    });
+  });
 });

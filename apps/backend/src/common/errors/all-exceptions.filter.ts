@@ -97,6 +97,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
    * romper la respuesta).
    */
   private traducir(errorCode: string, mensajeOriginal: string, lang: string | undefined): string {
+    const rawKey = mensajeOriginal?.split('|')[0];
+    if (rawKey && (rawKey.startsWith('validacion.') || rawKey.startsWith('errores.'))) {
+      return this.i18n.translate(rawKey, { lang, defaultValue: mensajeOriginal });
+    }
     return this.i18n.translate(`errores.${errorCode}`, { lang, defaultValue: mensajeOriginal });
   }
 

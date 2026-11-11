@@ -7,7 +7,9 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { registrarAlSesionExpirada } from '@/lib/api';
+import { useTranslation } from 'react-i18next';
+import { Boton } from '@/components/ui';
+import { ApiError, registrarAlSesionExpirada } from '@/lib/api';
 import {
   authApi,
   type LoginPayload,
@@ -33,8 +35,12 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
   const [usuario, setUsuario] = useState<UsuarioActual | null>(null);
-  const [cargando, setCargando] = useState(true);
+  const [cargando, setCargando] = useState(() =>
+    Boolean(obtenerAccessToken() || obtenerRefreshToken()),
+  );
+  const [errorTransitorio, setErrorTransitorio] = useState(false);
 
   // El cliente HTTP avisa aquí cuando ni el access ni el refresh token
   // sirven ya (revocado, expirado) — limpia la sesión del lado de React
@@ -43,28 +49,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     registrarAlSesionExpirada(() => setUsuario(null));
   }, []);
 
-  // Restaura la sesión al recargar la página: si hay algún token
-  // guardado, /auth/me confirma quién es (y si el access ya expiró, el
-  // propio apiFetch lo refresca de forma transparente antes de esto).
-  useEffect(() => {
-    let cancelado = false;
-
-    async function restaurarSesion() {
-      if (!obtenerAccessToken() && !obtenerRefreshToken()) {
-        setCargando(false);
-        return;
-      }
-      try {
-        const perfil = await authApi.obtenerPerfil();
-        if (!cancelado) setUsuario(perfil);
-      } catch {
-        limpiarTokens();
-      } finally {
-        if (!cancelado) setCargando(false);
-      }
+  const restaurarSesion = useCallback(async () => {
+    if (!obtenerAccessToken() && !obtenerRefreshToken()) {
+      setCargando(false);
+      setErrorTransitorio(false);
+      return;
     }
+    setCargando(true);
+    setErrorTransitorio(false);
 
-    restaurarSesion();
+    try {
+      const perfil = await authApi.obtenerPerfil();
+      setUsuario(perfil);
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.statusCode === 401) {
+        limpiarTokens();
+        setUsuario(null);
+      } else {
+        // Red caída, 429, 5xx: conservar tokens y mostrar opción de reintentar
+        setErrorTransitorio(true);
+      }
+    } finally {
+      setCargando(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!obtenerAccessToken() && !obtenerRefreshToken()) {
+      return;
+    }
+    let cancelado = false;
+    authApi
+      .obtenerPerfil()
+      .then((perfil) => {
+        if (!cancelado) setUsuario(perfil);
+      })
+      .catch((err: unknown) => {
+        if (cancelado) return;
+        if (err instanceof ApiError && err.statusCode === 401) {
+          limpiarTokens();
+          setUsuario(null);
+        } else {
+          setErrorTransitorio(true);
+        }
+      })
+      .finally(() => {
+        if (!cancelado) setCargando(false);
+      });
+
     return () => {
       cancelado = true;
     };
@@ -96,6 +128,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({ usuario, cargando, estaAutenticado: usuario !== null, login, registrar, logout }),
     [usuario, cargando, login, registrar, logout],
   );
+
+  if (errorTransitorio) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 p-4 text-center dark:bg-slate-900">
+        <div className="max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-800">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+            {t('errores.errorConexionTitulo', 'Problema de conexión')}
+          </h2>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+            {t(
+              'errores.errorConexionDescripcion',
+              'No pudimos conectar con el servidor para verificar tu sesión. Tus credenciales siguen seguras.',
+            )}
+          </p>
+          <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <Boton onClick={() => restaurarSesion()}>
+              {t('comun.reintentar', 'Reintentar')}
+            </Boton>
+            <Boton variante="secundario" onClick={() => logout()}>
+              {t('auth.cerrarSesion', 'Cerrar sesión')}
+            </Boton>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

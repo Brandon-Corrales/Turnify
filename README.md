@@ -23,7 +23,7 @@ Docente: Ing. Francisco Javier Coulon Ollivier.
 | Chatbot / LLM | Groq |
 | Internacionalización | react-i18next (frontend) · nestjs-i18n (backend) — ES / EN |
 | CI/CD | GitHub Actions |
-| Hosting | Vercel (frontend) · Render/Railway (backend) |
+| Hosting | Render (frontend como sitio estático · backend como servicio web) |
 
 ## Estructura del repositorio
 ```

@@ -127,12 +127,15 @@ export default function ReservaPublicaPage() {
   } = useForm<DatosClientePublicoFormValues>({ resolver: zodResolver(datosClientePublicoSchema) });
 
   const confirmarMutation = useMutation({
-    mutationFn: () =>
-      reservaPublicaApi.crearReserva(idNegocio, {
+    mutationFn: () => {
+      const { sitioWeb, ...clienteDto } = datosCliente!;
+      return reservaPublicaApi.crearReserva(idNegocio, {
         idServicio: servicio!.idServicio,
         fechaHoraInicio: horario!,
-        cliente: datosCliente!,
-      }),
+        cliente: clienteDto,
+        honeypot: sitioWeb || undefined,
+      });
+    },
   });
 
   const mensajeErrorConfirmacion = useMemo(() => {
@@ -173,7 +176,7 @@ export default function ReservaPublicaPage() {
       <div className="mx-auto max-w-2xl px-4 py-8">
         <Indicador pasoActual={paso} pasos={pasos} />
 
-        <div className="relative mt-8 min-h-[320px]">
+        <div className="relative mt-8 min-h-80">
           <>
             {paso === 1 && (
               <motion.div
@@ -328,6 +331,29 @@ export default function ReservaPublicaPage() {
                     error={errors.telefono?.message}
                     {...register('telefono')}
                   />
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      opacity: 0,
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      height: 0,
+                      width: 0,
+                      zIndex: -1,
+                      overflow: 'hidden',
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    <label htmlFor="campo-trampa-web">No llenar este campo</label>
+                    <input
+                      id="campo-trampa-web"
+                      type="text"
+                      tabIndex={-1}
+                      autoComplete="off"
+                      {...register('sitioWeb')}
+                    />
+                  </div>
                 </div>
                 <div className="mt-6 flex justify-between">
                   <Boton type="button" variante="secundario" onClick={() => setPaso(2)}>

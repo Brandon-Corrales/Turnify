@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { TFunction } from 'i18next';
-import { crearNuevaReservaSchema } from './validation';
+import {
+  calcularFortalezaContrasena,
+  crearContrasenaSchema,
+  crearNuevaReservaSchema,
+} from './validation';
 
 const t = ((clave: string) => clave) as unknown as TFunction;
 const schema = crearNuevaReservaSchema(t);
@@ -69,5 +73,24 @@ describe('crearNuevaReservaSchema() — reserva manual del Calendario', () => {
         },
       }),
     ).toEqual({});
+  });
+});
+
+describe('crearContrasenaSchema y calcularFortalezaContrasena', () => {
+  const contrasenaSchema = crearContrasenaSchema(t);
+
+  it('rechaza contraseñas menores a 12 caracteres o comunes', () => {
+    expect(contrasenaSchema.safeParse('Corta1').success).toBe(false);
+    expect(contrasenaSchema.safeParse('password1234').success).toBe(false);
+  });
+
+  it('acepta contraseñas válidas de 12 a 64 caracteres con letras y números', () => {
+    expect(contrasenaSchema.safeParse('Turnify.Segura.2026').success).toBe(true);
+  });
+
+  it('evalúa la fortaleza correctamente', () => {
+    expect(calcularFortalezaContrasena('12345').nivel).toBe('debil');
+    expect(calcularFortalezaContrasena('Clave12345678').nivel).toBe('media');
+    expect(calcularFortalezaContrasena('ClaveSuper.Segura2026!').nivel).toBe('fuerte');
   });
 });

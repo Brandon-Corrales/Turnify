@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
 import type { Env } from '../../../config/env.schema';
+import { enmascararCorreo } from '../../../common/utils/enmascarar-correo.util';
 import { clasificarRechazoProveedor, MotivoFallo } from '../motivo-fallo';
 
 export interface ResultadoEnvio {
@@ -47,7 +48,7 @@ export class ResendService {
       html,
     });
     if (error) {
-      this.logger.warn(`Envío de correo a ${destinatario} falló: ${error.message}`);
+      this.logger.warn(`Envío de correo a ${enmascararCorreo(destinatario)} falló: ${error.message}`);
       return {
         exito: false,
         error: error.message,

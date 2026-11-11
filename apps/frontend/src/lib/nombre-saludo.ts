@@ -1,4 +1,4 @@
-const TITULOS_PROFESIONALES = /^(?:lic(?:da)?\.?|dr(?:a)?\.?|ing\.?|m\.?sc\.?|mba|prof(?:a)?\.?)\s+/i;
+const TITULOS_PROFESIONALES = /^(?:lic(?:da)?\.?|dr(?:a)?\.?|ing\.?|arq\.?|abg(?:da)?\.?|m\.?sc\.?|msc|mba|prof(?:a)?\.?)\s+/i;
 
 export function nombreParaSaludo(nombreCompleto?: string | null): string {
   let nombre = nombreCompleto?.trim() ?? '';

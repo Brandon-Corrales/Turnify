@@ -22,6 +22,7 @@ export class CrearClienteDto {
   @ApiProperty({ required: false, example: 'Prefiere citas en la mañana' })
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   notas?: string;
 
   @ApiProperty({ required: false, enum: CanalPreferido, default: CanalPreferido.EMAIL })
