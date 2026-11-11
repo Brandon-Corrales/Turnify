@@ -3682,3 +3682,11 @@ ambos proyectos, `/health` `200` con base de datos activa, frontend en
 mensajes ES/EN mediante `Accept-Language`. No se ejecutaron migraciones,
 resets ni operaciones destructivas sobre Supabase; la restricción
 `EXCLUDE` de `reservas` no fue modificada.
+
+
+## Bloque 8 — Bugs del recorrido y verificación del chatbot
+- **Punto 8.1 (Redacción y modal de reserva traslapada)**: Se corrigió la redacción de `RESERVA_TRASLAPADA` en `apps/backend/src/i18n/es/errores.json` ("Ese horario ya está reservado para quien atiende. Selecciona otra hora.") y `en/errores.json` ("The selected team member already has a booking at that time. Please choose another time or team member."). Se agregó la clave faltante `HORARIO_NO_DISPONIBLE` en ambos idiomas y se actualizó el mensaje de respaldo en `reservas.service.ts`.
+- **Punto 8.2 (Cabecera Accept-Language)**: Verificado en `apps/frontend/src/lib/api.ts` y cubierto con tests en `api.test.ts`. El backend resuelve los mensajes traducidos según el idioma activo del usuario.
+- **Punto 8.3 (Saludo del Dashboard)**: Se ampliaron los títulos profesionales omitidos (`Lic.`, `Licda.`, `Dr.`, `Dra.`, `Ing.`, `Arq.`, `Abg.`, `M.Sc.`, `Msc`, `Prof.`) en `nombre-saludo.ts` y se agregaron 12 casos de prueba unitaria en `nombre-saludo.test.ts`.
+- **Punto 8.4 (Diagnóstico correo duplicado)**: `notificaciones.service.ts` no resetea `reintentos = 0` al tener éxito en un segundo intento, conservando `reintentos = 1` en la fila. El cron de pendientes carece de bloqueo de concurrencia a nivel de BD, lo que ante instancias simultáneas o procesos duplicados en Render puede originar reintentos no registrados en el log del proceso activo. No se editó `notificaciones.service.ts` por respeto a las fronteras del Bloque 4.
+- **Parte B (Chatbot con Groq)**: Se verificó la respuesta activa de la API de Groq (`GROQ_STATUS_OK`). Las preguntas 1 a 16 y reglas #6 y #14 ya contaban con reglas en `base-conocimiento.ts`.

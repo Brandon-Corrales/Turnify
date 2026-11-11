@@ -41,7 +41,7 @@ const isExclusionViolation = (err: unknown): boolean =>
 
 const TRASLAPE_ERROR = {
   errorCode: 'RESERVA_TRASLAPADA',
-  message: 'Ese usuario ya tiene una reserva en ese horario',
+  message: 'Ese horario ya está reservado para quien atiende. Selecciona otra hora.',
 } as const;
 
 @Injectable()

@@ -8,7 +8,7 @@
   "ULTIMO_ADMIN_REQUERIDO": "Debe quedar al menos un administrador activo en el negocio",
   "CLIENTE_CORREO_YA_REGISTRADO": "Ya existe un cliente con ese correo en este negocio",
   "CLIENTE_NO_ENCONTRADO": "Cliente no encontrado",
-  "RESERVA_TRASLAPADA": "Ese usuario ya tiene una reserva en ese horario",
+  "RESERVA_TRASLAPADA": "Ese horario ya está reservado para quien atiende. Selecciona otra hora.",
   "SERVICIO_NO_ENCONTRADO": "Servicio no encontrado",
   "RESERVA_YA_CANCELADA": "Esta reserva ya estaba cancelada",
   "RESERVA_CANCELADA": "No se puede reprogramar una reserva cancelada",
@@ -40,5 +40,6 @@
   "PRIVILEGIO_CLIENTE_PLAN_NEGOCIO": "El plan actual del negocio no tiene el canal WhatsApp habilitado",
   "LIMITE_PLAN_MENSAJES_CHATBOT": "El Plan Gratis permite hasta 10 mensajes al chatbot por día. Actualiza a un plan de pago para seguir preguntando hoy.",
   "WEBHOOK_FIRMA_INVALIDA": "Firma del webhook inválida o vencida",
-  "WEBHOOK_NO_CONFIGURADO": "El webhook no está configurado en este servidor"
+  "WEBHOOK_NO_CONFIGURADO": "El webhook no está configurado en este servidor",
+  "HORARIO_NO_DISPONIBLE": "Ese horario ya no está disponible. Selecciona otra hora."
 }
