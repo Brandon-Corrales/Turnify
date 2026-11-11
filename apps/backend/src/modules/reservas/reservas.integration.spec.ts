@@ -47,7 +47,7 @@ describe('Reservas (integración HTTP real)', () => {
         correoNegocio: `it-reservas-negocio-${sufijo}@example.com`,
         nombreCompletoAdmin: 'Admin Reservas IT',
         correoAdmin: `it-reservas-admin-${sufijo}@example.com`,
-        contrasena: 'Turnify123!',
+        contrasena: 'Turnify-Pruebas-2026!',
       });
     accessToken = registro.body.tokens.accessToken;
     idUsuario = registro.body.usuario.idUsuario;

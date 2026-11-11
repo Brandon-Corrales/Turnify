@@ -79,7 +79,7 @@ describe('POST /webhooks/resend (integración HTTP real)', () => {
         correoNegocio: `it-webhook-negocio-${s}@example.com`,
         nombreCompletoAdmin: 'Admin Webhook IT',
         correoAdmin: `it-webhook-admin-${s}@example.com`,
-        contrasena: 'Turnify123!',
+        contrasena: 'Turnify-Pruebas-2026!',
       });
     token = reg.body.tokens.accessToken;
     const auth = { Authorization: `Bearer ${token}` };

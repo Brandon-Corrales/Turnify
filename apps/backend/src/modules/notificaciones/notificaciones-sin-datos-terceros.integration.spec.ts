@@ -45,7 +45,7 @@ describe('Notificaciones: el motivo de fallo no expone datos de terceros (integr
         correoNegocio: `it-terceros-negocio-${s}@example.com`,
         nombreCompletoAdmin: 'Admin Terceros IT',
         correoAdmin: `it-terceros-admin-${s}@example.com`,
-        contrasena: 'Turnify123!',
+        contrasena: 'Turnify-Pruebas-2026!',
       });
     token = reg.body.tokens.accessToken;
     const auth = { Authorization: `Bearer ${token}` };

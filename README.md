@@ -60,6 +60,37 @@ npm run backend:dev       # http://localhost:3000 (Swagger en /docs)
 npm run frontend:dev
 ```
 
+## Pruebas
+| Comando (desde la raíz) | Qué corre | Base de datos |
+|---|---|---|
+| `npm test --workspace=apps/backend` / `--workspace=apps/frontend` | Unitarias (Vitest) | Ninguna |
+| `npm run test:integration` | Integración del backend (`*.integration.spec.ts`, app completa + supertest) | Postgres local de pruebas |
+| `npm run test:e2e` | E2E de Playwright (frontend + backend reales) | Postgres local de pruebas |
+
+Las pruebas de integración y el E2E **escriben datos reales**, así que nunca corren
+contra Supabase (es la base de producción). Usan un Postgres aparte, local y
+desechable (servicio `postgres-test` de `docker-compose.yml`, puerto 5433, datos en
+memoria):
+
+```bash
+npm run db:test:up        # levanta el Postgres de pruebas
+# en el .env (o en el shell): ver .env.example
+TEST_DATABASE_URL=postgresql://turnify_test:turnify_test@localhost:5433/turnify_test
+npm run test:integration  # aplica las migraciones y corre las 6 suites
+npm run test:e2e          # aplica las migraciones y corre Playwright
+npm run db:test:down      # borra el contenedor y sus datos
+```
+
+Protecciones:
+- Ambas se **niegan a correr** si falta `TEST_DATABASE_URL` o si su host no es local
+  (`localhost`, `127.0.0.1` o `::1`), con un mensaje que explica qué hacer.
+- La app bajo prueba usa esa base aunque el `.env` tenga el `DATABASE_URL` de Supabase,
+  y las claves de Resend, WhatsApp, Stripe y Groq quedan vacías: no se llama a ningún
+  proveedor externo.
+- El E2E levanta sus propios servidores (backend en el 3100, frontend en el 5174) y no
+  reutiliza los de desarrollo.
+- La primera vez hay que instalar el navegador de Playwright: `npx playwright install chromium`.
+
 ### Webhook de Resend (rebotes y entregas)
 El backend expone `POST /webhooks/resend`, que actualiza el historial de
 Notificaciones con los eventos de Resend (entregado, demorado, rebotado, marcado

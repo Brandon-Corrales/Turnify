@@ -50,7 +50,7 @@ describe('Límite freemium: 20 reservas/mes en Plan Gratis (integración HTTP re
         correoNegocio: `it-limite-negocio-${sufijo}@example.com`,
         nombreCompletoAdmin: 'Admin Limite IT',
         correoAdmin: `it-limite-admin-${sufijo}@example.com`,
-        contrasena: 'Turnify123!',
+        contrasena: 'Turnify-Pruebas-2026!',
       });
     accessToken = registro.body.tokens.accessToken;
     idUsuario = registro.body.usuario.idUsuario;

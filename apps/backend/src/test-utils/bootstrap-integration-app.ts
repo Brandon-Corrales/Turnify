@@ -4,6 +4,7 @@ import { I18nService } from 'nestjs-i18n';
 import { AppModule } from '../app.module';
 import { AllExceptionsFilter } from '../common/errors/all-exceptions.filter';
 import { validationExceptionFactory } from '../common/errors/validation-exception-factory';
+import { exigirConexionEfectivaLocal } from './base-datos-pruebas';
 
 /**
  * Bootstrap de la app REAL (todo `AppModule`, no un módulo recortado a
@@ -20,6 +21,10 @@ export async function bootstrapIntegrationApp(
   /** Opcional: reemplazar un proveedor externo (ej. Resend) por un doble de prueba. */
   ajustar: (builder: TestingModuleBuilder) => TestingModuleBuilder = (b) => b,
 ): Promise<INestApplication> {
+  // Segunda capa (Bloque 6, punto 6.1): si este archivo se ejecuta sin
+  // `vitest.integration.config.mts`, la app usaría la base del `.env`
+  // (Supabase, producción). Se cancela antes de abrir la conexión.
+  exigirConexionEfectivaLocal();
   const moduleRef = await ajustar(Test.createTestingModule({ imports: [AppModule] })).compile();
   // rawBody: igual que main.ts (los webhooks verifican la firma sobre el body crudo).
   const app = moduleRef.createNestApplication({ rawBody: true });

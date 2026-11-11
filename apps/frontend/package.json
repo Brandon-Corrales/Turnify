@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:cov": "vitest run --coverage",
-    "test:e2e": "playwright test"
+    "test:e2e": "npm --prefix ../backend run test:db:prepare && playwright test"
   },
   "dependencies": {
     "@fullcalendar/core": "6.1.21",
