@@ -24,6 +24,7 @@ export class ActualizarClienteDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   notas?: string;
 
   @ApiProperty({ required: false, enum: CanalPreferido })

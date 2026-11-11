@@ -27,6 +27,10 @@ export class DatosClientePublicoDto {
   @IsString()
   @MaxLength(30)
   telefono?: string;
+
+  @IsOptional()
+  @IsString()
+  sitioWeb?: string;
 }
 
 export class CrearReservaPublicaDto {
@@ -42,4 +46,13 @@ export class CrearReservaPublicaDto {
   @ValidateNested()
   @Type(() => DatosClientePublicoDto)
   cliente!: DatosClientePublicoDto;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  honeypot?: string;
+
+  @IsOptional()
+  @IsString()
+  sitioWeb?: string;
 }

@@ -2,6 +2,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -12,6 +13,7 @@ import * as bcrypt from 'bcryptjs';
 import { createHash, randomUUID, timingSafeEqual } from 'crypto';
 import { DataSource, Repository } from 'typeorm';
 import { Env } from '../../config/env.schema';
+import { enmascararCorreo } from '../../common/utils/enmascarar-correo.util';
 import {
   EstadoSuscripcion,
   Negocio,
@@ -60,6 +62,8 @@ const tokensCoinciden = (candidatoHash: string, almacenadoHash: string): boolean
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly dataSource: DataSource,
     @InjectRepository(Usuario) private readonly usuarioRepo: Repository<Usuario>,
@@ -112,9 +116,11 @@ export class AuthService {
       });
 
       const tokens = await this.emitirTokens(usuario);
+      this.logger.log(`Registro exitoso para administrador=${enmascararCorreo(dto.correoAdmin)}`);
       return { usuario: this.aPublico(usuario), tokens };
     } catch (err) {
       if (isUniqueViolation(err)) {
+        this.logger.warn(`Intento de registro fallido: correo duplicado`);
         throw new ConflictException({
           errorCode: 'EMAIL_YA_REGISTRADO',
           message: 'El correo del negocio o del administrador ya está en uso',
@@ -131,11 +137,13 @@ export class AuthService {
       .where('usuario.correoElectronico = :correo', { correo: dto.correoElectronico })
       .getOne();
 
-    const credencialesInvalidas = () =>
-      new UnauthorizedException({
+    const credencialesInvalidas = () => {
+      this.logger.warn(`Login fallido para correo=${enmascararCorreo(dto.correoElectronico)}: credenciales invalidas`);
+      return new UnauthorizedException({
         errorCode: 'CREDENCIALES_INVALIDAS',
         message: 'Correo o contraseña incorrectos',
       });
+    };
 
     if (!usuario) throw credencialesInvalidas();
 
@@ -143,6 +151,7 @@ export class AuthService {
     if (!contrasenaValida) throw credencialesInvalidas();
 
     if (!usuario.activo) {
+      this.logger.warn(`Login rechazado para correo=${enmascararCorreo(dto.correoElectronico)}: cuenta inactiva`);
       throw new ForbiddenException({
         errorCode: 'CUENTA_INACTIVA',
         message: 'Esta cuenta está desactivada',
@@ -150,6 +159,7 @@ export class AuthService {
     }
 
     const tokens = await this.emitirTokens(usuario);
+    this.logger.log(`Login exitoso para idUsuario=${usuario.idUsuario} correo=${enmascararCorreo(dto.correoElectronico)}`);
     return { usuario: this.aPublico(usuario), tokens };
   }
 
@@ -179,15 +189,18 @@ export class AuthService {
 
     const coincide = tokensCoinciden(hashToken(refreshToken), usuario.refreshTokenHash);
     if (!coincide) {
+      this.logger.warn(`Reuso de refresh token detectado para idUsuario=${usuario.idUsuario}: sesion revocada`);
       // Reutilización de un refresh token ya rotado: se revoca la sesión por seguridad.
       await this.usuarioRepo.update(usuario.idUsuario, { refreshTokenHash: null });
       throw invalido();
     }
 
+    this.logger.log(`Refresh token exitoso para idUsuario=${usuario.idUsuario}`);
     return this.emitirTokens(usuario);
   }
 
   async logout(idUsuario: string): Promise<void> {
+    this.logger.log(`Logout para idUsuario=${idUsuario}`);
     await this.usuarioRepo.update(idUsuario, { refreshTokenHash: null });
   }
 

@@ -25,6 +25,7 @@ export interface CrearReservaPublicaPayload {
   idServicio: string;
   fechaHoraInicio: string;
   cliente: DatosClientePublico;
+  honeypot?: string;
 }
 
 export interface ReservaPublicaCreada {

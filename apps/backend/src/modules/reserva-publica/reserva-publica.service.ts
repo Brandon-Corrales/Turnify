@@ -1,4 +1,10 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { I18nContext, I18nService } from 'nestjs-i18n';
 import { LessThanOrEqual, MoreThanOrEqual, Not } from 'typeorm';
 import {
@@ -57,6 +63,8 @@ export interface ServicioPublico {
  */
 @Injectable()
 export class ReservaPublicaService {
+  private readonly reservasRecientesPorCorreo = new Map<string, number[]>();
+
   constructor(
     private readonly tenantContext: TenantContextService,
     private readonly negociosService: NegociosService,
@@ -148,6 +156,15 @@ export class ReservaPublicaService {
   }
 
   async crearReserva(idNegocio: string, dto: CrearReservaPublicaDto) {
+    if (dto.honeypot || dto.sitioWeb || dto.cliente?.sitioWeb) {
+      throw new BadRequestException({
+        errorCode: 'SOLICITUD_INVALIDA',
+        message: 'Solicitud inválida',
+      });
+    }
+
+    this.validarLimitePorCorreo(idNegocio, dto.cliente.correoElectronico);
+
     return this.conContexto(idNegocio, async () => {
       await this.asegurarDentroDelLimiteDelPlan(idNegocio);
 
@@ -254,5 +271,26 @@ export class ReservaPublicaService {
       slots.push({ inicio, fin: new Date(inicio.getTime() + duracionMinutos * 60_000) });
     }
     return slots;
+  }
+
+  private validarLimitePorCorreo(idNegocio: string, correo: string): void {
+    const clave = `${idNegocio}:${correo.toLowerCase().trim()}`;
+    const ahora = Date.now();
+    const ventanaMs = 10 * 60 * 1000;
+    const maxPermitido = 5;
+
+    const historial = (this.reservasRecientesPorCorreo.get(clave) ?? []).filter(
+      (ts) => ahora - ts < ventanaMs,
+    );
+
+    if (historial.length >= maxPermitido) {
+      throw new ConflictException({
+        errorCode: 'DEMASIADAS_SOLICITUDES',
+        message: 'Has realizado demasiadas reservas recientemente. Por favor espera unos minutos.',
+      });
+    }
+
+    historial.push(ahora);
+    this.reservasRecientesPorCorreo.set(clave, historial);
   }
 }

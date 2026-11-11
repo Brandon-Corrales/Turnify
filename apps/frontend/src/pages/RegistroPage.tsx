@@ -6,7 +6,11 @@ import { useTranslation } from 'react-i18next';
 import { Boton, Input, Select, useToast } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/lib/api';
-import { crearRegistroSchema, type RegistroFormValues } from '@/lib/validation';
+import {
+  calcularFortalezaContrasena,
+  crearRegistroSchema,
+  type RegistroFormValues,
+} from '@/lib/validation';
 import { crearEtiquetaTipoNegocio, TIPOS_NEGOCIO } from '@/lib/tipo-negocio';
 import { ESPACIO_INFERIOR_WIDGETS } from '@/components/layout/espacio-widgets';
 
@@ -25,9 +29,16 @@ export default function RegistroPage() {
   const {
     register,
     handleSubmit,
+    watch,
     setError,
     formState: { errors, isSubmitting },
   } = useForm<RegistroFormValues>({ resolver: zodResolver(registroSchema) });
+
+  const contrasenaIngresada = watch('contrasena') || '';
+  const fortaleza = useMemo(
+    () => calcularFortalezaContrasena(contrasenaIngresada),
+    [contrasenaIngresada],
+  );
 
   const alEnviar = async (valores: RegistroFormValues) => {
     try {
@@ -124,7 +135,7 @@ export default function RegistroPage() {
           <Input
             label={t('comun.contrasena')}
             type="password"
-            maxLength={128}
+            maxLength={64}
             autoComplete="new-password"
             variante="crear"
             requerido
@@ -132,6 +143,41 @@ export default function RegistroPage() {
             error={errors.contrasena?.message}
             {...register('contrasena')}
           />
+          {contrasenaIngresada ? (
+            <div className="-mt-2 mb-1" aria-live="polite">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500 dark:text-slate-400">
+                  {t('registro.fortalezaContrasena', 'Fortaleza')}:
+                </span>
+                <span
+                  className={
+                    fortaleza.nivel === 'fuerte'
+                      ? 'font-medium text-emerald-600 dark:text-emerald-400'
+                      : fortaleza.nivel === 'media'
+                        ? 'font-medium text-amber-600 dark:text-amber-400'
+                        : 'font-medium text-rose-600 dark:text-rose-400'
+                  }
+                >
+                  {fortaleza.nivel === 'fuerte'
+                    ? t('registro.fortalezaFuerte', 'Fuerte')
+                    : fortaleza.nivel === 'media'
+                      ? t('registro.fortalezaMedia', 'Media')
+                      : t('registro.fortalezaDebil', 'Débil')}
+                </span>
+              </div>
+              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                <div
+                  className={`h-full transition-all duration-300 ${
+                    fortaleza.nivel === 'fuerte'
+                      ? 'w-full bg-emerald-500'
+                      : fortaleza.nivel === 'media'
+                        ? 'w-2/3 bg-amber-500'
+                        : 'w-1/3 bg-rose-500'
+                  }`}
+                />
+              </div>
+            </div>
+          ) : null}
 
           <Boton type="submit" cargando={isSubmitting} className="mt-2 w-full">
             {t('registro.crearCuenta')}

@@ -39,7 +39,7 @@
     "paginaDe": "Page {{actual}} of {{total}}"
   },
   "validacion": {
-    "contrasenaInvalida": "Password must be at least 8 characters, with a letter and a number",
+    "contrasenaInvalida": "Password must be 12-64 characters, with a letter and a number",
     "correoObligatorio": "Email is required",
     "correoInvalido": "Invalid email",
     "soloLetras": "Only letters, spaces, apostrophes, and hyphens are allowed",
@@ -84,7 +84,11 @@
     "telefonoNegocio": "Business phone",
     "nombreCompletoAdmin": "Administrator's full name",
     "correoAdmin": "Administrator's email",
-    "hintContrasena": "At least 8 characters, with a letter and a number",
+    "hintContrasena": "Between 12 and 64 characters, with at least one letter and one number",
+    "fortalezaContrasena": "Strength",
+    "fortalezaDebil": "Weak",
+    "fortalezaMedia": "Medium",
+    "fortalezaFuerte": "Strong",
     "crearCuenta": "Create account",
     "yaTienesCuenta": "Already have an account?",
     "exitoTitulo": "Business registered",

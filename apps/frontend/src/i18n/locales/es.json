@@ -39,7 +39,7 @@
     "paginaDe": "Página {{actual}} de {{total}}"
   },
   "validacion": {
-    "contrasenaInvalida": "La contraseña debe tener al menos 8 caracteres, una letra y un número",
+    "contrasenaInvalida": "La contraseña debe tener entre 12 y 64 caracteres, una letra y un número",
     "correoObligatorio": "El correo es obligatorio",
     "correoInvalido": "Correo inválido",
     "soloLetras": "Solo se permiten letras, espacios, apóstrofes y guiones",
@@ -84,7 +84,11 @@
     "telefonoNegocio": "Teléfono del negocio",
     "nombreCompletoAdmin": "Nombre completo del administrador",
     "correoAdmin": "Correo del administrador",
-    "hintContrasena": "Mínimo 8 caracteres, con al menos una letra y un número",
+    "hintContrasena": "Entre 12 y 64 caracteres, con al menos una letra y un número",
+    "fortalezaContrasena": "Fortaleza",
+    "fortalezaDebil": "Débil",
+    "fortalezaMedia": "Media",
+    "fortalezaFuerte": "Fuerte",
     "crearCuenta": "Crear cuenta",
     "yaTienesCuenta": "¿Ya tienes cuenta?",
     "exitoTitulo": "Negocio registrado",

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import * as path from 'path';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -10,6 +10,7 @@ import { validateEnv, Env } from './config/env.schema';
 import { listaEntidades } from './database/entity-list';
 import { HealthModule } from './health/health.module';
 import { TenantModule } from './common/tenant';
+import { RegistroSolicitudesMiddleware } from './common/logging/registro-solicitudes.middleware';
 import { AuthModule } from './modules/auth/auth.module';
 import { NegociosModule } from './modules/negocios/negocios.module';
 import { UsuariosModule } from './modules/usuarios/usuarios.module';
@@ -101,4 +102,8 @@ import { AppThrottlerGuard } from './common/throttler/ws-aware-throttler.guard';
   ],
   providers: [{ provide: APP_GUARD, useClass: AppThrottlerGuard }],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(RegistroSolicitudesMiddleware).forRoutes('*');
+  }
+}

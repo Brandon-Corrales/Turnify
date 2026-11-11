@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsDateString, IsEnum, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { OrigenReserva } from '../../../database/entities';
 
 export class CrearReservaDto {
@@ -25,6 +25,7 @@ export class CrearReservaDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   notas?: string;
 
   @ApiProperty({ required: false, enum: OrigenReserva, default: OrigenReserva.ADMIN })

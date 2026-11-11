@@ -25,6 +25,7 @@ const envSchema = z.object({
   JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
 
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
+  TRUST_PROXY: z.string().optional().default('1'),
 
   // Opcionales a propósito: el worker de Notificaciones detecta su
   // ausencia en tiempo de ejecución y marca la notificación como fallida

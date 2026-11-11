@@ -3703,3 +3703,25 @@ resets ni operaciones destructivas sobre Supabase; la restricción
 - **Punto 2.3 (CI y plantillas de GitHub)**: Creado `.github/workflows/ci.yml` con Node 20, caché de npm, lint, typecheck, tests y build. Creados `.github/pull_request_template.md`, `.github/ISSUE_TEMPLATE/error.md` y `.github/ISSUE_TEMPLATE/tarea.md`.
 - **Punto 2.4 (Cobertura de pruebas)**: Instalado `@vitest/coverage-v8`, configurados scripts `test:cov` y reporte en frontend y backend. `.gitignore` ya ignora `coverage`.
 - **Punto 2.5 (README factual)**: Actualizado el proveedor de hosting en `README.md` a Render para frontend y backend.
+
+## Bloque 3 — Seguridad Backend y Protección de Formularios
+- **Punto 3.1 (Proxy inverso y trust proxy)**: Configurado `app.set('trust proxy', trustProxy)` en `main.ts` y variable de entorno `TRUST_PROXY` en `env.schema.ts` para que los middlewares de rate limit y logs obtengan la IP real del cliente detrás de Render/Cloudflare.
+- **Punto 3.2 (Helmet y CORS centralizado)**:
+  - Instalado y configurado `helmet()` en `main.ts` con protección de cabeceras HTTP (HSTS, X-Content-Type-Options, eliminación de X-Powered-By, etc.).
+  - Centralizado el validador de orígenes CORS en `common/cors/cors.config.ts` con soporte para solicitudes sin origin y normalización de trailing slashes, cubierto por pruebas unitarias en `cors.config.spec.ts`.
+- **Punto 3.3 (Política de contraseñas NIST SP 800-63B y medidor visual)**:
+  - Política de contraseñas actualizada a 12-64 caracteres, máximo 72 bytes en UTF-8 y bloqueo de contraseñas comunes en `es-contrasena-valida.decorator.ts`.
+  - Pruebas unitarias completas en `es-contrasena-valida.decorator.spec.ts`.
+  - Esquema Zod en frontend alineado a 12-64 caracteres con `calcularFortalezaContrasena()` en `validation.ts`.
+  - Medidor visual de fortaleza de contraseña con barra de progreso y colores accesible en `RegistroPage.tsx`.
+- **Punto 3.4 (Logging estructurado y enmascaramiento de PII)**:
+  - Creado middleware global `RegistroSolicitudesMiddleware` con asignación de `X-Request-Id`, método, ruta, código de estado, duración y tenant, omitiendo `/health` para no saturar.
+  - Creada utilidad `enmascararCorreo()` en `common/utils/enmascarar-correo.util.ts` con pruebas unitarias (`u***@turnify.com`).
+  - Aplicado enmascaramiento de datos personales en logs de autenticación (`auth.service.ts`) y notificaciones (`resend.service.ts`).
+- **Punto 3.5 (Protección contra desbordamiento en DTOs)**:
+  - `@MaxLength(500)` aplicado a campos de texto libre (`notas` en clientes y reservas, `descripcion` en servicios).
+- **Punto 3.6 (Honeypot y Rate Limiting en reserva pública)**:
+  - Campo trampa `sitioWeb` oculto para usuarios visuales y lectores de pantalla (`aria-hidden="true"`, `tabIndex={-1}`) en `ReservaPublicaPage.tsx`.
+  - Se mapea a nivel de raíz como `honeypot` para evitar violar `forbidNonWhitelisted` en el DTO de cliente.
+  - Rechazo con `SOLICITUD_INVALIDA` si el honeypot viene lleno y límite de reservas por correo (`DEMASIADAS_SOLICITUDES` tras 5 reservas consecutivas) en `reserva-publica.service.ts`.
+  - Pruebas unitarias agregadas en `reserva-publica.service.spec.ts`.

@@ -22,6 +22,7 @@ export class CrearServicioDto {
   @ApiProperty({ required: false, example: 'Corte de cabello tradicional' })
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   descripcion?: string;
 
   @ApiProperty({ example: 30, description: 'Duración en minutos' })

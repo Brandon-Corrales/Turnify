@@ -14,19 +14,54 @@ const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d).+$/;
 const NOMBRE_REGEX = /^[\p{L}]+(?:[ '\u002D][\p{L}]+)*$/u;
 const TELEFONO_REGEX = /^\d+$/;
 
+const CONTRASENAS_COMUNES = new Set([
+  '123456789012',
+  'password1234',
+  'contrasena12',
+  'qwertyuiop12',
+  'administrador',
+  'turnify12345',
+  'admin1234567',
+  'welcome12345',
+  'turnify202612',
+]);
+
+export function calcularFortalezaContrasena(contrasena: string): {
+  puntaje: number;
+  nivel: 'debil' | 'media' | 'fuerte';
+  etiqueta: string;
+} {
+  if (!contrasena) return { puntaje: 0, nivel: 'debil', etiqueta: 'Muy débil' };
+  let puntos = 0;
+  if (contrasena.length >= 12) puntos += 1;
+  if (contrasena.length >= 16) puntos += 1;
+  if (/[A-Z]/.test(contrasena) && /[a-z]/.test(contrasena)) puntos += 1;
+  if (/\d/.test(contrasena)) puntos += 1;
+  if (/[^A-Za-z0-9]/.test(contrasena)) puntos += 1;
+  if (CONTRASENAS_COMUNES.has(contrasena.toLowerCase())) puntos = 1;
+
+  if (puntos >= 4) return { puntaje: puntos, nivel: 'fuerte', etiqueta: 'Fuerte' };
+  if (puntos >= 2) return { puntaje: puntos, nivel: 'media', etiqueta: 'Media' };
+  return { puntaje: puntos, nivel: 'debil', etiqueta: 'Débil' };
+}
+
 /**
- * Misma política que EsContrasenaValida() en el backend (apps/backend/src/
- * common/validation/es-contrasena-valida.decorator.ts): 8+ caracteres, al
- * menos una letra y un número. No es código compartido literal (no hay un
- * paquete común entre frontend/backend todavía), pero es la MISMA regla de
- * negocio escrita dos veces a propósito — el backend manda como fuente de
- * verdad final, esto es solo para feedback instantáneo en el formulario
- * (punto 13 del brief: validar en ambos lados sin duplicar la fuente de
- * verdad de las reglas de negocio).
+ * Misma política que EsContrasenaValida() en el backend: 12-64 caracteres,
+ * al menos una letra y un número, máximo 72 bytes en UTF-8 y sin contraseñas comunes.
  */
 export function crearContrasenaSchema(t: TFunction) {
   const mensaje = t('validacion.contrasenaInvalida');
-  return z.string().min(8, mensaje).regex(PASSWORD_REGEX, mensaje);
+  return z
+    .string()
+    .min(12, mensaje)
+    .max(64, mensaje)
+    .regex(PASSWORD_REGEX, mensaje)
+    .refine((val) => new TextEncoder().encode(val).length <= 72, {
+      message: mensaje,
+    })
+    .refine((val) => !CONTRASENAS_COMUNES.has(val.toLowerCase()), {
+      message: mensaje,
+    });
 }
 
 export function crearLoginSchema(t: TFunction) {
@@ -67,7 +102,7 @@ export function crearRegistroSchema(t: TFunction) {
       .min(1, t('validacion.correoObligatorio'))
       .max(100)
       .email(t('validacion.correoInvalido')),
-    contrasena: crearContrasenaSchema(t).max(128),
+    contrasena: crearContrasenaSchema(t),
   });
 }
 
@@ -91,6 +126,7 @@ export function crearDatosClientePublicoSchema(t: TFunction) {
       .regex(TELEFONO_REGEX, t('validacion.soloNumeros'))
       .optional()
       .or(z.literal('')),
+    sitioWeb: z.string().optional(),
   });
 }
 

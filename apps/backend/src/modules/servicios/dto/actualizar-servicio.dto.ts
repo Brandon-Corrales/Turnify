@@ -23,6 +23,7 @@ export class ActualizarServicioDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   descripcion?: string;
 
   @ApiProperty({ required: false, example: 30 })
