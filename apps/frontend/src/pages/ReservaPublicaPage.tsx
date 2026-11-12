@@ -21,6 +21,7 @@ import type { CountryCode } from 'libphonenumber-js';
 import { CampoTelefono } from '@/components/negocio/CampoTelefono';
 import { normalizarTelefono, PAIS_TELEFONO_POR_DEFECTO } from '@/lib/telefono';
 import { useTituloPagina } from '@/lib/use-titulo-pagina';
+import { LogoTurnify } from '@/components/marca/LogoTurnify';
 
 function formatearHora(iso: string, idioma: string, zona: string): string {
   return new Date(iso).toLocaleTimeString(localeDe(idioma), {
@@ -183,7 +184,8 @@ export default function ReservaPublicaPage() {
     <div className={`min-h-screen bg-slate-50 dark:bg-slate-900 ${ESPACIO_INFERIOR_WIDGETS}`}>
       <header className="border-b border-slate-200 bg-white px-4 py-4 dark:border-slate-700 dark:bg-slate-800">
         <div className="mx-auto max-w-2xl">
-          <p className="text-xs font-medium text-primary-600 dark:text-primary-400">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-primary-600 dark:text-primary-400">
+            <LogoTurnify tamano={16} />
             {t('comun.turnify')}
           </p>
           {negocioQuery.isPending ? (

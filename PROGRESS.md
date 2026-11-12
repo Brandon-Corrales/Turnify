@@ -3882,8 +3882,8 @@ La medición respeta el límite del backend de 60 peticiones/min por IP (Bloque 
   - **Nombres traducidos:** `aria-label` "Abrir navegación" y "Navegación principal" estaban fijas en español; ahora van por i18n.
 - **1.6 Título, íconos y meta** ✅ (`b44109a`).
   - `useTituloPagina`: "Pantalla · Turnify" traducido y actualizado al cambiar de idioma. Verificado: "Iniciar sesión · Turnify" → "Appointment scheduling for your business · Turnify" sin recargar; "Reservar en Prueba Accesibilidad" / "Book at Prueba Accesibilidad".
-  - Íconos generados desde `favicon.svg` sin rediseñarlo: `favicon.ico` (16/32/48), PNG 32/192/512 y `apple-touch-icon` 180 (sobre blanco, porque iOS rellena la transparencia con negro).
-  - `manifest.webmanifest`, `theme-color` claro/oscuro, `description`, Open Graph (url `https://turnify-frontend-i0kl.onrender.com`, `site_name`, `locale` es_CR + alternativa en_US) y Twitter `summary`. **Sin `og:image`**: no existía ninguna imagen para compartir (solo `favicon.svg`).
+  - Íconos generados primero desde `favicon.svg`; luego reemplazados por los del logo oficial (ver abajo).
+  - `manifest.webmanifest`, `theme-color` claro/oscuro, `description`, Open Graph (url `https://turnify-frontend-i0kl.onrender.com`, `site_name`, `locale` es_CR + alternativa en_US) y Twitter. ~~Sin `og:image`~~ → resuelto con el logo oficial (ver "Logo oficial" abajo).
   - `robots.txt`.
   - Con `vite preview` todos responden 200 con su tipo (`image/x-icon`, `image/png`, `application/manifest+json`, `text/plain`); las rutas de la SPA siguen dando `index.html`.
   - **NO VERIFICADO:**
@@ -3933,4 +3933,18 @@ A 390 px: **88 de 88** con 0 violaciones (el calendario usa la vista de lista en
 **Fuera de alcance (registrado, no corregido):**
 - Clientes en vista de tarjetas a 390 px (ES/EN): las tarjetas con correos largos desbordan horizontalmente (398 px en un viewport de 390). Ya pasaba antes de este bloque (comprobado con `git stash`).
 - El `Select` compartido pasa `defaultValue` y `value` a la vez; React puede advertirlo en consola.
+
+### Logo oficial (12/11/2026)
+- **Fuente:** `~/Downloads/turnify-icono.png` (1024×1024, índigo `#4f46e5` redondeado con calendario blanco y check). Era la única candidata. Se copió sin modificar a `apps/frontend/public/turnify-logo.png`; el original sigue en Descargas.
+- **Íconos:** es otro diseño que el `favicon.svg` anterior (calendario con puntos), así que el logo pasa a ser la fuente de todos los íconos. No existe un SVG de este logo, así que se usó el PNG y se quitó `favicon.svg`, del `<head>` y del manifest.
+  - Regenerados con `sharp` 0.35.5, fuera del repo (reducción lanczos3 y PNG con paleta): `favicon.ico` 16/32/48 (1.9 KB), `favicon-32` (0.6 KB), `favicon-192` (2.9 KB), `favicon-512` (6.3 KB).
+  - `apple-touch-icon` 180 (1.9 KB) va sobre el índigo del logo: iOS rellena la transparencia con negro y aplica su propia máscara.
+- **En la interfaz:** componente `LogoTurnify` (`alt=""` + `aria-hidden`, decorativo) junto al nombre, en la barra lateral (32 px), el encabezado móvil y la barra superior (28), la landing (28), login y registro (36) y la reserva pública (16). Usa `favicon-192.png`, el mismo archivo del manifest. El onboarding no muestra el nombre "Turnify", así que no se le agregó para no cambiar su diseño.
+- **Open Graph y Twitter:** `og-image.png` de 1200×630 (4.3 KB), con el logo de 440 px centrado sobre el mismo índigo. Lleva `og:image`, su tipo, tamaño y `alt`; `twitter:card` pasa a `summary_large_image`, con `twitter:image` y su `alt`.
+- **Verificado:**
+  - con `vite preview`, cada recurso responde 200 con su tipo (`image/png`, `image/x-icon`, `application/manifest+json`); `/favicon.svg` ahora devuelve el `index.html` de la SPA;
+  - axe (mismas etiquetas que el bloque) en landing, login, registro, panel con y sin chatbot y reserva pública en sus tres pasos, en ES/EN × claro/oscuro, a 1280 y 390 px: **64 de 64 con 0 violaciones**;
+  - 32 capturas en el scratchpad, fuera del repo;
+  - el logo carga en todas las pantallas y no causa desborde a 390 px. El encabezado de la landing ya bajaba a dos líneas a 390 px antes del logo (111 px de alto en los dos casos).
+  - **NO VERIFICADO:** cómo se ve la tarjeta en redes sociales. Necesita la URL pública desplegada, y `og:image` apunta al dominio de Render.
 

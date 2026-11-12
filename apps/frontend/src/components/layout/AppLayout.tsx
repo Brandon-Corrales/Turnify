@@ -21,6 +21,7 @@ import { ChatbotWidget } from '@/components/chat/ChatbotWidget';
 import { ControlesGlobales } from './ControlesGlobales';
 import { useSincronizacionTiempoReal } from '@/lib/tiempo-real';
 import { ESPACIO_INFERIOR_WIDGETS } from './espacio-widgets';
+import { LogoTurnify } from '@/components/marca/LogoTurnify';
 
 /**
  * Barra superior de las pantallas autenticadas. El grupo de controles
@@ -72,8 +73,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <Link
               to="/"
               onClick={() => setSidebarAbierto(false)}
-              className="inline-flex min-h-11 items-center text-xl font-semibold tracking-wide text-violet-300 transition-colors hover:text-white"
+              className="inline-flex min-h-11 items-center gap-2 text-xl font-semibold tracking-wide text-violet-300 transition-colors hover:text-white"
             >
+              <LogoTurnify tamano={32} />
               {t('comun.turnify')}
             </Link>
             <button
@@ -146,8 +148,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </button>
           <Link
             to="/"
-            className="inline-flex min-h-11 items-center text-lg font-semibold text-primary-600 dark:text-violet-300"
+            className="inline-flex min-h-11 items-center gap-2 text-lg font-semibold text-primary-600 dark:text-violet-300"
           >
+            <LogoTurnify tamano={28} />
             {t('comun.turnify')}
           </Link>
           <ControlesGlobales />
@@ -173,8 +176,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <div className="flex min-w-0 items-center gap-4">
           <Link
             to="/"
-            className="shrink-0 text-lg font-semibold text-primary-600 dark:text-primary-400"
+            className="inline-flex shrink-0 items-center gap-2 text-lg font-semibold text-primary-600 dark:text-primary-400"
           >
+            <LogoTurnify tamano={28} />
             {t('comun.turnify')}
           </Link>
           <nav className="flex min-w-0 gap-4 overflow-x-auto">
