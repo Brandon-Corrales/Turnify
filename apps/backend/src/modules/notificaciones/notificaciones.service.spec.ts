@@ -285,6 +285,9 @@ const RESERVA = {
 
 const SERVICIO = { idServicio: 'servicio-1', nombre: 'Corte de cabello' };
 
+/** Negocio en Costa Rica, como todos los existentes antes del Bloque 5. */
+const negocioRepoCR = { findOne: async () => ({ zonaHoraria: 'America/Costa_Rica' }) };
+
 describe('NotificacionesService', () => {
   let notificacionRepo: ReturnType<typeof crearNotificacionRepoMock>;
   let reservaRepo: ReturnType<typeof crearReservaRepoMock>;
@@ -305,6 +308,7 @@ describe('NotificacionesService', () => {
       resend as any,
       whatsapp as any,
       i18n as any,
+      negocioRepoCR as any,
     );
   });
 
@@ -505,6 +509,7 @@ describe('NotificacionesService', () => {
         resend as any,
         whatsapp as any,
         i18n as any,
+        negocioRepoCR as any,
       );
 
       await Promise.all([service.procesarPendientes(), otraInstancia.procesarPendientes()]);
@@ -527,6 +532,7 @@ describe('NotificacionesService', () => {
         resend as any,
         whatsapp as any,
         i18n as any,
+        negocioRepoCR as any,
       );
 
       await Promise.all([service.procesarPendientes(), otraInstancia.procesarPendientes()]);
@@ -671,6 +677,7 @@ describe('NotificacionesService', () => {
         resend as any,
         whatsapp as any,
         i18n as any,
+        negocioRepoCR as any,
       );
       reservaRepo.find.mockResolvedValue([reserva]);
 

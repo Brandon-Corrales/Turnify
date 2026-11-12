@@ -4,6 +4,8 @@ export interface NegocioPublico {
   idNegocio: string;
   nombre: string;
   tipoNegocio: string;
+  /** Zona horaria IANA del negocio (Bloque 5). Opcional: un backend anterior no la manda. */
+  zonaHoraria?: string;
 }
 
 export interface ServicioPublico {

@@ -183,6 +183,15 @@
     "sinCitasEsteDia": "No appointments this day.",
     "errorCitasDelDia": "Couldn't load this day's appointments. Please try again later."
   },
+  "negocio": {
+    "zonaHorariaCampo": "Business time zone",
+    "zonaHorariaAyuda": "Calendar times, the weekly schedule, the public booking page and your clients' notices use this time zone.",
+    "zonaHorariaAyudaCambio": "Changing it doesn't move existing bookings (each keeps its actual time); the weekly schedule starts being read in the new time zone.",
+    "preferenciasTitulo": "Time zone",
+    "guardar": "Save",
+    "guardado": "Changes saved",
+    "errorGuardar": "The changes couldn't be saved."
+  },
   "suscripcion": {
     "titulo": "Your subscription",
     "subtitulo": "Compare plans and upgrade whenever you're ready.",
@@ -269,6 +278,7 @@
     "separadorHoras": "to"
   },
   "reservaPublica": {
+    "notaZonaHoraria": "Times are shown in the business's time zone: {{zona}}.",
     "pasoServicio": "Service",
     "pasoHorario": "Time",
     "pasoTusDatos": "Your info",

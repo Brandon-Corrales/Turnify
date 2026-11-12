@@ -20,11 +20,15 @@ import {
   TenantScopedRepository,
 } from '../../common/tenant';
 import { PaginatedResult } from '../../common/pagination';
-import { aMomentoLocalCR } from '../../common/utils/zona-horaria-negocio';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { aMomentoLocal } from '../../common/utils/zona-horaria-negocio';
+import { leerZonaHoraria } from '../../common/utils/leer-zona-horaria';
 import {
   Cliente,
   Disponibilidad,
   EstadoReserva,
+  Negocio,
   OrigenReserva,
   Reserva,
   Servicio,
@@ -60,6 +64,7 @@ export class ReservasService {
     private readonly tenantContext: TenantContextService,
     private readonly notificaciones: NotificacionesService,
     private readonly limitesPlan: LimitesPlanService,
+    @InjectRepository(Negocio) private readonly negocioRepo: Repository<Negocio>,
   ) {}
 
   async crear(dto: CrearReservaDto): Promise<Reserva> {
@@ -278,15 +283,16 @@ export class ReservasService {
     }
   }
 
-  /** Valida que [inicio, fin) caiga dentro de una franja activa de DISPONIBILIDAD del usuario, en hora local de Costa Rica. */
+  /** Valida que [inicio, fin) caiga dentro de una franja activa de DISPONIBILIDAD del usuario, en la hora local de la zona del negocio. */
   private async asegurarDentroDeDisponibilidad(
     idUsuario: string,
     inicio: Date,
     fin: Date,
   ): Promise<void> {
-    const { diaSemana, horaMinuto: horaInicio } = aMomentoLocalCR(inicio);
-    const { diaSemana: diaFin, horaMinuto: horaFin } = aMomentoLocalCR(fin);
-    if (diaFin !== diaSemana) {
+    const zona = await leerZonaHoraria(this.negocioRepo, this.tenantContext.idNegocio);
+    const { fecha, diaSemana, horaMinuto: horaInicio } = aMomentoLocal(inicio, zona);
+    const { fecha: fechaFin, horaMinuto: horaFin } = aMomentoLocal(fin, zona);
+    if (fechaFin !== fecha) {
       throw new BadRequestException({
         errorCode: 'RESERVA_CRUZA_MEDIANOCHE',
         message: 'La reserva no puede cruzar la medianoche',

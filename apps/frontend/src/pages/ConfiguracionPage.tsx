@@ -11,6 +11,7 @@ import { ApiError } from '@/lib/api';
 import { disponibilidadApi, type Disponibilidad } from '@/lib/disponibilidad-api';
 import { negociosApi } from '@/lib/negocios-api';
 import { usuariosApi } from '@/lib/usuarios-api';
+import { TarjetaPreferenciasRegionales } from '@/components/negocio/TarjetaPreferenciasRegionales';
 
 const DIAS_CLAVE = [
   { valor: 0, clave: 'domingo' },
@@ -305,6 +306,8 @@ export default function ConfiguracionPage() {
             )}
           </div>
         </div>
+
+        <TarjetaPreferenciasRegionales />
 
         <div className="mt-6 rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
           <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-3 dark:border-slate-700">

@@ -10,12 +10,14 @@ import {
   Cliente,
   EstadoNotificacion,
   EstadoReserva,
+  Negocio,
   Notificacion,
   Reserva,
   Servicio,
   TipoNotificacion,
 } from '../../database/entities';
-import { formatearFechaHoraLocalCR } from '../../common/utils/zona-horaria-negocio';
+import { formatearFechaHoraLocal } from '../../common/utils/zona-horaria-negocio';
+import { leerZonaHoraria } from '../../common/utils/leer-zona-horaria';
 import { construirMensaje, type TipoMensajeReserva } from './mensajes-notificacion';
 import { ResendService, type ResultadoEnvio } from './providers/resend.service';
 import { WhatsappCloudApiService } from './providers/whatsapp-cloud-api.service';
@@ -142,6 +144,7 @@ export class NotificacionesService {
     private readonly resend: ResendService,
     private readonly whatsapp: WhatsappCloudApiService,
     private readonly i18n: I18nService,
+    @InjectRepository(Negocio) private readonly negocioRepo: Repository<Negocio>,
   ) {}
 
   async programarConfirmacion(
@@ -208,9 +211,16 @@ export class NotificacionesService {
     cliente: Cliente,
     servicio: Servicio,
   ): Promise<ResultadoProgramar> {
+    // La hora del texto va en la zona del NEGOCIO (Bloque 5, punto 5.1): es la
+    // hora a la que el cliente tiene que llegar.
+    const zona = await leerZonaHoraria(this.negocioRepo, reserva.idNegocio);
     const { asunto, texto } = construirMensaje(this.i18n, tipo, cliente.idiomaPreferido, {
       nombreServicio: servicio.nombre,
-      fechaHoraTexto: formatearFechaHoraLocalCR(reserva.fechaHoraInicio, cliente.idiomaPreferido),
+      fechaHoraTexto: formatearFechaHoraLocal(
+        reserva.fechaHoraInicio,
+        cliente.idiomaPreferido,
+        zona,
+      ),
     });
     // El asunto (solo relevante para email) viaja como primera línea del
     // mensaje — el ER no tiene una columna separada para asunto y no vale la

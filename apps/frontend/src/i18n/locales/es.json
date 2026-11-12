@@ -183,6 +183,15 @@
     "sinCitasEsteDia": "No hay citas este día.",
     "errorCitasDelDia": "No se pudieron cargar las citas de este día. Intenta de nuevo más tarde."
   },
+  "negocio": {
+    "zonaHorariaCampo": "Zona horaria del negocio",
+    "zonaHorariaAyuda": "Las horas del calendario, del horario semanal, de la reserva pública y de los avisos a tus clientes se leen en esta zona.",
+    "zonaHorariaAyudaCambio": "Cambiarla no mueve las reservas ya creadas (cada una conserva su hora real); el horario semanal se empieza a leer en la zona nueva.",
+    "preferenciasTitulo": "Zona horaria",
+    "guardar": "Guardar",
+    "guardado": "Cambios guardados",
+    "errorGuardar": "No se pudieron guardar los cambios."
+  },
   "suscripcion": {
     "titulo": "Tu suscripción",
     "subtitulo": "Compara los planes y actualiza cuando quieras.",
@@ -269,6 +278,7 @@
     "separadorHoras": "a"
   },
   "reservaPublica": {
+    "notaZonaHoraria": "Los horarios están en la hora del negocio: {{zona}}.",
     "pasoServicio": "Servicio",
     "pasoHorario": "Horario",
     "pasoTusDatos": "Tus datos",

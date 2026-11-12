@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BadRequestException } from '@nestjs/common';
-import { ReportesService } from './reportes.service';
+import { EXPRESION_DIA_LOCAL, ReportesService } from './reportes.service';
+import { TenantContextService } from '../../common/tenant';
+import { RolUsuario } from '../../database/entities';
 import { EstadoReserva } from '../../database/entities';
 
 function crearQueryBuilderMock(resultado: { rawMany?: unknown[]; rawOne?: unknown }) {
@@ -10,6 +12,7 @@ function crearQueryBuilderMock(resultado: { rawMany?: unknown[]; rawOne?: unknow
     andWhere: vi.fn().mockReturnThis(),
     innerJoin: vi.fn().mockReturnThis(),
     groupBy: vi.fn().mockReturnThis(),
+    setParameter: vi.fn().mockReturnThis(),
     orderBy: vi.fn().mockReturnThis(),
     getRawMany: vi.fn().mockResolvedValue(resultado.rawMany ?? []),
     getRawOne: vi.fn().mockResolvedValue(resultado.rawOne),
@@ -19,11 +22,23 @@ function crearQueryBuilderMock(resultado: { rawMany?: unknown[]; rawOne?: unknow
 
 describe('ReportesService', () => {
   let reservaRepo: { createQueryBuilder: ReturnType<typeof vi.fn> };
+  let negocioRepo: { findOne: ReturnType<typeof vi.fn> };
+  let tenantContext: TenantContextService;
   let service: ReportesService;
 
   beforeEach(() => {
     reservaRepo = { createQueryBuilder: vi.fn() };
-    service = new ReportesService(reservaRepo as any);
+    negocioRepo = { findOne: vi.fn().mockResolvedValue({ zonaHoraria: 'America/Costa_Rica' }) };
+    tenantContext = new TenantContextService();
+    const real = new ReportesService(reservaRepo as any, negocioRepo as any, tenantContext);
+    // Mismo servicio, ejecutado dentro del contexto de un negocio.
+    service = {
+      resumen: (desde: string, hasta: string) =>
+        tenantContext.run(
+          { idNegocio: 'negocio-1', idUsuario: 'admin-1', rol: RolUsuario.ADMIN },
+          () => real.resumen(desde, hasta),
+        ),
+    } as ReportesService;
   });
 
   it('resumen() rechaza si "desde" es posterior a "hasta"', async () => {
@@ -90,5 +105,38 @@ describe('ReportesService', () => {
 
     const resultado = await service.resumen('2026-09-01T00:00:00.000Z', '2026-09-30T23:59:59.000Z');
     expect(resultado.ingresosEstimados).toBe(0);
+  });
+
+  describe('reservas por día en la zona del negocio (Bloque 5, punto 5.1)', () => {
+    async function correrCon(zonaHoraria: string) {
+      negocioRepo.findOne.mockResolvedValue({ zonaHoraria });
+      reservaRepo.createQueryBuilder
+        .mockReturnValueOnce(crearQueryBuilderMock({ rawMany: [] }))
+        .mockReturnValueOnce(crearQueryBuilderMock({ rawMany: [] }))
+        .mockReturnValueOnce(crearQueryBuilderMock({ rawOne: { total: '0' } }));
+      await service.resumen('2027-03-01T06:00:00.000Z', '2027-04-01T05:59:59.999Z');
+      return reservaRepo.createQueryBuilder.mock.results[1].value;
+    }
+
+    it('agrupa con AT TIME ZONE (no en UTC) y la zona del negocio: Costa Rica', async () => {
+      const qb = await correrCon('America/Costa_Rica');
+      expect(EXPRESION_DIA_LOCAL).toContain('AT TIME ZONE :zona');
+      expect(qb.select).toHaveBeenCalledWith(
+        expect.stringContaining('AT TIME ZONE :zona'),
+        'fecha',
+      );
+      expect(qb.groupBy).toHaveBeenCalledWith(EXPRESION_DIA_LOCAL);
+      expect(qb.setParameter).toHaveBeenCalledWith('zona', 'America/Costa_Rica');
+    });
+
+    it('usa la zona con horario de verano tal cual: Nueva York', async () => {
+      const qb = await correrCon('America/New_York');
+      expect(qb.setParameter).toHaveBeenCalledWith('zona', 'America/New_York');
+    });
+
+    it('una zona inválida en la base cae en Costa Rica, nunca en UTC', async () => {
+      const qb = await correrCon('No/Existe');
+      expect(qb.setParameter).toHaveBeenCalledWith('zona', 'America/Costa_Rica');
+    });
   });
 });

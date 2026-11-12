@@ -21,9 +21,11 @@ import {
   Usuario,
 } from '../../database/entities';
 import {
-  aMomentoLocalCR,
-  horaMinutoADate,
-  inicioDeDiaLocalCR,
+  aMomentoLocal,
+  diaSiguiente,
+  inicioDeDiaLocal,
+  instanteLocal,
+  zonaOPorDefecto,
 } from '../../common/utils/zona-horaria-negocio';
 import { ClientesService } from '../clientes/clientes.service';
 import { NegociosService } from '../negocios/negocios.service';
@@ -38,6 +40,8 @@ export interface NegocioPublico {
   idNegocio: string;
   nombre: string;
   tipoNegocio: string;
+  /** Zona IANA en la que se muestran los horarios del wizard. */
+  zonaHoraria: string;
 }
 
 export interface ServicioPublico {
@@ -93,6 +97,8 @@ export class ReservaPublicaService {
         idNegocio: negocio.idNegocio,
         nombre: negocio.nombre,
         tipoNegocio: negocio.tipoNegocio,
+        // El wizard muestra los horarios en la zona del negocio y lo dice.
+        zonaHoraria: zonaOPorDefecto(negocio.zonaHoraria),
       };
     });
   }
@@ -114,9 +120,12 @@ export class ReservaPublicaService {
   async listarHorarios(idNegocio: string, idServicio: string, fecha: string): Promise<string[]> {
     return this.conContexto(idNegocio, async () => {
       const servicio = await this.serviciosService.obtenerUno(idServicio);
-      const inicioDeDia = inicioDeDiaLocalCR(fecha);
-      const { diaSemana } = aMomentoLocalCR(inicioDeDia);
-      const finDeDia = new Date(inicioDeDia.getTime() + 24 * 60 * 60 * 1000);
+      const zona = zonaOPorDefecto((await this.negociosService.obtenerMiNegocio()).zonaHoraria);
+      // `fecha` es un día del calendario del NEGOCIO. Su fin es el inicio del
+      // día siguiente (no "+24 h": con horario de verano un día dura 23 o 25 h).
+      const inicioDeDia = inicioDeDiaLocal(fecha, zona);
+      const { diaSemana } = aMomentoLocal(inicioDeDia, zona);
+      const finDeDia = inicioDeDiaLocal(diaSiguiente(fecha), zona);
 
       const [usuarios, disponibilidades, reservasDelDia] = await Promise.all([
         this.usuarioRepo.find({ where: { activo: true } }),
@@ -135,7 +144,8 @@ export class ReservaPublicaService {
       for (const disponibilidad of disponibilidades) {
         if (!idsUsuariosActivos.has(disponibilidad.idUsuario)) continue;
         const slots = this.generarSlotsDeVentana(
-          inicioDeDia,
+          fecha,
+          zona,
           disponibilidad.horaInicio,
           disponibilidad.horaFin,
           servicio.duracionMinutos,
@@ -172,7 +182,8 @@ export class ReservaPublicaService {
       const fechaHoraInicio = new Date(dto.fechaHoraInicio);
       const fechaHoraFin = new Date(fechaHoraInicio.getTime() + servicio.duracionMinutos * 60_000);
 
-      const idUsuario = await this.encontrarUsuarioDisponible(fechaHoraInicio, fechaHoraFin);
+      const zona = zonaOPorDefecto((await this.negociosService.obtenerMiNegocio()).zonaHoraria);
+      const idUsuario = await this.encontrarUsuarioDisponible(fechaHoraInicio, fechaHoraFin, zona);
       if (!idUsuario) {
         throw new NotFoundException({
           errorCode: 'HORARIO_NO_DISPONIBLE',
@@ -214,10 +225,14 @@ export class ReservaPublicaService {
     }
   }
 
-  private async encontrarUsuarioDisponible(inicio: Date, fin: Date): Promise<string | null> {
-    const { diaSemana, horaMinuto: horaInicio } = aMomentoLocalCR(inicio);
-    const { diaSemana: diaFin, horaMinuto: horaFin } = aMomentoLocalCR(fin);
-    if (diaFin !== diaSemana) return null;
+  private async encontrarUsuarioDisponible(
+    inicio: Date,
+    fin: Date,
+    zona: string,
+  ): Promise<string | null> {
+    const { fecha, diaSemana, horaMinuto: horaInicio } = aMomentoLocal(inicio, zona);
+    const { fecha: fechaFin, horaMinuto: horaFin } = aMomentoLocal(fin, zona);
+    if (fechaFin !== fecha) return null;
 
     const [usuarios, disponibilidades, traslapes] = await Promise.all([
       this.usuarioRepo.find({ where: { activo: true } }),
@@ -251,9 +266,15 @@ export class ReservaPublicaService {
     return null;
   }
 
-  /** Genera slots de [inicio, inicio+duracion) espaciados por la duración del servicio, sin que ninguno pase de horaFin. */
+  /**
+   * Genera slots de [inicio, inicio+duracion) espaciados por la duración del
+   * servicio, sin que ninguno pase de horaFin. Cada "HH:mm" se convierte con la
+   * zona del negocio (no sumando minutos a la medianoche: el día del cambio de
+   * hora eso corría todos los horarios una hora).
+   */
   private generarSlotsDeVentana(
-    inicioDeDia: Date,
+    fecha: string,
+    zona: string,
     horaInicio: string,
     horaFin: string,
     duracionMinutos: number,
@@ -267,7 +288,7 @@ export class ReservaPublicaService {
     for (let t = minutoInicio; t + duracionMinutos <= minutoFin; t += duracionMinutos) {
       const hh = String(Math.floor(t / 60)).padStart(2, '0');
       const mm = String(t % 60).padStart(2, '0');
-      const inicio = horaMinutoADate(inicioDeDia, `${hh}:${mm}`);
+      const inicio = instanteLocal(fecha, `${hh}:${mm}`, zona);
       slots.push({ inicio, fin: new Date(inicio.getTime() + duracionMinutos * 60_000) });
     }
     return slots;

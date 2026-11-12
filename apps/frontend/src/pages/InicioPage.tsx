@@ -22,8 +22,8 @@ import {
   hoyEnZonaNegocio,
   mesYAnioEnZonaNegocio,
   rangoMesEnZonaNegocio,
-  ZONA_HORARIA_NEGOCIO,
 } from '@/lib/fecha-negocio';
+import { useZonaHorariaNegocio } from '@/lib/use-zona-negocio';
 import { negociosApi } from '@/lib/negocios-api';
 import { nombreParaSaludo } from '@/lib/nombre-saludo';
 import { reportesApi, type ResumenReportes } from '@/lib/reportes-api';
@@ -87,9 +87,9 @@ function formatearDia(fecha: string, idioma: string, opciones: Intl.DateTimeForm
   });
 }
 
-function formatearHora(iso: string, idioma: string): string {
+function formatearHora(iso: string, idioma: string, zona: string): string {
   return new Date(iso).toLocaleTimeString(localeDe(idioma), {
-    timeZone: ZONA_HORARIA_NEGOCIO,
+    timeZone: zona,
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -262,6 +262,7 @@ function CitasDelDia({
 }: CitasDelDiaProps) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const zona = useZonaHorariaNegocio();
   const etiquetaEstado = crearEtiquetaEstadoReserva(t);
   const titulo = formatearDia(fecha, i18n.language, {
     weekday: 'long',
@@ -344,8 +345,8 @@ function CitasDelDia({
                     cancelada ? 'line-through opacity-60' : ''
                   }`}
                 >
-                  {formatearHora(cita.fechaHoraInicio, i18n.language)} –{' '}
-                  {formatearHora(cita.fechaHoraFin, i18n.language)}
+                  {formatearHora(cita.fechaHoraInicio, i18n.language, zona)} –{' '}
+                  {formatearHora(cita.fechaHoraFin, i18n.language, zona)}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm text-slate-900 dark:text-white">
@@ -378,9 +379,10 @@ export default function InicioPage() {
   const { t, i18n } = useTranslation();
   const { usuario } = useAuth();
   const navigate = useNavigate();
-  const { desde, hasta } = rangoMesEnZonaNegocio();
-  const hoy = hoyEnZonaNegocio();
-  const diasDelMes = diasDelMesEnZonaNegocio();
+  const zona = useZonaHorariaNegocio();
+  const { desde, hasta } = rangoMesEnZonaNegocio(new Date(), zona);
+  const hoy = hoyEnZonaNegocio(new Date(), zona);
+  const diasDelMes = diasDelMesEnZonaNegocio(new Date(), zona);
   const [diaElegido, setDiaSeleccionado] = useState(hoy);
   // Si la pestaña queda abierta de un mes al siguiente, el día elegido ya no
   // está en la gráfica: se vuelve a hoy.
@@ -419,15 +421,15 @@ export default function InicioPage() {
   const esPlanGratis = negocioQuery.data?.planSuscripcion === 'gratis';
   const resumen = resumenQuery.data;
   const total = resumen ? totalReservas(resumen.reservasPorEstado) : 0;
-  const nombreMes = mesYAnioEnZonaNegocio(i18n.language);
+  const nombreMes = mesYAnioEnZonaNegocio(i18n.language, new Date(), zona);
   const citasPorDia = useMemo(() => {
     const porDia = new Map<string, Reserva[]>();
     for (const reserva of reservasMesQuery.data ?? []) {
-      const dia = hoyEnZonaNegocio(new Date(reserva.fechaHoraInicio));
+      const dia = hoyEnZonaNegocio(new Date(reserva.fechaHoraInicio), zona);
       porDia.set(dia, [...(porDia.get(dia) ?? []), reserva]);
     }
     return porDia;
-  }, [reservasMesQuery.data]);
+  }, [reservasMesQuery.data, zona]);
   const conteoPorDia = useMemo(
     () => new Map([...citasPorDia].map(([dia, citas]) => [dia, citas.length])),
     [citasPorDia],

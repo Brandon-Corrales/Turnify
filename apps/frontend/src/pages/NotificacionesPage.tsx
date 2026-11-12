@@ -12,6 +12,8 @@ import {
   type TipoNotificacion,
 } from '@/lib/notificaciones-api';
 import { estadoVisible, type EstadoVisibleNotificacion } from '@/lib/estado-notificacion';
+import { formatearFechaHoraEnZona } from '@/lib/fecha-negocio';
+import { useZonaHorariaNegocio } from '@/lib/use-zona-negocio';
 
 const CLAVE_I18N_TIPO: Record<TipoNotificacion, string> = {
   confirmacion: 'notificaciones.tipoConfirmacion',
@@ -57,15 +59,8 @@ const ICONO_ESTADO: Record<EstadoVisibleNotificacion, typeof Check> = {
   anulada: Ban,
 };
 
-function formatearFechaHora(iso: string, idioma: string): string {
-  return new Date(iso).toLocaleString(idioma.startsWith('en') ? 'en-US' : 'es-CR', {
-    timeZone: 'America/Costa_Rica',
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
-}
-
 export default function NotificacionesPage() {
+  const zona = useZonaHorariaNegocio();
   const { t, i18n } = useTranslation();
   const [pagina, setPagina] = useState(1);
   const LIMITE = 15;
@@ -211,7 +206,11 @@ export default function NotificacionesPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                          {formatearFechaHora(n.enviadoEn ?? n.programadoPara, i18n.language)}
+                          {formatearFechaHoraEnZona(
+                            n.enviadoEn ?? n.programadoPara,
+                            i18n.language,
+                            zona,
+                          )}
                         </td>
                       </tr>
                     );

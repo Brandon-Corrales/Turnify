@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LimitesPlanService } from './limites-plan.service';
 import { FindOperator } from 'typeorm';
 import { EstadoReserva, PlanSuscripcion } from '../../database/entities';
@@ -248,6 +248,80 @@ describe('LimitesPlanService', () => {
         () => suscripciones.obtenerUso(),
       );
       expect(uso).toEqual({ enPlanGratis: false, reservasMes: { usadas: 1, limite: null } });
+    });
+  });
+
+  describe('cortes de mes y de día en la zona del negocio (Bloque 5)', () => {
+    let filas: Array<{ idNegocio: string; creadoEn: Date; estado?: EstadoReserva }>;
+    const contarDesde = async ({ where }: { where: Record<string, any> }) =>
+      filas.filter(
+        (f) =>
+          f.idNegocio === where.idNegocio &&
+          f.creadoEn.getTime() >= (where.creadoEn as FindOperator<Date>).value.getTime() &&
+          (where.estado === undefined || f.estado !== EstadoReserva.CANCELADA),
+      ).length;
+    const fila = (iso: string) => ({
+      idNegocio: NEGOCIO_ID,
+      creadoEn: new Date(iso),
+      estado: EstadoReserva.CONFIRMADA,
+    });
+    const enZona = (zonaHoraria: string) =>
+      negocioRepo.findOne.mockResolvedValue({
+        zonaHoraria,
+        planSuscripcion: PlanSuscripcion.GRATIS,
+      });
+
+    beforeEach(() => {
+      filas = [];
+      reservaRepo.count.mockImplementation(contarDesde);
+      mensajeChatbotRepo.count.mockImplementation(contarDesde);
+    });
+    afterEach(() => vi.useRealTimers());
+
+    it('Costa Rica: el 31 de marzo a las 19:00 todavía es marzo (con UTC ya contaba abril y el cupo se reiniciaba)', async () => {
+      vi.useFakeTimers({ now: new Date('2027-04-01T01:00:00.000Z') });
+      enZona('America/Costa_Rica');
+      filas.push(
+        fila('2027-03-01T06:30:00.000Z'), // 1 de marzo 00:30 CR → marzo
+        fila('2027-03-31T23:00:00.000Z'), // 31 de marzo 17:00 CR → marzo
+        fila('2027-03-01T05:00:00.000Z'), // 28 de febrero 23:00 CR → febrero
+      );
+      await expect(service.contar('reservas', NEGOCIO_ID)).resolves.toBe(2);
+    });
+
+    it('Nueva York: el mes de noviembre empieza a las 04:00 UTC (todavía con horario de verano)', async () => {
+      vi.useFakeTimers({ now: new Date('2027-11-20T12:00:00.000Z') });
+      enZona('America/New_York');
+      filas.push(
+        fila('2027-11-01T04:30:00.000Z'), // 1 de nov 00:30 NY → cuenta
+        fila('2027-11-01T03:30:00.000Z'), // 31 de oct 23:30 NY → no cuenta
+      );
+      await expect(service.contar('reservas', NEGOCIO_ID)).resolves.toBe(1);
+    });
+
+    it('chatbot en Costa Rica: el día no se corta a las 18:00 locales (las 00:00 UTC)', async () => {
+      vi.useFakeTimers({ now: new Date('2027-03-10T02:00:00.000Z') }); // 9 de marzo 20:00 CR
+      enZona('America/Costa_Rica');
+      filas.push(
+        fila('2027-03-09T20:00:00.000Z'), // 9 de marzo 14:00 CR → hoy
+        fila('2027-03-10T01:00:00.000Z'), // 9 de marzo 19:00 CR → hoy
+        fila('2027-03-09T05:00:00.000Z'), // 8 de marzo 23:00 CR → ayer
+      );
+      await expect(service.contar('mensajesChatbot', NEGOCIO_ID)).resolves.toBe(2);
+    });
+
+    it('chatbot en Nueva York el día del cambio de hora: el día empieza a las 05:00 UTC', async () => {
+      vi.useFakeTimers({ now: new Date('2027-03-14T20:00:00.000Z') });
+      enZona('America/New_York');
+      filas.push(
+        fila('2027-03-14T05:10:00.000Z'), // 14 de marzo 00:10 EST → hoy
+        fila('2027-03-14T04:50:00.000Z'), // 13 de marzo 23:50 → ayer
+      );
+      await expect(service.contar('mensajesChatbot', NEGOCIO_ID)).resolves.toBe(1);
+    });
+
+    it('el límite del chatbot sigue siendo 10 por día', () => {
+      expect(service.limite('mensajesChatbot')).toBe(10);
     });
   });
 });

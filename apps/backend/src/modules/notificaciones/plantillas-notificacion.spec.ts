@@ -36,6 +36,9 @@ const i18nReal = {
 const TIPOS = Object.values(TipoNotificacion);
 const IDIOMAS = Object.values(Idioma);
 
+/** Negocio en Costa Rica, como todos los existentes antes del Bloque 5. */
+const negocioRepoCR = { findOne: async () => ({ zonaHoraria: 'America/Costa_Rica' }) };
+
 describe('plantillas de notificación y el tipo de negocio "otro" (Bloque 4, punto 4.5)', () => {
   it.each(IDIOMAS)(
     'en %s hay asunto y texto para cada tipo de notificación, con los datos de la reserva',
@@ -87,6 +90,7 @@ describe('plantillas de notificación y el tipo de negocio "otro" (Bloque 4, pun
       {} as any,
       {} as any,
       i18nReal as any,
+      negocioRepoCR as any,
     );
     const negocioOtro = { tipoNegocio: TipoNegocio.OTRO };
     const reserva = {

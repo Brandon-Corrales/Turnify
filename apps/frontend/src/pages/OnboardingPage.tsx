@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Boton, SkeletonText, useToast } from '@/components/ui';
 import { negociosApi } from '@/lib/negocios-api';
@@ -9,6 +9,8 @@ import { serviciosApi } from '@/lib/servicios-api';
 import { ApiError } from '@/lib/api';
 import { crearEtiquetaTipoNegocio } from '@/lib/tipo-negocio';
 import { ESPACIO_INFERIOR_WIDGETS } from '@/components/layout/espacio-widgets';
+import { SelectorZonaHoraria } from '@/components/negocio/SelectorZonaHoraria';
+import { zonaOPorDefecto } from '@/lib/fecha-negocio';
 
 /**
  * Precio sugerido de arranque para los servicios creados desde una
@@ -30,6 +32,8 @@ export default function OnboardingPage() {
   const navigate = useNavigate();
   const mostrarToast = useToast();
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
+  const [zonaElegida, setZonaElegida] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: negocio, isLoading: cargandoNegocio } = useQuery({
     queryKey: ['negocio-mi-negocio'],
@@ -42,8 +46,17 @@ export default function OnboardingPage() {
     enabled: Boolean(negocio) && negocio!.tipoNegocio !== 'otro',
   });
 
+  // Bloque 5, punto 5.1: la zona se elige aquí (por defecto Costa Rica) y se
+  // guarda al continuar, antes de crear los servicios.
+  const zonaGuardada = zonaOPorDefecto(negocio?.zonaHoraria);
+  const zona = zonaElegida ?? zonaGuardada;
+
   const crearSeleccionados = useMutation({
     mutationFn: async () => {
+      if (zona !== zonaGuardada) {
+        await negociosApi.actualizarMiNegocio({ zonaHoraria: zona });
+        await queryClient.invalidateQueries({ queryKey: ['negocios', 'mi-negocio'] });
+      }
       const elegidas = plantillas.filter((p) => seleccionados.has(p.idPlantilla));
       await Promise.all(
         elegidas.map((plantilla) =>
@@ -102,6 +115,16 @@ export default function OnboardingPage() {
             ? t('onboarding.subtituloConNegocio', { vertical: etiquetaVertical })
             : t('onboarding.cargandoNegocio')}
         </p>
+
+        {negocio && (
+          <div className="mt-6">
+            <SelectorZonaHoraria
+              value={zona}
+              onChange={setZonaElegida}
+              hint={t('negocio.zonaHorariaAyuda')}
+            />
+          </div>
+        )}
 
         <div className="mt-6">
           {cargando && <SkeletonText lineas={5} />}

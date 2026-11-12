@@ -14,18 +14,13 @@ import {
   type EstadoReserva,
   type Reserva,
 } from '@/lib/reservas-api';
+import { formatearFechaHoraEnZona } from '@/lib/fecha-negocio';
+import { useZonaHorariaNegocio } from '@/lib/use-zona-negocio';
 
 const LIMITE = 12;
 
-function formatearFechaHora(iso: string, idioma: string): string {
-  return new Date(iso).toLocaleString(idioma.startsWith('en') ? 'en-US' : 'es-CR', {
-    timeZone: 'America/Costa_Rica',
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
-}
-
 export default function ReservasPage() {
+  const zona = useZonaHorariaNegocio();
   const { t, i18n } = useTranslation();
   const [pagina, setPagina] = useState(1);
   const [estado, setEstado] = useState<EstadoReserva | ''>('');
@@ -158,7 +153,7 @@ export default function ReservasPage() {
                         {reserva.servicio?.nombre ?? '—'}
                       </td>
                       <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                        {formatearFechaHora(reserva.fechaHoraInicio, i18n.language)}
+                        {formatearFechaHoraEnZona(reserva.fechaHoraInicio, i18n.language, zona)}
                       </td>
                       <td className="px-4 py-3">
                         <span
@@ -231,6 +226,7 @@ export default function ReservasPage() {
 }
 
 function ReservaCard({ reserva, onCancelar }: { reserva: Reserva; onCancelar: () => void }) {
+  const zona = useZonaHorariaNegocio();
   const { t, i18n } = useTranslation();
   const etiquetaEstado = useMemo(() => crearEtiquetaEstadoReserva(t), [t]);
   return (
@@ -258,7 +254,7 @@ function ReservaCard({ reserva, onCancelar }: { reserva: Reserva; onCancelar: ()
         )}
       </div>
       <p className="text-sm text-slate-500 dark:text-slate-400">
-        {formatearFechaHora(reserva.fechaHoraInicio, i18n.language)}
+        {formatearFechaHoraEnZona(reserva.fechaHoraInicio, i18n.language, zona)}
       </p>
       <div className="flex flex-wrap items-center gap-2">
         <span

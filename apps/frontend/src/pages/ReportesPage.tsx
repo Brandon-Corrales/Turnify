@@ -20,10 +20,10 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Boton } from '@/components/ui';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { negociosApi } from '@/lib/negocios-api';
+import { rangoPeriodo, type Periodo } from '@/lib/periodo-reportes';
+import { useZonaHorariaNegocio } from '@/lib/use-zona-negocio';
 import { reportesApi, type ResumenReportes } from '@/lib/reportes-api';
 import { crearEtiquetaEstadoReserva, type EstadoReserva } from '@/lib/reservas-api';
-
-type Periodo = 'esteMes' | 'mesPasado' | 'ultimos3Meses';
 
 function crearEtiquetaPeriodo(t: TFunction): Record<Periodo, string> {
   return {
@@ -39,28 +39,6 @@ const COLOR_ESTADO: Record<EstadoReserva, string> = {
   cancelada: '#dc2626',
   ausente: '#64748b',
 };
-
-function rangoDe(periodo: Periodo): { desde: string; hasta: string } {
-  const ahora = new Date();
-  let inicioMes = ahora.getUTCMonth();
-  let anio = ahora.getUTCFullYear();
-  let meses = 1;
-
-  if (periodo === 'mesPasado') {
-    inicioMes -= 1;
-  } else if (periodo === 'ultimos3Meses') {
-    inicioMes -= 2;
-    meses = 3;
-  }
-  if (inicioMes < 0) {
-    inicioMes += 12;
-    anio -= 1;
-  }
-
-  const desde = new Date(Date.UTC(anio, inicioMes, 1));
-  const hasta = new Date(Date.UTC(anio, inicioMes + meses, 0, 23, 59, 59, 999));
-  return { desde: desde.toISOString(), hasta: hasta.toISOString() };
-}
 
 function formatearColones(monto: number): string {
   return new Intl.NumberFormat('es-CR', {
@@ -100,7 +78,8 @@ function descargarCsv(resumen: ResumenReportes, t: TFunction): void {
 export default function ReportesPage() {
   const { t, i18n } = useTranslation();
   const [periodo, setPeriodo] = useState<Periodo>('esteMes');
-  const { desde, hasta } = rangoDe(periodo);
+  const zona = useZonaHorariaNegocio();
+  const { desde, hasta } = rangoPeriodo(periodo, zona);
   const etiquetaPeriodo = useMemo(() => crearEtiquetaPeriodo(t), [t]);
   const etiquetaEstado = useMemo(() => crearEtiquetaEstadoReserva(t), [t]);
 

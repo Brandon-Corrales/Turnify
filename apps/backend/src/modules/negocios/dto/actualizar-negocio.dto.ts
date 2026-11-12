@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { EsZonaHoraria } from '../../../common/validation/es-zona-horaria.validator';
 
 export class ActualizarNegocioDto {
   @ApiProperty({ required: false, example: 'Barbería El Corte' })
@@ -27,4 +28,13 @@ export class ActualizarNegocioDto {
   @IsString()
   @MaxLength(255)
   direccion?: string;
+
+  @ApiProperty({
+    required: false,
+    example: 'America/Costa_Rica',
+    description: 'Zona horaria IANA del negocio. Las fechas se siguen guardando en UTC.',
+  })
+  @IsOptional()
+  @EsZonaHoraria()
+  zonaHoraria?: string;
 }

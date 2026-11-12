@@ -1,6 +1,22 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { InjectTenantRepository, TenantScopedRepository } from '../../common/tenant';
-import { EstadoReserva, Reserva } from '../../database/entities';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import {
+  InjectTenantRepository,
+  TenantContextService,
+  TenantScopedRepository,
+} from '../../common/tenant';
+import { leerZonaHoraria } from '../../common/utils/leer-zona-horaria';
+import { EstadoReserva, Negocio, Reserva } from '../../database/entities';
+
+/**
+ * Día local de la reserva en la zona del negocio (Bloque 5, punto 5.1).
+ * `timestamptz AT TIME ZONE 'America/Costa_Rica'` da la hora de reloj local
+ * (con horario de verano si la zona lo tiene); recién ahí se trunca al día.
+ * Antes se truncaba en UTC: una cita a las 19:00 en Costa Rica caía en el día
+ * siguiente de la gráfica.
+ */
+export const EXPRESION_DIA_LOCAL = "DATE_TRUNC('day', reserva.fechaHoraInicio AT TIME ZONE :zona)";
 
 export interface ResumenReportes {
   rangoFechas: { desde: string; hasta: string };
@@ -22,6 +38,8 @@ export interface ResumenReportes {
 export class ReportesService {
   constructor(
     @InjectTenantRepository(Reserva) private readonly reservaRepo: TenantScopedRepository<Reserva>,
+    @InjectRepository(Negocio) private readonly negocioRepo: Repository<Negocio>,
+    private readonly tenantContext: TenantContextService,
   ) {}
 
   async resumen(desdeIso: string, hastaIso: string): Promise<ResumenReportes> {
@@ -34,9 +52,10 @@ export class ReportesService {
       });
     }
 
+    const zona = await leerZonaHoraria(this.negocioRepo, this.tenantContext.idNegocio);
     const [reservasPorEstado, reservasPorDia, ingresosEstimados] = await Promise.all([
       this.contarPorEstado(desde, hasta),
-      this.contarPorDia(desde, hasta),
+      this.contarPorDia(desde, hasta, zona),
       this.sumarIngresosEstimados(desde, hasta),
     ]);
 
@@ -67,14 +86,16 @@ export class ReportesService {
   private async contarPorDia(
     desde: Date,
     hasta: Date,
+    zona: string,
   ): Promise<Array<{ fecha: string; cantidad: number }>> {
     const filas = await this.reservaRepo
       .createQueryBuilder('reserva')
-      .select("TO_CHAR(DATE_TRUNC('day', reserva.fechaHoraInicio), 'YYYY-MM-DD')", 'fecha')
+      .select(`TO_CHAR(${EXPRESION_DIA_LOCAL}, 'YYYY-MM-DD')`, 'fecha')
       .addSelect('COUNT(*)', 'cantidad')
       .andWhere('reserva.fechaHoraInicio BETWEEN :desde AND :hasta', { desde, hasta })
-      .groupBy("DATE_TRUNC('day', reserva.fechaHoraInicio)")
-      .orderBy("DATE_TRUNC('day', reserva.fechaHoraInicio)", 'ASC')
+      .setParameter('zona', zona)
+      .groupBy(EXPRESION_DIA_LOCAL)
+      .orderBy(EXPRESION_DIA_LOCAL, 'ASC')
       .getRawMany<{ fecha: string; cantidad: string }>();
 
     return filas.map((fila) => ({ fecha: fila.fecha, cantidad: Number(fila.cantidad) }));

@@ -1,4 +1,5 @@
 {
   "CONTRASENA_INVALIDA": "Password must be 12-64 characters long, include at least one letter and one number, and not be a common password.",
-  "TERMINO_BLOQUEADO": "The text contains disallowed terms"
+  "TERMINO_BLOQUEADO": "The text contains disallowed terms",
+  "ZONA_HORARIA_INVALIDA": "The time zone is not valid. Use an IANA name, for example America/Costa_Rica."
 }
