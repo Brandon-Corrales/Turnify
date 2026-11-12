@@ -86,7 +86,7 @@ export class ChatbotService {
 
   private async construirContexto(rol: RolUsuario, pantallaActual?: string): Promise<string> {
     const negocio = await this.negociosService.obtenerMiNegocio();
-    const servicios = await this.serviciosService.listar({ page: 1, limit: 1 } as any);
+    const servicios = await this.serviciosService.listar({ page: 1, limit: 1 });
 
     const inicioHoy = new Date();
     inicioHoy.setUTCHours(0, 0, 0, 0);
@@ -100,7 +100,7 @@ export class ChatbotService {
       limit: 1,
       desde: inicioHoy.toISOString(),
       hasta: finHoy.toISOString(),
-    } as any);
+    });
 
     return [
       BASE_CONOCIMIENTO_TURNIFY,
@@ -110,6 +110,7 @@ export class ChatbotService {
       `- Pantalla actual del frontend: ${pantallaActual ?? 'no especificada'}`,
       `- Nombre del negocio: ${negocio.nombre}`,
       `- Tipo de negocio: ${negocio.tipoNegocio}`,
+      `- Moneda del negocio (precios de servicios e ingresos): ${negocio.moneda ?? 'CRC'}`,
       `- Plan de suscripción actual: ${negocio.planSuscripcion}`,
       `- Servicios activos: ${servicios.total}`,
       `- Reservas de hoy: ${reservasHoy.total}`,

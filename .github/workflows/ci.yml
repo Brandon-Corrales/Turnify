@@ -41,3 +41,98 @@ jobs:
         run: |
           npm run build --workspace=apps/frontend
           npm run build --workspace=apps/backend
+
+  # Bloque 6, punto 6.2: pruebas de integración contra un PostgreSQL de
+  # servicio, efímero y local al runner (nunca Supabase). Mismos comandos
+  # que en local: `npm run test:integration` aplica las migraciones y se
+  # niega a correr si TEST_DATABASE_URL no es local. Sin secretos reales:
+  # los JWT son valores ficticios de CI y las claves de proveedores
+  # externos quedan vacías (ver backend/src/test-utils/base-datos-pruebas.ts).
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres-test:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: turnify_test
+          POSTGRES_PASSWORD: turnify_test
+          POSTGRES_DB: turnify_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U turnify_test -d turnify_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://turnify_test:turnify_test@localhost:5433/turnify_test
+      JWT_ACCESS_SECRET: ci-access-secret-no-real
+      JWT_REFRESH_SECRET: ci-refresh-secret-no-real
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Pruebas de integración Backend
+        run: npm run test:integration
+
+  # E2E de Playwright (wizard de reserva pública) contra el mismo tipo de
+  # base de servicio. `npm run test:e2e` aplica las migraciones y levanta
+  # backend (3100) y frontend (5174) propios.
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres-test:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: turnify_test
+          POSTGRES_PASSWORD: turnify_test
+          POSTGRES_DB: turnify_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U turnify_test -d turnify_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://turnify_test:turnify_test@localhost:5433/turnify_test
+      JWT_ACCESS_SECRET: ci-access-secret-no-real
+      JWT_REFRESH_SECRET: ci-refresh-secret-no-real
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Instalar Chromium de Playwright
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/frontend
+
+      - name: E2E (Playwright)
+        run: npm run test:e2e
+
+      - name: Guardar reporte si falla
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: apps/frontend/test-results/
+          retention-days: 7

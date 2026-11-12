@@ -11,6 +11,8 @@ import { ApiError } from '@/lib/api';
 import { disponibilidadApi, type Disponibilidad } from '@/lib/disponibilidad-api';
 import { negociosApi } from '@/lib/negocios-api';
 import { usuariosApi } from '@/lib/usuarios-api';
+import { TarjetaPreferenciasRegionales } from '@/components/negocio/TarjetaPreferenciasRegionales';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
 
 const DIAS_CLAVE = [
   { valor: 0, clave: 'domingo' },
@@ -72,6 +74,7 @@ function filasIniciales(disponibilidad: Disponibilidad[]): FilaDia[] {
  */
 export default function ConfiguracionPage() {
   const { t } = useTranslation();
+  useTituloPagina(t('titulos.configuracion'));
   const { usuario } = useAuth();
   const mostrarToast = useToast();
   const queryClient = useQueryClient();
@@ -306,6 +309,8 @@ export default function ConfiguracionPage() {
           </div>
         </div>
 
+        <TarjetaPreferenciasRegionales />
+
         <div className="mt-6 rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
           <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-3 dark:border-slate-700">
             <Clock className="h-4 w-4 text-primary-600 dark:text-primary-400" aria-hidden="true" />
@@ -347,7 +352,7 @@ export default function ConfiguracionPage() {
                         aria-label={t('configuracion.horaInicioAriaLabel', {
                           dia: dias.find((d) => d.valor === fila.diaSemana)?.etiqueta,
                         })}
-                        className="h-10 rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-900 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 focus:outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                        className="h-11 rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                       />
                       <span className="text-sm text-slate-400">
                         {t('configuracion.separadorHoras')}
@@ -360,7 +365,7 @@ export default function ConfiguracionPage() {
                         aria-label={t('configuracion.horaFinAriaLabel', {
                           dia: dias.find((d) => d.valor === fila.diaSemana)?.etiqueta,
                         })}
-                        className="h-10 rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-900 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 focus:outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                        className="h-11 rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                       />
                     </div>
                   ) : (

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Check, X } from 'lucide-react';
 import { SkeletonText } from '@/components/ui/Skeleton';
 import { suscripcionesApi } from '@/lib/suscripciones-api';
+import { formatearDinero } from '@/lib/dinero';
 
 function ItemPlan({ incluido, texto }: { incluido: boolean; texto: string }) {
   return (
@@ -11,11 +12,11 @@ function ItemPlan({ incluido, texto }: { incluido: boolean; texto: string }) {
       {incluido ? (
         <Check className="mt-0.5 h-4 w-4 shrink-0 text-secondary-600 dark:text-secondary-400" />
       ) : (
-        <X className="mt-0.5 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-600" />
+        <X className="mt-0.5 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-400" />
       )}
       <span
         className={
-          incluido ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-600'
+          incluido ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-400'
         }
       >
         {texto}
@@ -41,7 +42,7 @@ export interface TarjetasPlanesProps {
  * copias del mismo listado que se desincronizarían si cambian los límites.
  */
 export function TarjetasPlanes({ ctaGratis, ctaPago, planActual }: TarjetasPlanesProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const {
     data: planes,
     isPending,
@@ -61,7 +62,7 @@ export function TarjetasPlanes({ ctaGratis, ctaPago, planActual }: TarjetasPlane
         {/* Plan Gratis */}
         <div className="relative rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
           {planActual === 'gratis' && (
-            <span className="absolute -top-3 left-6 rounded-full bg-slate-600 px-3 py-0.5 text-xs font-medium text-white dark:bg-slate-500">
+            <span className="absolute -top-3 left-6 rounded-full bg-slate-600 px-3 py-0.5 text-xs font-medium text-white dark:bg-slate-600">
               {t('suscripcion.tuPlanActual')}
             </span>
           )}
@@ -71,7 +72,10 @@ export function TarjetasPlanes({ ctaGratis, ctaPago, planActual }: TarjetasPlane
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             {t('landing.planGratisSubtitulo')}
           </p>
-          <p className="mt-4 text-3xl font-bold text-slate-900 dark:text-white">₡0</p>
+          {/* Precio de Turnify: siempre en colones, no depende de la moneda del negocio. */}
+          <p className="mt-4 text-3xl font-bold text-slate-900 dark:text-white">
+            {formatearDinero(0, 'CRC', i18n.language)}
+          </p>
 
           {isPending ? (
             <SkeletonText lineas={6} className="mt-6" />

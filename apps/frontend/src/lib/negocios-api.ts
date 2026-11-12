@@ -12,8 +12,14 @@ export interface Negocio {
   direccion?: string;
   estado: string;
   planSuscripcion: PlanSuscripcion;
+  /** Zona horaria IANA (Bloque 5). Opcional: un backend anterior no la manda. */
+  zonaHoraria?: string;
+  /** Moneda ISO 4217 (Bloque 5). Opcional por la misma razón. */
+  moneda?: string;
 }
 
 export const negociosApi = {
   obtenerMiNegocio: () => apiFetch<Negocio>('/negocios/mi-negocio'),
+  actualizarMiNegocio: (cambios: Partial<Pick<Negocio, 'zonaHoraria' | 'moneda'>>) =>
+    apiFetch<Negocio>('/negocios/mi-negocio', { method: 'PATCH', body: cambios }),
 };

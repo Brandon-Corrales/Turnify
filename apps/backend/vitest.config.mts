@@ -15,6 +15,9 @@ export default defineConfig({
   test: {
     root: './',
     include: ['src/**/*.spec.ts'],
+    // Las de integración escriben en una base real: tienen su propia
+    // configuración (vitest.integration.config.mts, `npm run test:integration`).
+    exclude: ['**/node_modules/**', '**/dist/**', 'src/**/*.integration.spec.ts'],
     environment: 'node',
     globals: false,
   },

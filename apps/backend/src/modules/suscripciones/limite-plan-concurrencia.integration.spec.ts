@@ -32,7 +32,7 @@ describe('Límites del Plan Gratis bajo requests concurrentes (integración HTTP
         correoNegocio: `it-concurrencia-negocio-${sufijo}@example.com`,
         nombreCompletoAdmin: 'Admin Concurrencia IT',
         correoAdmin: `it-concurrencia-admin-${sufijo}@example.com`,
-        contrasena: 'Turnify123!',
+        contrasena: 'Turnify-Pruebas-2026!',
       });
     accessToken = registro.body.tokens.accessToken;
     idUsuario = registro.body.usuario.idUsuario;

@@ -4,9 +4,11 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Boton, useToast } from '@/components/ui';
 import { SkeletonText } from '@/components/ui/Skeleton';
 import { TarjetasPlanes } from '@/components/suscripciones/TarjetasPlanes';
+import { UsoDelMes } from '@/components/suscripciones/UsoDelMes';
 import { negociosApi } from '@/lib/negocios-api';
 import { suscripcionesApi } from '@/lib/suscripciones-api';
 import { ApiError } from '@/lib/api';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
 
 /**
  * Pantalla de upgrade de plan (Plan Gratis → Plan de Pago, punto 5.1 del
@@ -17,6 +19,7 @@ import { ApiError } from '@/lib/api';
  */
 export default function SuscripcionPage() {
   const { t } = useTranslation();
+  useTituloPagina(t('titulos.suscripcion'));
   const mostrarToast = useToast();
 
   const negocioQuery = useQuery({
@@ -52,6 +55,8 @@ export default function SuscripcionPage() {
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           {t('suscripcion.subtitulo')}
         </p>
+
+        <UsoDelMes />
 
         {negocioQuery.isPending ? (
           <SkeletonText lineas={6} className="mt-8" />

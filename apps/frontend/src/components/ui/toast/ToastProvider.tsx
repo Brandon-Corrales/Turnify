@@ -1,20 +1,10 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { CONFIG_VARIANTE, type VarianteFeedback } from '../feedback-variants';
-
-export interface ToastItem {
-  id: string;
-  variante: VarianteFeedback;
-  titulo: string;
-  descripcion?: string;
-}
-
-type MostrarToast = (toast: Omit<ToastItem, 'id'>) => void;
-
-const ToastContext = createContext<MostrarToast | null>(null);
+import { ToastContext, type MostrarToast, type ToastItem } from './toast-context';
 
 /** Misma duración para todo el sistema (punto 7 del brief): 5s, salvo error, que da más tiempo a leer. */
 const DURACION_MS: Record<VarianteFeedback, number> = {
@@ -93,15 +83,6 @@ function ToastCard({ toast, onCerrar }: { toast: ToastItem; onCerrar: () => void
       </button>
     </motion.div>
   );
-}
-
-/** Único punto de entrada para disparar un toast desde cualquier parte del sistema. */
-export function useToast(): MostrarToast {
-  const contexto = useContext(ToastContext);
-  if (!contexto) {
-    throw new Error('useToast() debe usarse dentro de <ToastProvider>');
-  }
-  return contexto;
 }
 
 // Reexport para que los consumidores no necesiten importar desde feedback-variants directamente.

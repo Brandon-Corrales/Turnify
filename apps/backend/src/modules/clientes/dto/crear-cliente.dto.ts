@@ -1,3 +1,4 @@
+import { EsTelefono, NormalizarTelefono } from '../../../common/validation/telefono.validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { CanalPreferido, Idioma, NivelCliente } from '../../../database/entities';
@@ -13,10 +14,16 @@ export class CrearClienteDto {
   @IsEmail()
   correoElectronico!: string;
 
-  @ApiProperty({ required: false, example: '+506 8888-3333' })
+  @ApiProperty({
+    required: false,
+    example: '+50688883333',
+    description: 'Se guarda en E.164. Sin prefijo "+", se interpreta como número de Costa Rica.',
+  })
+  @NormalizarTelefono()
   @IsOptional()
   @IsString()
   @MaxLength(30)
+  @EsTelefono()
   telefono?: string;
 
   @ApiProperty({ required: false, example: 'Prefiere citas en la mañana' })

@@ -40,17 +40,15 @@ function crearContexto() {
 
   const usuarioRepo = { find: vi.fn().mockResolvedValue([{ idUsuario: 'usuario-1' }]) };
   const disponibilidadRepo = {
-    find: vi
-      .fn()
-      .mockResolvedValue([
-        {
-          idUsuario: 'usuario-1',
-          diaSemana: 0,
-          horaInicio: '09:00',
-          horaFin: '12:00',
-          activo: true,
-        },
-      ]),
+    find: vi.fn().mockResolvedValue([
+      {
+        idUsuario: 'usuario-1',
+        diaSemana: 0,
+        horaInicio: '09:00',
+        horaFin: '12:00',
+        activo: true,
+      },
+    ]),
   };
   const reservaRepo = { find: vi.fn().mockResolvedValue([]) };
 
@@ -94,6 +92,8 @@ describe('ReservaPublicaService', () => {
       idNegocio: NEGOCIO_ID,
       nombre: 'Barbería Demo',
       tipoNegocio: 'barberia',
+      zonaHoraria: 'America/Costa_Rica', // el mock no trae zona: respaldo
+      moneda: 'CRC', // ídem
     });
     expect(ctx.tenantContext.hasContext()).toBe(false);
   });
@@ -118,6 +118,44 @@ describe('ReservaPublicaService', () => {
     // Ventana 09:00-12:00, servicio de 30min → 6 slots: 09:00,09:30,...,11:30
     expect(horarios).toHaveLength(6);
     expect(horarios[0]).toContain('T15:00:00'); // 09:00 CR = 15:00 UTC
+  });
+
+  describe('zona horaria del negocio (Bloque 5, punto 5.1)', () => {
+    const conZona = (zonaHoraria?: string) =>
+      ctx.negociosService.obtenerMiNegocio.mockResolvedValue({
+        idNegocio: NEGOCIO_ID,
+        nombre: 'Barbería Demo',
+        tipoNegocio: 'barberia',
+        zonaHoraria,
+      });
+
+    it('Nueva York en invierno (domingo 07/03/2027): las 09:00 locales son las 14:00 UTC', async () => {
+      conZona('America/New_York');
+      const horarios = await ctx.service.listarHorarios(NEGOCIO_ID, SERVICIO_ID, '2027-03-07');
+      expect(horarios).toHaveLength(6);
+      expect(horarios[0]).toBe('2027-03-07T14:00:00.000Z');
+    });
+
+    it('Nueva York el día del cambio de hora (domingo 14/03/2027): las 09:00 locales ya son las 13:00 UTC', async () => {
+      conZona('America/New_York');
+      const horarios = await ctx.service.listarHorarios(NEGOCIO_ID, SERVICIO_ID, '2027-03-14');
+      expect(horarios).toHaveLength(6);
+      expect(horarios[0]).toBe('2027-03-14T13:00:00.000Z');
+      expect(horarios[5]).toBe('2027-03-14T15:30:00.000Z');
+    });
+
+    it('sin zona válida usa Costa Rica, nunca la zona del servidor', async () => {
+      conZona('Zona/Inexistente');
+      const horarios = await ctx.service.listarHorarios(NEGOCIO_ID, SERVICIO_ID, '2099-01-04');
+      expect(horarios[0]).toBe('2099-01-04T15:00:00.000Z');
+    });
+
+    it('obtenerNegocio() expone la zona para la nota del wizard', async () => {
+      conZona('America/New_York');
+      await expect(ctx.service.obtenerNegocio(NEGOCIO_ID)).resolves.toMatchObject({
+        zonaHoraria: 'America/New_York',
+      });
+    });
   });
 
   it('listarHorarios() excluye horarios ya reservados por el único usuario disponible', async () => {

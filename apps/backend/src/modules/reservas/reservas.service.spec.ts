@@ -47,8 +47,10 @@ describe('ReservasService', () => {
   let notificaciones: {
     programarConfirmacion: ReturnType<typeof vi.fn>;
     programarCancelacion: ReturnType<typeof vi.fn>;
+    programarReprogramacion: ReturnType<typeof vi.fn>;
   };
   let limitesPlan: { asegurarDentroDelLimite: ReturnType<typeof vi.fn> };
+  let negocioRepo: { findOne: ReturnType<typeof vi.fn> };
   let service: ReservasService;
 
   beforeEach(() => {
@@ -67,8 +69,10 @@ describe('ReservasService', () => {
     notificaciones = {
       programarConfirmacion: vi.fn().mockResolvedValue(undefined),
       programarCancelacion: vi.fn().mockResolvedValue(undefined),
+      programarReprogramacion: vi.fn().mockResolvedValue(undefined),
     };
     limitesPlan = { asegurarDentroDelLimite: vi.fn().mockResolvedValue(undefined) };
+    negocioRepo = { findOne: vi.fn().mockResolvedValue({ zonaHoraria: 'America/Costa_Rica' }) };
     service = new ReservasService(
       dataSourceMock as any,
       reservaRepo as any,
@@ -79,6 +83,7 @@ describe('ReservasService', () => {
       tenantContext,
       notificaciones as any,
       limitesPlan as any,
+      negocioRepo as any,
     );
   });
 
@@ -221,6 +226,55 @@ describe('ReservasService', () => {
     ).rejects.toThrow(ConflictException);
   });
 
+  it('reprogramar() avisa al cliente con la reserva ya actualizada (Bloque 4, punto 4.3)', async () => {
+    const cliente = { idCliente: 'cliente-1' };
+    reservaRepo.findOne.mockResolvedValue({
+      idReserva: 'reserva-1',
+      estado: EstadoReserva.CONFIRMADA,
+      idUsuario: USUARIO_ID,
+      idServicio: SERVICIO_ID,
+      fechaHoraInicio: new Date('2027-03-02T16:00:00.000Z'),
+      cliente,
+    });
+    const actualizada = { idReserva: 'reserva-1', fechaHoraInicio: new Date(LUNES_10AM_UTC) };
+    managerMock.findOneOrFail.mockResolvedValue(actualizada);
+
+    await comoAdmin(() => service.reprogramar('reserva-1', { fechaHoraInicio: LUNES_10AM_UTC }));
+
+    expect(notificaciones.programarReprogramacion).toHaveBeenCalledWith(
+      actualizada,
+      cliente,
+      expect.objectContaining({ idServicio: SERVICIO_ID }),
+    );
+  });
+
+  it('reprogramar() a la MISMA hora no avisa al cliente', async () => {
+    reservaRepo.findOne.mockResolvedValue({
+      idReserva: 'reserva-1',
+      estado: EstadoReserva.CONFIRMADA,
+      idUsuario: USUARIO_ID,
+      idServicio: SERVICIO_ID,
+      fechaHoraInicio: new Date(LUNES_10AM_UTC),
+    });
+    await comoAdmin(() => service.reprogramar('reserva-1', { fechaHoraInicio: LUNES_10AM_UTC }));
+    expect(notificaciones.programarReprogramacion).not.toHaveBeenCalled();
+  });
+
+  it('reprogramar() no avisa si la reprogramación falla (traslape)', async () => {
+    reservaRepo.findOne.mockResolvedValue({
+      idReserva: 'reserva-1',
+      estado: EstadoReserva.CONFIRMADA,
+      idUsuario: USUARIO_ID,
+      idServicio: SERVICIO_ID,
+      fechaHoraInicio: new Date('2027-03-02T16:00:00.000Z'),
+    });
+    managerMock.find.mockResolvedValue([{ idReserva: 'otra' }]);
+    await expect(
+      comoAdmin(() => service.reprogramar('reserva-1', { fechaHoraInicio: LUNES_10AM_UTC })),
+    ).rejects.toThrow(ConflictException);
+    expect(notificaciones.programarReprogramacion).not.toHaveBeenCalled();
+  });
+
   it('reprogramar() excluye la propia reserva del chequeo de traslape', async () => {
     reservaRepo.findOne.mockResolvedValue({
       idReserva: 'reserva-1',
@@ -326,5 +380,68 @@ describe('ReservasService', () => {
     await expect(
       comoAdmin(() => service.reprogramar('reserva-1', { fechaHoraInicio: LUNES_10AM_UTC })),
     ).rejects.toMatchObject({ response: { errorCode: 'RESERVA_TRASLAPADA' } });
+  });
+
+  describe('zona horaria del negocio (Bloque 5, punto 5.1)', () => {
+    const horaConsultada = () => {
+      const where = disponibilidadRepo.find.mock.calls[0][0].where;
+      return { dia: where.diaSemana, inicio: where.horaInicio.value, fin: where.horaFin.value };
+    };
+    const disponible = () =>
+      disponibilidadRepo.find.mockResolvedValue([{ idDisponibilidad: 'd-1' }]);
+
+    it('Costa Rica: las 16:00 UTC del lunes se validan como lunes 10:00–11:00 (igual que antes)', async () => {
+      disponible();
+      await comoAdmin(() =>
+        service.crear({
+          idCliente: CLIENTE_ID,
+          idServicio: SERVICIO_ID,
+          idUsuario: USUARIO_ID,
+          fechaHoraInicio: LUNES_10AM_UTC,
+        }),
+      );
+      expect(horaConsultada()).toEqual({ dia: 1, inicio: '10:00', fin: '11:00' });
+    });
+
+    it('Nueva York en invierno: el mismo instante es lunes 11:00 hora local', async () => {
+      negocioRepo.findOne.mockResolvedValue({ zonaHoraria: 'America/New_York' });
+      disponible();
+      await comoAdmin(() =>
+        service.crear({
+          idCliente: CLIENTE_ID,
+          idServicio: SERVICIO_ID,
+          idUsuario: USUARIO_ID,
+          fechaHoraInicio: LUNES_10AM_UTC,
+        }),
+      );
+      expect(horaConsultada()).toEqual({ dia: 1, inicio: '11:00', fin: '12:00' });
+    });
+
+    it('Nueva York después del cambio de hora: las 13:00 UTC del lunes 15/03/2027 son las 09:00 locales', async () => {
+      negocioRepo.findOne.mockResolvedValue({ zonaHoraria: 'America/New_York' });
+      disponible();
+      await comoAdmin(() =>
+        service.crear({
+          idCliente: CLIENTE_ID,
+          idServicio: SERVICIO_ID,
+          idUsuario: USUARIO_ID,
+          fechaHoraInicio: '2027-03-15T13:00:00.000Z',
+        }),
+      );
+      expect(horaConsultada()).toEqual({ dia: 1, inicio: '09:00', fin: '10:00' });
+    });
+
+    it('una cita nocturna en CR (23:45–00:45) cruza la medianoche local y se rechaza', async () => {
+      await expect(
+        comoAdmin(() =>
+          service.crear({
+            idCliente: CLIENTE_ID,
+            idServicio: SERVICIO_ID,
+            idUsuario: USUARIO_ID,
+            fechaHoraInicio: '2027-03-02T05:45:00.000Z',
+          }),
+        ),
+      ).rejects.toMatchObject({ response: { errorCode: 'RESERVA_CRUZA_MEDIANOCHE' } });
+    });
   });
 });

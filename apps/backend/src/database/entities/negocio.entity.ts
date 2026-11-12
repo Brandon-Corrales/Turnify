@@ -43,6 +43,23 @@ export class Negocio extends AuditableEntity {
   @Column({ name: 'direccion', type: 'varchar', length: 255, nullable: true })
   direccion?: string;
 
+  /**
+   * Zona horaria IANA del negocio (Bloque 5, punto 5.1, migración
+   * `NegocioZonaHoraria`). Las fechas se guardan en UTC; esto solo define
+   * cómo se interpreta la hora local del negocio.
+   */
+  @Column({
+    name: 'zona_horaria',
+    type: 'varchar',
+    length: 64,
+    default: 'America/Costa_Rica',
+  })
+  zonaHoraria!: string;
+
+  /** Moneda ISO 4217 del negocio (Bloque 5, punto 5.2, migración `NegocioMoneda`). Solo afecta cómo se muestran los montos. */
+  @Column({ name: 'moneda', type: 'varchar', length: 3, default: 'CRC' })
+  moneda!: string;
+
   @Column({
     name: 'plan_suscripcion',
     type: 'enum',

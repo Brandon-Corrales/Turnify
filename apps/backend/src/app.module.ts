@@ -1,4 +1,4 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { Logger, MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import * as path from 'path';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -7,7 +7,14 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 import { validateEnv, Env } from './config/env.schema';
+import {
+  avisoAmbienteBaseDatos,
+  hostDeConexion,
+  opcionesI18n,
+  opcionesMigracionesAlArrancar,
+} from './config/ambiente';
 import { listaEntidades } from './database/entity-list';
+import { construirOpcionesConexion } from './database/opciones-conexion';
 import { HealthModule } from './health/health.module';
 import { TenantModule } from './common/tenant';
 import { RegistroSolicitudesMiddleware } from './common/logging/registro-solicitudes.middleware';
@@ -39,21 +46,31 @@ import { AppThrottlerGuard } from './common/throttler/ws-aware-throttler.guard';
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService<Env, true>) => {
-        const databaseUrl = config.get('DATABASE_URL', { infer: true });
+        const nodeEnv = config.get('NODE_ENV', { infer: true });
+        // SSL y validación opcional del certificado: ver opciones-conexion.ts.
+        const conexion = construirOpcionesConexion({
+          DATABASE_URL: config.get('DATABASE_URL', { infer: true }),
+          DB_HOST: config.get('DB_HOST', { infer: true }),
+          DB_PORT: config.get('DB_PORT', { infer: true }),
+          DB_USERNAME: config.get('DB_USERNAME', { infer: true }),
+          DB_PASSWORD: config.get('DB_PASSWORD', { infer: true }),
+          DB_NAME: config.get('DB_NAME', { infer: true }),
+          DB_SSL_CA: config.get('DB_SSL_CA', { infer: true }),
+          DB_SSL_CA_PATH: config.get('DB_SSL_CA_PATH', { infer: true }),
+        });
+        const aviso = avisoAmbienteBaseDatos(nodeEnv, hostDeConexion(conexion));
+        if (aviso) new Logger('BaseDatos').warn(aviso);
         return {
           type: 'postgres' as const,
-          ...(databaseUrl
-            ? { url: databaseUrl, ssl: { rejectUnauthorized: false } }
-            : {
-                host: config.get('DB_HOST', { infer: true }),
-                port: config.get('DB_PORT', { infer: true }),
-                username: config.get('DB_USERNAME', { infer: true }),
-                password: config.get('DB_PASSWORD', { infer: true }),
-                database: config.get('DB_NAME', { infer: true }),
-              }),
+          ...conexion,
           entities: listaEntidades,
           synchronize: false,
-          logging: config.get('NODE_ENV', { infer: true }) === 'development',
+          // Desactivado salvo MIGRATIONS_RUN_ON_START=true (ver config/ambiente.ts).
+          ...opcionesMigracionesAlArrancar(
+            config.get('MIGRATIONS_RUN_ON_START', { infer: true }),
+            __dirname,
+          ),
+          logging: nodeEnv === 'development',
         };
       },
     }),
@@ -73,12 +90,12 @@ import { AppThrottlerGuard } from './common/throttler/ws-aware-throttler.guard';
     // idioma de una request puntual — las notificaciones, en cambio,
     // siempre usan el idioma_preferido del CLIENTE (nunca el resolver de
     // la request), ver NotificacionesService.
-    I18nModule.forRoot({
-      fallbackLanguage: 'es',
-      loaderOptions: {
-        path: path.join(__dirname, 'i18n/'),
-        watch: true,
-      },
+    // `watch` (recargar los JSON al editarlos) solo en desarrollo: ver
+    // config/ambiente.ts.
+    I18nModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService<Env, true>) =>
+        opcionesI18n(config.get('NODE_ENV', { infer: true }), path.join(__dirname, 'i18n/')),
       resolvers: [{ use: QueryResolver, options: ['lang'] }, AcceptLanguageResolver],
     }),
     HealthModule,

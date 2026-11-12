@@ -12,6 +12,9 @@ import { useVistaPreferida } from '@/lib/vista-preferida';
 import { ApiError } from '@/lib/api';
 import { crearServicioSchema, type ServicioFormValues } from '@/lib/validation';
 import { serviciosApi, type Servicio } from '@/lib/servicios-api';
+import { formatearDinero, simboloMoneda } from '@/lib/dinero';
+import { useMonedaNegocio } from '@/lib/use-zona-negocio';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
 
 const LIMITE = 12;
 
@@ -23,19 +26,10 @@ const VALORES_VACIOS: ServicioFormValues = {
   colorCalendario: '#4f46e5',
 };
 
-function formatearPrecio(precio: string, idioma: string): string {
-  const numero = Number(precio);
-  return Number.isFinite(numero)
-    ? numero.toLocaleString(idioma.startsWith('en') ? 'en-US' : 'es-CR', {
-        style: 'currency',
-        currency: 'CRC',
-        maximumFractionDigits: 0,
-      })
-    : precio;
-}
-
 export default function ServiciosPage() {
+  const moneda = useMonedaNegocio();
   const { t, i18n } = useTranslation();
+  useTituloPagina(t('titulos.servicios'));
   const [pagina, setPagina] = useState(1);
   const [vista, setVista] = useVistaPreferida('servicios');
   const navigate = useNavigate();
@@ -172,7 +166,7 @@ export default function ServiciosPage() {
 
           {serviciosQuery.data?.data.length === 0 && (
             <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-300 py-12 text-center dark:border-slate-700">
-              <Tag className="h-8 w-8 text-slate-300 dark:text-slate-600" aria-hidden="true" />
+              <Tag className="h-8 w-8 text-slate-300 dark:text-slate-400" aria-hidden="true" />
               <p className="text-sm text-slate-500 dark:text-slate-400">{t('servicios.vacio')}</p>
             </div>
           )}
@@ -221,7 +215,7 @@ export default function ServiciosPage() {
                         {t('comun.minutosAbreviatura', { n: servicio.duracionMinutos })}
                       </td>
                       <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                        {formatearPrecio(servicio.precio, i18n.language)}
+                        {formatearDinero(servicio.precio, moneda, i18n.language)}
                       </td>
                       <td className="px-4 py-3">
                         <BadgeEstado activo={servicio.activo} />
@@ -333,7 +327,7 @@ export default function ServiciosPage() {
               {...register('duracionMinutos', { valueAsNumber: true })}
             />
             <Input
-              label={t('servicios.precio')}
+              label={t('servicios.precio', { simbolo: simboloMoneda(moneda, i18n.language) })}
               type="number"
               min={0}
               step="0.01"
@@ -403,6 +397,7 @@ function ServicioCard({
   onEditar: () => void;
   onDesactivar: () => void;
 }) {
+  const moneda = useMonedaNegocio();
   const { t, i18n } = useTranslation();
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
@@ -422,7 +417,7 @@ function ServicioCard({
             type="button"
             onClick={onEditar}
             aria-label={t('comun.editarAriaLabel', { nombre: servicio.nombre })}
-            className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-primary-600 dark:text-slate-400 dark:hover:bg-slate-700"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-primary-600 dark:text-slate-400 dark:hover:bg-slate-700"
           >
             <Pencil className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -431,7 +426,7 @@ function ServicioCard({
               type="button"
               onClick={onDesactivar}
               aria-label={t('comun.desactivarAriaLabel', { nombre: servicio.nombre })}
-              className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-danger dark:text-slate-400 dark:hover:bg-slate-700"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-danger dark:text-slate-400 dark:hover:bg-slate-700"
             >
               <Trash2 className="h-4 w-4" aria-hidden="true" />
             </button>
@@ -448,7 +443,9 @@ function ServicioCard({
           <Clock className="h-3.5 w-3.5" aria-hidden="true" />
           {t('comun.minutosAbreviatura', { n: servicio.duracionMinutos })}
         </span>
-        <span className="font-medium">{formatearPrecio(servicio.precio, i18n.language)}</span>
+        <span className="font-medium">
+          {formatearDinero(servicio.precio, moneda, i18n.language)}
+        </span>
         <BadgeEstado activo={servicio.activo} />
       </div>
     </div>

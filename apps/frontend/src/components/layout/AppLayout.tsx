@@ -21,6 +21,7 @@ import { ChatbotWidget } from '@/components/chat/ChatbotWidget';
 import { ControlesGlobales } from './ControlesGlobales';
 import { useSincronizacionTiempoReal } from '@/lib/tiempo-real';
 import { ESPACIO_INFERIOR_WIDGETS } from './espacio-widgets';
+import { LogoTurnify } from '@/components/marca/LogoTurnify';
 
 /**
  * Barra superior de las pantallas autenticadas. El grupo de controles
@@ -72,21 +73,22 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <Link
               to="/"
               onClick={() => setSidebarAbierto(false)}
-              className="text-xl font-semibold tracking-wide text-violet-300 transition-colors hover:text-white"
+              className="inline-flex min-h-11 items-center gap-2 text-xl font-semibold tracking-wide text-violet-300 transition-colors hover:text-white"
             >
+              <LogoTurnify tamano={32} />
               {t('comun.turnify')}
             </Link>
             <button
               type="button"
               aria-label={t('comun.cerrar')}
               onClick={() => setSidebarAbierto(false)}
-              className="rounded-md p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
+              className="rounded-md p-3 text-slate-300 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
             >
               <X className="h-5 w-5" aria-hidden="true" />
             </button>
           </div>
 
-          <nav aria-label="Navegación principal" className="flex-1 space-y-1 px-3 py-6">
+          <nav aria-label={t('comun.navegacionPrincipal')} className="flex-1 space-y-1 px-3 py-6">
             {enlaces.map(({ to, label, icon: Icon }) => (
               <NavLink
                 key={to}
@@ -96,7 +98,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                   `group flex items-center gap-3 border-l-4 px-3 py-3 text-sm font-medium transition-all duration-200 ${
                     isActive
                       ? 'border-violet-500 bg-violet-500/10 text-violet-300 shadow-[inset_8px_0_22px_-18px_rgba(167,139,250,0.95),0_0_18px_-12px_rgba(139,92,246,0.9)]'
-                      : 'border-transparent text-slate-400 hover:border-violet-400/50 hover:bg-white/5 hover:text-violet-200'
+                      : 'border-transparent text-slate-300 hover:border-violet-400/50 hover:bg-white/5 hover:text-violet-200'
                   }`
                 }
               >
@@ -104,7 +106,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                   <>
                     <Icon
                       className={`h-5 w-5 transition-colors duration-200 ${
-                        isActive ? 'text-violet-300' : 'text-slate-500 group-hover:text-violet-300'
+                        isActive ? 'text-violet-300' : 'text-slate-300 group-hover:text-violet-300'
                       }`}
                       aria-hidden="true"
                     />
@@ -117,7 +119,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="space-y-4 border-t border-white/10 p-4">
-            <ControlesGlobales />
+            <ControlesGlobales superficie="oscura" />
             <div className="flex items-center justify-between gap-3">
               <span className="min-w-0 truncate text-sm text-slate-300">
                 {usuario?.nombreCompleto}
@@ -126,7 +128,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 type="button"
                 onClick={alCerrarSesion}
                 aria-label={t('comun.cerrarSesion')}
-                className="shrink-0 rounded-md p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-violet-200"
+                className="shrink-0 rounded-md p-3 text-slate-300 transition-colors hover:bg-white/10 hover:text-violet-200"
               >
                 <LogOut className="h-5 w-5" aria-hidden="true" />
               </button>
@@ -137,14 +139,18 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <header className="flex items-center justify-between border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur lg:hidden dark:border-slate-800 dark:bg-slate-900/90">
           <button
             type="button"
-            aria-label="Abrir navegación"
+            aria-label={t('comun.abrirNavegacion')}
             aria-expanded={sidebarAbierto}
             onClick={() => setSidebarAbierto(true)}
-            className="rounded-md p-2 text-slate-600 transition-colors hover:bg-violet-100 hover:text-violet-700 dark:text-slate-300 dark:hover:bg-violet-500/10 dark:hover:text-violet-300"
+            className="rounded-md p-3 text-slate-600 transition-colors hover:bg-violet-100 hover:text-violet-700 dark:text-slate-300 dark:hover:bg-violet-500/10 dark:hover:text-violet-300"
           >
             <Menu className="h-5 w-5" aria-hidden="true" />
           </button>
-          <Link to="/" className="text-lg font-semibold text-violet-600 dark:text-violet-300">
+          <Link
+            to="/"
+            className="inline-flex min-h-11 items-center gap-2 text-lg font-semibold text-primary-600 dark:text-violet-300"
+          >
+            <LogoTurnify tamano={28} />
             {t('comun.turnify')}
           </Link>
           <ControlesGlobales />
@@ -170,8 +176,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <div className="flex min-w-0 items-center gap-4">
           <Link
             to="/"
-            className="shrink-0 text-lg font-semibold text-primary-600 dark:text-primary-400"
+            className="inline-flex shrink-0 items-center gap-2 text-lg font-semibold text-primary-600 dark:text-primary-400"
           >
+            <LogoTurnify tamano={28} />
             {t('comun.turnify')}
           </Link>
           <nav className="flex min-w-0 gap-4 overflow-x-auto">

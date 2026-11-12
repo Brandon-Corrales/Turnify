@@ -42,7 +42,7 @@ export class DisponibilidadService {
 
   async listar(idUsuarioFiltro?: string): Promise<Disponibilidad[]> {
     return this.disponibilidadRepo.find({
-      where: idUsuarioFiltro ? ({ idUsuario: idUsuarioFiltro } as any) : {},
+      where: idUsuarioFiltro ? { idUsuario: idUsuarioFiltro } : {},
       order: { diaSemana: 'ASC', horaInicio: 'ASC' },
     });
   }
@@ -70,7 +70,7 @@ export class DisponibilidadService {
       idDisponibilidad,
     );
 
-    await this.disponibilidadRepo.update({ idDisponibilidad } as any, dto as any);
+    await this.disponibilidadRepo.update({ idDisponibilidad }, dto);
     this.logger.log(`Disponibilidad ${idDisponibilidad} actualizada`);
     return this.buscarOFallar(idDisponibilidad);
   }
@@ -80,7 +80,7 @@ export class DisponibilidadService {
     this.asegurarPuedeGestionar(actual.idUsuario);
     // Disponibilidad no tiene soft delete propio (sin eliminado_en en el
     // ER) — `activo:false` es el mecanismo de baja de esta entidad.
-    await this.disponibilidadRepo.update({ idDisponibilidad } as any, { activo: false } as any);
+    await this.disponibilidadRepo.update({ idDisponibilidad }, { activo: false });
     this.logger.log(`Disponibilidad ${idDisponibilidad} desactivada`);
   }
 
@@ -106,7 +106,7 @@ export class DisponibilidadService {
   }
 
   private async asegurarUsuarioExiste(idUsuario: string): Promise<void> {
-    const usuario = await this.usuarioRepo.findOne({ where: { idUsuario } as any });
+    const usuario = await this.usuarioRepo.findOne({ where: { idUsuario } });
     if (!usuario) {
       throw new NotFoundException({
         errorCode: 'USUARIO_NO_ENCONTRADO',
@@ -135,7 +135,7 @@ export class DisponibilidadService {
         horaInicio: LessThan(horaFin),
         horaFin: MoreThan(horaInicio),
         ...(idExcluido ? { idDisponibilidad: Not(idExcluido) } : {}),
-      } as any,
+      },
     });
     if (traslapes.length > 0) {
       throw new ConflictException({
@@ -148,7 +148,7 @@ export class DisponibilidadService {
 
   private async buscarOFallar(idDisponibilidad: string): Promise<Disponibilidad> {
     const disponibilidad = await this.disponibilidadRepo.findOne({
-      where: { idDisponibilidad } as any,
+      where: { idDisponibilidad },
     });
     if (!disponibilidad) {
       throw new NotFoundException({

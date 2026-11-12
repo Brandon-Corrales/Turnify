@@ -22,59 +22,19 @@ import { clientesApi } from '@/lib/clientes-api';
 import { serviciosApi } from '@/lib/servicios-api';
 import { ApiError } from '@/lib/api';
 import { crearNuevaReservaSchema, type NuevaReservaFormValues } from '@/lib/validation';
+import { fechaHoraEnZona, formatearFechaHoraEnZona, instanteLocal } from '@/lib/fecha-negocio';
+import { useZonaHorariaNegocio } from '@/lib/use-zona-negocio';
+import type { CountryCode } from 'libphonenumber-js';
+import { CampoTelefono } from '@/components/negocio/CampoTelefono';
+import { normalizarTelefono, PAIS_TELEFONO_POR_DEFECTO } from '@/lib/telefono';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
 
-// Turnify opera en hora de Costa Rica siempre, sin importar en qué huso
-// horario esté el navegador del admin — mismo criterio fijo (offset -6,
-// sin horario de verano) que usa el backend en zona-horaria-negocio.ts.
-// El propio <FullCalendar> también se configura con esta zona (más abajo,
-// vía @fullcalendar/moment-timezone) para que la posición del bloque en
-// las vistas de semana/día y la etiqueta de hora siempre coincidan, sin
-// importar el huso del navegador que mira la pantalla.
-const ZONA_HORARIA_NEGOCIO = 'America/Costa_Rica';
-
-// Formatea la hora GUARDADA de una reserva para mostrarla — debe ser
-// siempre la hora fija de Costa Rica (mismo criterio que el modal de
-// detalle), nunca la del navegador de quien mira la pantalla.
-function formatearHoraCR(fecha: Date): string {
-  return new Intl.DateTimeFormat('es-CR', {
-    timeZone: ZONA_HORARIA_NEGOCIO,
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).format(fecha);
-}
-
-// Bug real corregido: antes se leía fecha/hora con getters LOCALES
-// (getFullYear/getHours...) del Date real que entrega FullCalendar al
-// hacer clic o al terminar un arrastre — con el navegador en un huso
-// distinto a Costa Rica, esto llenaba el formulario de "Nueva reserva"
-// con la fecha/hora equivocada. Ahora se extrae siempre en hora de Costa
-// Rica, consistente con el resto del sistema.
-function formatearFechaHoraCR(fecha: Date): { fecha: string; hora: string } {
-  const partes = new Intl.DateTimeFormat('en-CA', {
-    timeZone: ZONA_HORARIA_NEGOCIO,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(fecha);
-  const obtener = (tipo: string) => partes.find((p) => p.type === tipo)!.value;
-  return {
-    fecha: `${obtener('year')}-${obtener('month')}-${obtener('day')}`,
-    hora: `${obtener('hour')}:${obtener('minute')}`,
-  };
-}
-
-// Inverso de formatearFechaHoraCR: construye el instante UTC real a partir
-// de una fecha/hora en hora de Costa Rica (offset fijo +6h hacia UTC) —
-// usado al enviar el formulario de "Nueva reserva" al backend.
-function crLocalAFechaUtc(fecha: string, hora: string): Date {
-  const [anio, mes, dia] = fecha.split('-').map(Number);
-  const [horas, minutos] = hora.split(':').map(Number);
-  return new Date(Date.UTC(anio, mes - 1, dia, horas + 6, minutos));
-}
+// Todo el calendario va en la zona horaria del NEGOCIO (Bloque 5, punto
+// 5.1), nunca en la del navegador del admin: la posición de los bloques en
+// las vistas de semana/día (<FullCalendar timeZone> con el plugin
+// @fullcalendar/moment-timezone), la hora escrita en cada evento, el clic
+// para crear (fecha/hora precargada) y el envío del formulario. Antes era
+// Costa Rica fija.
 
 const HORA_DEFECTO_CLIC_EN_DIA = '09:00';
 
@@ -121,7 +81,9 @@ class ErrorReservaConClienteCreado extends Error {
 }
 
 export default function CalendarioPage() {
+  const zona = useZonaHorariaNegocio();
   const { t, i18n } = useTranslation();
+  useTituloPagina(t('titulos.calendario'));
   const calendarRef = useRef<FullCalendar>(null);
   const [rango, setRango] = useState<RangoVisible | null>(null);
   const [idUsuarioFiltro, setIdUsuarioFiltro] = useState('');
@@ -202,7 +164,7 @@ export default function CalendarioPage() {
       // Bug real encontrado y arreglado: usaba formatearHoraLocal (huso del
       // navegador) para la hora GUARDADA de la reserva — mismo tipo de
       // inconsistencia ya corregida en el modal de detalle, ahora también acá.
-      const horaInicio = formatearHoraCR(new Date(reserva.fechaHoraInicio));
+      const horaInicio = fechaHoraEnZona(new Date(reserva.fechaHoraInicio), zona).hora;
       // La celda muestra "hora + estado" (diseño de la vista interna del
       // calendario); el detalle "Cliente · Servicio" que trae
       // info.event.title queda como tooltip nativo y en el modal de detalle.
@@ -235,7 +197,7 @@ export default function CalendarioPage() {
         </div>
       );
     },
-    [t, etiquetaEstadoReserva],
+    [t, etiquetaEstadoReserva, zona],
   );
 
   const eventos = useMemo(
@@ -259,11 +221,13 @@ export default function CalendarioPage() {
           title: `${reserva.cliente?.nombreCompleto ?? t('calendario.clienteEliminado')} · ${reserva.servicio?.nombre ?? t('calendario.servicioEliminado')}${cancelada ? ` (${t('calendario.sufijoCancelada')})` : ''}`,
           start: reserva.fechaHoraInicio,
           end: reserva.fechaHoraFin,
-          backgroundColor: cancelada ? '#94a3b8' : (reserva.servicio?.colorCalendario ?? '#4f46e5'),
+          backgroundColor: cancelada ? '#94a3b8' : (reserva.servicio?.colorCalendario ?? '#433bc2'),
           borderColor: 'transparent',
           // una reserva cancelada se puede seguir viendo (historial) pero no se arrastra ni se cancela de nuevo
           editable: !cancelada,
-          classNames: cancelada ? ['opacity-70'] : [],
+          // Sin opacidad (Bloque 1, 1.1: bajaba el texto a 3.4:1). La
+          // cancelada ya se distingue sin color: texto, ícono y tachado.
+          classNames: [],
           extendedProps: { reserva },
         };
       }),
@@ -305,7 +269,12 @@ export default function CalendarioPage() {
     defaultValues: {
       modoCliente: 'existente',
       idCliente: '',
-      nuevoCliente: { nombreCompleto: '', correoElectronico: '', telefono: '' },
+      nuevoCliente: {
+        nombreCompleto: '',
+        correoElectronico: '',
+        telefono: '',
+        paisTelefono: PAIS_TELEFONO_POR_DEFECTO,
+      },
       idServicio: '',
       idUsuario: '',
       fecha: '',
@@ -328,7 +297,12 @@ export default function CalendarioPage() {
           const creado = await clientesApi.crear({
             nombreCompleto: valores.nuevoCliente.nombreCompleto,
             correoElectronico: valores.nuevoCliente.correoElectronico,
-            telefono: valores.nuevoCliente.telefono || undefined,
+            telefono: valores.nuevoCliente.telefono?.trim()
+              ? (normalizarTelefono(
+                  valores.nuevoCliente.telefono,
+                  valores.nuevoCliente.paisTelefono as CountryCode,
+                ) ?? valores.nuevoCliente.telefono)
+              : undefined,
           });
           idCliente = creado.idCliente;
           clienteRecienCreado = true;
@@ -344,7 +318,7 @@ export default function CalendarioPage() {
           idCliente,
           idServicio: valores.idServicio,
           idUsuario: valores.idUsuario,
-          fechaHoraInicio: crLocalAFechaUtc(valores.fecha, valores.hora).toISOString(),
+          fechaHoraInicio: instanteLocal(valores.fecha, valores.hora, zona).toISOString(),
           notas: valores.notas || undefined,
         });
       } catch (error) {
@@ -448,13 +422,18 @@ export default function CalendarioPage() {
   // usuario la ajusta en el formulario.
   const abrirModalNuevaReserva = useCallback(
     (fecha: Date, allDay: boolean) => {
-      const { fecha: fechaCR, hora: horaCR } = formatearFechaHoraCR(fecha);
+      const { fecha: fechaCR, hora: horaCR } = fechaHoraEnZona(fecha, zona);
       crearReservaMutation.reset();
       resetNuevaReserva({
         // Sin ningún cliente todavía, arranca directo en "cliente nuevo".
         modoCliente: clientesActivos.length > 0 ? 'existente' : 'nuevo',
         idCliente: '',
-        nuevoCliente: { nombreCompleto: '', correoElectronico: '', telefono: '' },
+        nuevoCliente: {
+          nombreCompleto: '',
+          correoElectronico: '',
+          telefono: '',
+          paisTelefono: PAIS_TELEFONO_POR_DEFECTO,
+        },
         idServicio: '',
         idUsuario: idUsuarioFiltro || empleadosActivos[0]?.idUsuario || '',
         fecha: fechaCR,
@@ -464,6 +443,7 @@ export default function CalendarioPage() {
       setModalNuevaReservaAbierto(true);
     },
     [
+      zona,
       resetNuevaReserva,
       idUsuarioFiltro,
       empleadosActivos,
@@ -574,7 +554,7 @@ export default function CalendarioPage() {
             // las interacciones (clic para crear, arrastrar para
             // reprogramar) quedan consistentes en hora de Costa Rica sin
             // importar el huso del navegador.
-            timeZone={ZONA_HORARIA_NEGOCIO}
+            timeZone={zona}
             initialView={window.innerWidth < PUNTO_QUIEBRE_MOBILE ? 'listWeek' : 'dayGridMonth'}
             headerToolbar={
               window.innerWidth < PUNTO_QUIEBRE_MOBILE ? TOOLBAR_MOBILE : TOOLBAR_DESKTOP
@@ -586,6 +566,21 @@ export default function CalendarioPage() {
             locale={i18n.language.startsWith('en') ? undefined : esLocale}
             height="auto"
             editable
+            // Bloque 1, punto 1.2 (role-img-alt): FullCalendar 6 dibuja las
+            // flechas como <span class="fc-icon" role="img"> sin nombre
+            // accesible y no ofrece forma de nombrarlo. Su opción documentada
+            // `buttonIcons: false` muestra en su lugar el texto de `buttonText`
+            // (https://legacy.fullcalendar.io/v6/buttonIcons), que aquí va
+            // traducido. Las pistas (title) siguen siendo las del locale.
+            buttonIcons={false}
+            buttonText={{
+              prev: t('comun.anterior'),
+              next: t('comun.siguiente'),
+              today: t('calendario.botonHoy'),
+              month: t('calendario.botonMes'),
+              week: t('calendario.botonSemana'),
+              list: t('calendario.botonLista'),
+            }}
             eventStartEditable
             eventDurationEditable={false}
             businessHours={businessHours.length > 0 ? businessHours : undefined}
@@ -625,10 +620,7 @@ export default function CalendarioPage() {
             </p>
             <p>
               <span className="font-medium">{t('calendario.detalleHorario')}</span>{' '}
-              {new Date(reservaSeleccionada.fechaHoraInicio).toLocaleString(
-                i18n.language.startsWith('en') ? 'en-US' : 'es-CR',
-                { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Costa_Rica' },
-              )}
+              {formatearFechaHoraEnZona(reservaSeleccionada.fechaHoraInicio, i18n.language, zona)}
             </p>
             <p>
               <span className="font-medium">{t('calendario.detalleEstado')}</span>{' '}
@@ -737,17 +729,12 @@ export default function CalendarioPage() {
                 error={erroresNuevaReserva.nuevoCliente?.correoElectronico?.message}
                 {...registerNuevaReserva('nuevoCliente.correoElectronico')}
               />
-              <Input
-                label={t('clientes.telefono')}
-                type="tel"
+              <CampoTelefono
+                registroPais={registerNuevaReserva('nuevoCliente.paisTelefono')}
+                registroNumero={registerNuevaReserva('nuevoCliente.telefono')}
                 variante="crear"
-                maxLength={15}
-                inputMode="numeric"
-                pattern="[0-9]*"
                 hint={t('comun.opcional')}
-                autoComplete="off"
                 error={erroresNuevaReserva.nuevoCliente?.telefono?.message}
-                {...registerNuevaReserva('nuevoCliente.telefono')}
               />
               {clientesActivos.length > 0 && (
                 <Boton

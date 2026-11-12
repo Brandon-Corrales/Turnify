@@ -100,7 +100,7 @@ export class UsuariosService {
       );
     }
 
-    await this.usuarioRepo.update({ idUsuario } as any, dto as any);
+    await this.usuarioRepo.update({ idUsuario }, dto);
     this.logger.log(`Usuario ${idUsuario} actualizado`);
     return this.aPublico(await this.buscarOFallar(idUsuario));
   }
@@ -115,18 +115,15 @@ export class UsuariosService {
       );
     }
 
-    await this.usuarioRepo.update(
-      { idUsuario } as any,
-      { activo: false, refreshTokenHash: null } as any,
-    );
-    await this.usuarioRepo.softDelete({ idUsuario } as any);
+    await this.usuarioRepo.update({ idUsuario }, { activo: false, refreshTokenHash: null });
+    await this.usuarioRepo.softDelete({ idUsuario });
     this.logger.log(`Usuario ${idUsuario} desactivado`);
   }
 
   /** Evita dejar un negocio sin ningún admin activo al desactivar/degradar al último. */
   private async asegurarNoEsUltimoAdmin(idUsuarioExcluido: string, mensaje: string): Promise<void> {
     const otrosAdminsActivos = await this.usuarioRepo.count({
-      where: { rol: RolUsuario.ADMIN, activo: true, idUsuario: Not(idUsuarioExcluido) } as any,
+      where: { rol: RolUsuario.ADMIN, activo: true, idUsuario: Not(idUsuarioExcluido) },
     });
     if (otrosAdminsActivos === 0) {
       throw new ConflictException({ errorCode: 'ULTIMO_ADMIN_REQUERIDO', message: mensaje });
@@ -134,7 +131,7 @@ export class UsuariosService {
   }
 
   private async buscarOFallar(idUsuario: string): Promise<Usuario> {
-    const usuario = await this.usuarioRepo.findOne({ where: { idUsuario } as any });
+    const usuario = await this.usuarioRepo.findOne({ where: { idUsuario } });
     if (!usuario) {
       throw new NotFoundException({
         errorCode: 'USUARIO_NO_ENCONTRADO',

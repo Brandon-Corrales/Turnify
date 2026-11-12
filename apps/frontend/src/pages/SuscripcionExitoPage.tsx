@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { PartyPopper } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Boton } from '@/components/ui';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
 
 /**
  * Stripe redirige aquí tras completar el Checkout (Test Mode) — la URL
@@ -16,6 +17,7 @@ import { Boton } from '@/components/ui';
  */
 export default function SuscripcionExitoPage() {
   const { t } = useTranslation();
+  useTituloPagina(t('titulos.suscripcionExito'));
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 

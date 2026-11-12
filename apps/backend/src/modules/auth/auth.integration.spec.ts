@@ -36,7 +36,7 @@ describe('Auth (integración HTTP real)', () => {
   describe('registro, sesión y perfil', () => {
     const sufijo = Date.now();
     const correoAdmin = `it-admin-${sufijo}@example.com`;
-    const contrasena = 'Turnify123!';
+    const contrasena = 'Turnify-Pruebas-2026!';
     const dtoRegistro = {
       nombreNegocio: `Negocio IT ${sufijo}`,
       tipoNegocio: 'barberia',
@@ -119,7 +119,7 @@ describe('Auth (integración HTTP real)', () => {
           correoNegocio: `it-refresh-negocio-${sufijo}@example.com`,
           nombreCompletoAdmin: 'Admin Refresh IT',
           correoAdmin,
-          contrasena: 'Turnify123!',
+          contrasena: 'Turnify-Pruebas-2026!',
         });
       refreshTokenOriginal = res.body.tokens.refreshToken;
     });
@@ -162,7 +162,7 @@ describe('Auth (integración HTTP real)', () => {
       // Sesión nueva: la anterior ya quedó revocada por el test de reuso.
       const login = await request(app.getHttpServer())
         .post('/auth/login')
-        .send({ correoElectronico: correoAdmin, contrasena: 'Turnify123!' })
+        .send({ correoElectronico: correoAdmin, contrasena: 'Turnify-Pruebas-2026!' })
         .expect(200);
 
       await request(app.getHttpServer())

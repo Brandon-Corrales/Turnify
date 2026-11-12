@@ -79,7 +79,7 @@ describe('POST /webhooks/resend (integración HTTP real)', () => {
         correoNegocio: `it-webhook-negocio-${s}@example.com`,
         nombreCompletoAdmin: 'Admin Webhook IT',
         correoAdmin: `it-webhook-admin-${s}@example.com`,
-        contrasena: 'Turnify123!',
+        contrasena: 'Turnify-Pruebas-2026!',
       });
     token = reg.body.tokens.accessToken;
     const auth = { Authorization: `Bearer ${token}` };
@@ -117,7 +117,9 @@ describe('POST /webhooks/resend (integración HTTP real)', () => {
       where: { idReserva: reserva.body.idReserva },
       relations: { cliente: true },
     });
-    await (app.get(NotificacionesService) as any).enviarUna(notificacion);
+    // Acceso por corchetes al método privado: TypeScript sigue comprobando la
+    // firma, así que un cambio en enviarUna() rompe el typecheck de la prueba.
+    await app.get(NotificacionesService)['enviarUna'](notificacion, repo);
     idNotificacion = notificacion.idNotificacion;
   }, 60_000);
 

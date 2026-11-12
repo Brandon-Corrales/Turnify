@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { hoyEnZonaNegocio } from '../src/lib/fecha-negocio';
 
 const API_URL = process.env.PLAYWRIGHT_API_URL ?? 'http://localhost:3000';
 
@@ -22,9 +23,11 @@ interface Reserva {
  * El negocio/servicio/disponibilidad se crean vía API al vuelo (no
  * dependen de datos de seed compartidos como el negocio demo) para que
  * el test sea repetible y aislado en cualquier corrida. La
- * disponibilidad cubre las 24 horas de los 7 días de la semana para no
- * depender de la hora del día en que corre el test (`listarHorarios`
- * excluye horarios ya pasados del día actual).
+ * disponibilidad cubre de 00:00 a 23:00 los 7 días de la semana, y el
+ * wizard se lleva a la fecha de MAÑANA (en la zona del negocio): así el
+ * test no depende de la hora en que corre. Con la fecha de hoy fallaba
+ * entre las 22:30 y la medianoche de Costa Rica, porque `listarHorarios`
+ * excluye los horarios ya pasados del día actual y no quedaba ninguno.
  */
 test('un visitante sin sesión completa el wizard y la reserva queda creada de verdad en el backend', async ({
   page,
@@ -42,7 +45,7 @@ test('un visitante sin sesión completa el wizard y la reserva queda creada de v
       correoNegocio,
       nombreCompletoAdmin: 'Admin E2E',
       correoAdmin,
-      contrasena: 'Turnify123!',
+      contrasena: 'Turnify-Pruebas-2026!',
     },
   });
   expect(registro.ok(), `registro falló: ${await registro.text()}`).toBeTruthy();
@@ -74,6 +77,9 @@ test('un visitante sin sesión completa el wizard y la reserva queda creada de v
 
   // Paso 2: elegir el primer horario disponible
   await expect(page.getByText(/Elige un horario/)).toBeVisible();
+  // Costa Rica no tiene horario de verano: sumar 24 h da siempre el día siguiente.
+  const manana = hoyEnZonaNegocio(new Date(Date.now() + 24 * 60 * 60 * 1000));
+  await page.getByLabel('Fecha').fill(manana);
   const primerHorario = page.getByRole('button', { name: /^\d{1,2}:\d{2}/ }).first();
   await expect(primerHorario).toBeVisible({ timeout: 10_000 });
   await primerHorario.click();
@@ -81,7 +87,7 @@ test('un visitante sin sesión completa el wizard y la reserva queda creada de v
 
   // Paso 3: datos del cliente
   await expect(page.getByRole('heading', { name: 'Tus datos' })).toBeVisible();
-  await page.getByLabel('Nombre completo').fill('Cliente E2E Playwright');
+  await page.getByLabel('Nombre completo').fill('Cliente Prueba Playwright');
   await page.getByLabel('Correo electrónico').fill(correoCliente);
   await page.getByRole('button', { name: 'Siguiente' }).click();
 

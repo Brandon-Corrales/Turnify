@@ -14,28 +14,30 @@ import {
   crearDatosClientePublicoSchema,
   type DatosClientePublicoFormValues,
 } from '@/lib/validation';
-import { hoyEnZonaNegocio } from '@/lib/fecha-negocio';
+import { formatearDinero, monedaOPorDefecto } from '@/lib/dinero';
+import { etiquetaZona, hoyEnZonaNegocio, localeDe, zonaOPorDefecto } from '@/lib/fecha-negocio';
 import { ESPACIO_INFERIOR_WIDGETS } from '@/components/layout/espacio-widgets';
+import type { CountryCode } from 'libphonenumber-js';
+import { CampoTelefono } from '@/components/negocio/CampoTelefono';
+import { normalizarTelefono, PAIS_TELEFONO_POR_DEFECTO } from '@/lib/telefono';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
+import { LogoTurnify } from '@/components/marca/LogoTurnify';
 
-function formatearHoraCR(iso: string, idioma: string): string {
-  return new Date(iso).toLocaleTimeString(idioma.startsWith('en') ? 'en-US' : 'es-CR', {
-    timeZone: 'America/Costa_Rica',
+function formatearHora(iso: string, idioma: string, zona: string): string {
+  return new Date(iso).toLocaleTimeString(localeDe(idioma), {
+    timeZone: zona,
     hour: '2-digit',
     minute: '2-digit',
   });
 }
 
-function formatearFechaCR(iso: string, idioma: string): string {
-  return new Date(iso).toLocaleDateString(idioma.startsWith('en') ? 'en-US' : 'es-CR', {
-    timeZone: 'America/Costa_Rica',
+function formatearFecha(iso: string, idioma: string, zona: string): string {
+  return new Date(iso).toLocaleDateString(localeDe(idioma), {
+    timeZone: zona,
     weekday: 'long',
     day: 'numeric',
     month: 'long',
   });
-}
-
-function formatearColones(monto: number, idioma: string): string {
-  return `₡${monto.toLocaleString(idioma.startsWith('en') ? 'en-US' : 'es-CR')}`;
 }
 
 function Indicador({
@@ -56,7 +58,7 @@ function Indicador({
                   ? 'border-primary-600 bg-primary-600 text-white'
                   : numero === pasoActual
                     ? 'border-primary-600 text-primary-600 dark:text-primary-400'
-                    : 'border-slate-300 text-slate-400 dark:border-slate-600 dark:text-slate-600'
+                    : 'border-slate-300 text-slate-400 dark:border-slate-600 dark:text-slate-400'
               }`}
             >
               {numero < pasoActual ? (
@@ -87,7 +89,9 @@ export default function ReservaPublicaPage() {
   const { idNegocio = '' } = useParams<{ idNegocio: string }>();
   const [paso, setPaso] = useState(1);
   const [servicio, setServicio] = useState<ServicioPublico | null>(null);
-  const [fecha, setFecha] = useState(hoyEnZonaNegocio());
+  // `null` = el cliente todavía no eligió día: se usa "hoy" en la zona del
+  // negocio, que solo se conoce cuando llega `negocioQuery`.
+  const [fechaElegida, setFecha] = useState<string | null>(null);
   const [horario, setHorario] = useState<string | null>(null);
   const [datosCliente, setDatosCliente] = useState<DatosClientePublicoFormValues | null>(null);
 
@@ -106,6 +110,17 @@ export default function ReservaPublicaPage() {
     queryKey: ['reserva-publica', 'negocio', idNegocio],
     queryFn: () => reservaPublicaApi.obtenerNegocio(idNegocio),
   });
+  // Bloque 5, punto 5.1: los horarios se muestran en la zona del NEGOCIO (no
+  // en la del navegador del cliente) y la nota de abajo lo dice.
+  const zona = zonaOPorDefecto(negocioQuery.data?.zonaHoraria);
+  const moneda = monedaOPorDefecto(negocioQuery.data?.moneda);
+  useTituloPagina(
+    negocioQuery.data
+      ? t('titulos.reservarEn', { nombre: negocioQuery.data.nombre })
+      : t('titulos.reservar'),
+  );
+  const hoy = hoyEnZonaNegocio(new Date(), zona);
+  const fecha = fechaElegida ?? hoy;
 
   const serviciosQuery = useQuery({
     queryKey: ['reserva-publica', 'servicios', idNegocio],
@@ -124,15 +139,24 @@ export default function ReservaPublicaPage() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<DatosClientePublicoFormValues>({ resolver: zodResolver(datosClientePublicoSchema) });
+  } = useForm<DatosClientePublicoFormValues>({
+    resolver: zodResolver(datosClientePublicoSchema),
+    defaultValues: { paisTelefono: PAIS_TELEFONO_POR_DEFECTO },
+  });
 
   const confirmarMutation = useMutation({
     mutationFn: () => {
-      const { sitioWeb, ...clienteDto } = datosCliente!;
+      const { sitioWeb, paisTelefono, telefono, ...clienteDto } = datosCliente!;
       return reservaPublicaApi.crearReserva(idNegocio, {
         idServicio: servicio!.idServicio,
         fechaHoraInicio: horario!,
-        cliente: clienteDto,
+        cliente: {
+          ...clienteDto,
+          // E.164 (Bloque 5, punto 5.3); el esquema ya lo validó con el país.
+          telefono: telefono?.trim()
+            ? (normalizarTelefono(telefono, paisTelefono as CountryCode) ?? telefono)
+            : undefined,
+        },
         honeypot: sitioWeb || undefined,
       });
     },
@@ -146,13 +170,13 @@ export default function ReservaPublicaPage() {
 
   if (negocioQuery.isError) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-900">
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-900">
         <Banner
           variante="error"
           titulo={t('reservaPublica.negocioNoEncontradoTitulo')}
           descripcion={t('reservaPublica.negocioNoEncontradoDescripcion')}
         />
-      </div>
+      </main>
     );
   }
 
@@ -160,7 +184,8 @@ export default function ReservaPublicaPage() {
     <div className={`min-h-screen bg-slate-50 dark:bg-slate-900 ${ESPACIO_INFERIOR_WIDGETS}`}>
       <header className="border-b border-slate-200 bg-white px-4 py-4 dark:border-slate-700 dark:bg-slate-800">
         <div className="mx-auto max-w-2xl">
-          <p className="text-xs font-medium text-primary-600 dark:text-primary-400">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-primary-600 dark:text-primary-400">
+            <LogoTurnify tamano={16} />
             {t('comun.turnify')}
           </p>
           {negocioQuery.isPending ? (
@@ -173,7 +198,7 @@ export default function ReservaPublicaPage() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-2xl px-4 py-8">
+      <main className="mx-auto max-w-2xl px-4 py-8">
         <Indicador pasoActual={paso} pasos={pasos} />
 
         <div className="relative mt-8 min-h-80">
@@ -224,7 +249,7 @@ export default function ReservaPublicaPage() {
                         </p>
                       </div>
                       <span className="whitespace-nowrap font-semibold text-slate-900 dark:text-white">
-                        {formatearColones(Number(s.precio), i18n.language)}
+                        {formatearDinero(s.precio, moneda, i18n.language)}
                       </span>
                     </button>
                   ))}
@@ -246,13 +271,16 @@ export default function ReservaPublicaPage() {
                   type="date"
                   label={t('calendario.campoFecha')}
                   className="mt-4 max-w-xs"
-                  min={hoyEnZonaNegocio()}
+                  min={hoy}
                   value={fecha}
                   onChange={(e) => {
                     setFecha(e.target.value);
                     setHorario(null);
                   }}
                 />
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                  {t('reservaPublica.notaZonaHoraria', { zona: etiquetaZona(zona, i18n.language) })}
+                </p>
 
                 <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4">
                   {horariosQuery.isPending &&
@@ -275,7 +303,7 @@ export default function ReservaPublicaPage() {
                           : 'border-slate-200 bg-white text-slate-700 hover:border-primary-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
                       }`}
                     >
-                      {formatearHoraCR(h, i18n.language)}
+                      {formatearHora(h, i18n.language, zona)}
                     </button>
                   ))}
                 </div>
@@ -322,14 +350,10 @@ export default function ReservaPublicaPage() {
                     error={errors.correoElectronico?.message}
                     {...register('correoElectronico')}
                   />
-                  <Input
-                    label={t('clientes.telefono')}
-                    type="tel"
-                    maxLength={15}
-                    inputMode="numeric"
-                    pattern="[0-9]*"
+                  <CampoTelefono
+                    registroPais={register('paisTelefono')}
+                    registroNumero={register('telefono')}
                     error={errors.telefono?.message}
-                    {...register('telefono')}
                   />
                   <div
                     aria-hidden="true"
@@ -385,8 +409,8 @@ export default function ReservaPublicaPage() {
                       {t('reservaPublica.confirmadaTitulo')}
                     </h2>
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                      {servicio.nombre} · {formatearFechaCR(horario, i18n.language)} ·{' '}
-                      {formatearHoraCR(horario, i18n.language)}
+                      {servicio.nombre} · {formatearFecha(horario, i18n.language, zona)} ·{' '}
+                      {formatearHora(horario, i18n.language, zona)}
                     </p>
                     <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
                       {t('reservaPublica.confirmacionEnviada', {
@@ -420,8 +444,8 @@ export default function ReservaPublicaPage() {
                             {t('reservaPublica.cuando')}
                           </dt>
                           <dd className="font-medium text-slate-900 dark:text-white">
-                            {formatearFechaCR(horario, i18n.language)},{' '}
-                            {formatearHoraCR(horario, i18n.language)}
+                            {formatearFecha(horario, i18n.language, zona)},{' '}
+                            {formatearHora(horario, i18n.language, zona)}
                           </dd>
                         </div>
                         <div className="flex justify-between">
@@ -429,7 +453,7 @@ export default function ReservaPublicaPage() {
                             {t('reservaPublica.precio')}
                           </dt>
                           <dd className="font-medium text-slate-900 dark:text-white">
-                            {formatearColones(Number(servicio.precio), i18n.language)}
+                            {formatearDinero(servicio.precio, moneda, i18n.language)}
                           </dd>
                         </div>
                         <div className="flex justify-between">
@@ -481,7 +505,7 @@ export default function ReservaPublicaPage() {
             )}
           </>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

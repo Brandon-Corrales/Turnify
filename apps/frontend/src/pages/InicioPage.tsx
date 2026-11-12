@@ -22,8 +22,9 @@ import {
   hoyEnZonaNegocio,
   mesYAnioEnZonaNegocio,
   rangoMesEnZonaNegocio,
-  ZONA_HORARIA_NEGOCIO,
 } from '@/lib/fecha-negocio';
+import { useMonedaNegocio, useZonaHorariaNegocio } from '@/lib/use-zona-negocio';
+import { formatearDinero } from '@/lib/dinero';
 import { negociosApi } from '@/lib/negocios-api';
 import { nombreParaSaludo } from '@/lib/nombre-saludo';
 import { reportesApi, type ResumenReportes } from '@/lib/reportes-api';
@@ -33,6 +34,7 @@ import {
   reservasApi,
   type Reserva,
 } from '@/lib/reservas-api';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
 
 /** Todas las reservas del rango, recorriendo las páginas (el backend devuelve como máximo 100 por página). */
 async function listarTodasLasReservas(desde: string, hasta: string): Promise<Reserva[]> {
@@ -42,14 +44,6 @@ async function listarTodasLasReservas(desde: string, hasta: string): Promise<Res
     reservas.push(...pagina.data);
     if (reservas.length >= pagina.total || pagina.data.length === 0) return reservas;
   }
-}
-
-function formatearColones(monto: number): string {
-  return new Intl.NumberFormat('es-CR', {
-    style: 'currency',
-    currency: 'CRC',
-    maximumFractionDigits: 0,
-  }).format(monto);
 }
 
 function totalReservas(porEstado: ResumenReportes['reservasPorEstado']): number {
@@ -87,9 +81,9 @@ function formatearDia(fecha: string, idioma: string, opciones: Intl.DateTimeForm
   });
 }
 
-function formatearHora(iso: string, idioma: string): string {
+function formatearHora(iso: string, idioma: string, zona: string): string {
   return new Date(iso).toLocaleTimeString(localeDe(idioma), {
-    timeZone: ZONA_HORARIA_NEGOCIO,
+    timeZone: zona,
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -262,6 +256,7 @@ function CitasDelDia({
 }: CitasDelDiaProps) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const zona = useZonaHorariaNegocio();
   const etiquetaEstado = crearEtiquetaEstadoReserva(t);
   const titulo = formatearDia(fecha, i18n.language, {
     weekday: 'long',
@@ -344,8 +339,8 @@ function CitasDelDia({
                     cancelada ? 'line-through opacity-60' : ''
                   }`}
                 >
-                  {formatearHora(cita.fechaHoraInicio, i18n.language)} –{' '}
-                  {formatearHora(cita.fechaHoraFin, i18n.language)}
+                  {formatearHora(cita.fechaHoraInicio, i18n.language, zona)} –{' '}
+                  {formatearHora(cita.fechaHoraFin, i18n.language, zona)}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm text-slate-900 dark:text-white">
@@ -376,11 +371,14 @@ function CitasDelDia({
 
 export default function InicioPage() {
   const { t, i18n } = useTranslation();
+  useTituloPagina(t('titulos.inicio'));
   const { usuario } = useAuth();
   const navigate = useNavigate();
-  const { desde, hasta } = rangoMesEnZonaNegocio();
-  const hoy = hoyEnZonaNegocio();
-  const diasDelMes = diasDelMesEnZonaNegocio();
+  const zona = useZonaHorariaNegocio();
+  const moneda = useMonedaNegocio();
+  const { desde, hasta } = rangoMesEnZonaNegocio(new Date(), zona);
+  const hoy = hoyEnZonaNegocio(new Date(), zona);
+  const diasDelMes = diasDelMesEnZonaNegocio(new Date(), zona);
   const [diaElegido, setDiaSeleccionado] = useState(hoy);
   // Si la pestaña queda abierta de un mes al siguiente, el día elegido ya no
   // está en la gráfica: se vuelve a hoy.
@@ -419,15 +417,15 @@ export default function InicioPage() {
   const esPlanGratis = negocioQuery.data?.planSuscripcion === 'gratis';
   const resumen = resumenQuery.data;
   const total = resumen ? totalReservas(resumen.reservasPorEstado) : 0;
-  const nombreMes = mesYAnioEnZonaNegocio(i18n.language);
+  const nombreMes = mesYAnioEnZonaNegocio(i18n.language, new Date(), zona);
   const citasPorDia = useMemo(() => {
     const porDia = new Map<string, Reserva[]>();
     for (const reserva of reservasMesQuery.data ?? []) {
-      const dia = hoyEnZonaNegocio(new Date(reserva.fechaHoraInicio));
+      const dia = hoyEnZonaNegocio(new Date(reserva.fechaHoraInicio), zona);
       porDia.set(dia, [...(porDia.get(dia) ?? []), reserva]);
     }
     return porDia;
-  }, [reservasMesQuery.data]);
+  }, [reservasMesQuery.data, zona]);
   const conteoPorDia = useMemo(
     () => new Map([...citasPorDia].map(([dia, citas]) => [dia, citas.length])),
     [citasPorDia],
@@ -537,7 +535,7 @@ export default function InicioPage() {
                 {
                   icono: Coins,
                   etiqueta: t('dashboard.ingresosEstimados'),
-                  valor: formatearColones(resumen.ingresosEstimados),
+                  valor: formatearDinero(resumen.ingresosEstimados, moneda, i18n.language),
                   claseIcono: 'bg-amber-50 text-warning dark:bg-amber-900/30',
                 },
               ].map((tarjeta) => (
@@ -561,7 +559,7 @@ export default function InicioPage() {
               {total === 0 ? (
                 <div className="mt-4 flex flex-col items-center gap-2 py-8 text-center">
                   <Calendar
-                    className="h-8 w-8 text-slate-300 dark:text-slate-600"
+                    className="h-8 w-8 text-slate-300 dark:text-slate-400"
                     aria-hidden="true"
                   />
                   <p className="text-sm text-slate-500 dark:text-slate-400">

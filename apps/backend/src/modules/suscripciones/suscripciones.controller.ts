@@ -39,6 +39,17 @@ export class SuscripcionesController {
   }
 
   @ApiBearerAuth()
+  @Get('uso')
+  @ApiOperation({
+    summary: 'Uso del mes del negocio actual frente al límite del Plan Gratis',
+    description:
+      'Reservas creadas este mes calendario (UTC) sin contar las canceladas; es el mismo conteo que aplica el límite de 20 reservas/mes. `limite` es null en un plan de pago.',
+  })
+  obtenerUso() {
+    return this.suscripcionesService.obtenerUso();
+  }
+
+  @ApiBearerAuth()
   @Get('mi-suscripcion')
   @ApiOperation({ summary: 'Suscripción actual del negocio (plan, estado, fechas)' })
   obtenerMiSuscripcion() {

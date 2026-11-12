@@ -9,3 +9,4 @@ export * from './Banner';
 export * from './ToggleVista';
 export * from './feedback-variants';
 export * from './toast/ToastProvider';
+export * from './toast/toast-context';

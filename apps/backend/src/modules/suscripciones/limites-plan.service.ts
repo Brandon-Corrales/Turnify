@@ -1,8 +1,9 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { I18nContext, I18nService } from 'nestjs-i18n';
-import { EntityManager, MoreThanOrEqual, Repository } from 'typeorm';
+import { EntityManager, MoreThanOrEqual, Not, Repository } from 'typeorm';
 import {
+  EstadoReserva,
   MensajeChatbot,
   Negocio,
   PlanSuscripcion,
@@ -11,6 +12,8 @@ import {
   Usuario,
 } from '../../database/entities';
 import { RecursoLimitado } from './decorators/limite-plan.decorator';
+import { leerZonaHoraria } from '../../common/utils/leer-zona-horaria';
+import { inicioDelDiaActual, inicioDelMesActual } from '../../common/utils/zona-horaria-negocio';
 
 /**
  * Límites reales del Plan Gratis (punto 5.1 del brief — "el equipo ajusta
@@ -20,8 +23,8 @@ import { RecursoLimitado } from './decorators/limite-plan.decorator';
 const LIMITES_PLAN_GRATIS: Record<RecursoLimitado, number> = {
   usuarios: 1, // solo el admin, sin poder invitar empleados
   servicios: 3, // servicios activos
-  reservas: 20, // por mes calendario
-  mensajesChatbot: 10, // por día calendario
+  reservas: 20, // por mes calendario de la zona del negocio, sin contar las canceladas
+  mensajesChatbot: 10, // por día calendario de la zona del negocio
 };
 
 /**
@@ -109,6 +112,10 @@ export class LimitesPlanService {
     return LIMITES_PLAN_GRATIS[recurso];
   }
 
+  private zonaDe(idNegocio: string, manager?: EntityManager): Promise<string> {
+    return leerZonaHoraria(manager ? manager.getRepository(Negocio) : this.negocioRepo, idNegocio);
+  }
+
   async contar(
     recurso: RecursoLimitado,
     idNegocio: string,
@@ -124,21 +131,29 @@ export class LimitesPlanService {
           where: { idNegocio, activo: true },
         });
       case 'reservas': {
-        // Mes calendario en UTC: la cuota es una franja gruesa (20/mes),
-        // no algo sensible a unas horas de diferencia con la hora local
-        // de Costa Rica — no vale la pena la complejidad de convertir a
-        // límites de mes en hora CR para esto.
-        const ahora = new Date();
-        const inicioDeMes = new Date(Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), 1));
+        // Mes calendario en la zona del NEGOCIO (Bloque 5): antes era en UTC,
+        // y en Costa Rica el mes "cambiaba" el último día a las 18:00.
+        //
+        // Las canceladas NO cuentan (decisión del grupo, Bloque 4 punto 4.4):
+        // cancelar libera el cupo. Se cuenta por `creado_en`, así que
+        // reprogramar (que solo cambia la hora) no la cuenta dos veces. Esta
+        // misma función alimenta el límite (asegurarDentroDelLimite) y el
+        // indicador de uso de la pantalla de Suscripción.
+        const zona = await this.zonaDe(idNegocio, manager);
+        const inicioDeMes = inicioDelMesActual(new Date(), zona);
         return (manager ? manager.getRepository(Reserva) : this.reservaRepo).count({
-          where: { idNegocio, creadoEn: MoreThanOrEqual(inicioDeMes) },
+          where: {
+            idNegocio,
+            creadoEn: MoreThanOrEqual(inicioDeMes),
+            estado: Not(EstadoReserva.CANCELADA),
+          },
         });
       }
       case 'mensajesChatbot': {
-        const ahora = new Date();
-        const inicioDeHoy = new Date(
-          Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), ahora.getUTCDate()),
-        );
+        // Día calendario en la zona del negocio (Bloque 5). Solo cambia el
+        // corte del día; el límite (10) es el mismo.
+        const zona = await this.zonaDe(idNegocio, manager);
+        const inicioDeHoy = inicioDelDiaActual(new Date(), zona);
         return (manager ? manager.getRepository(MensajeChatbot) : this.mensajeChatbotRepo).count({
           where: { idNegocio, creadoEn: MoreThanOrEqual(inicioDeHoy) },
         });

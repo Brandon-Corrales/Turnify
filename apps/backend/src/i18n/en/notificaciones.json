@@ -4,5 +4,7 @@
   "CANCELACION_ASUNTO": "Booking cancelled",
   "CANCELACION_TEXTO": "Your \"{nombreServicio}\" appointment on {fechaHoraTexto} has been cancelled.",
   "RECORDATORIO_ASUNTO": "Appointment reminder",
-  "RECORDATORIO_TEXTO": "This is a reminder of your \"{nombreServicio}\" appointment on {fechaHoraTexto}."
+  "RECORDATORIO_TEXTO": "This is a reminder of your \"{nombreServicio}\" appointment on {fechaHoraTexto}.",
+  "REPROGRAMACION_ASUNTO": "Booking rescheduled",
+  "REPROGRAMACION_TEXTO": "Your \"{nombreServicio}\" appointment has been rescheduled to {fechaHoraTexto}."
 }

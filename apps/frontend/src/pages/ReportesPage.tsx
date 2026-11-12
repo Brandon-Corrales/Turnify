@@ -20,10 +20,12 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Boton } from '@/components/ui';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { negociosApi } from '@/lib/negocios-api';
+import { rangoPeriodo, type Periodo } from '@/lib/periodo-reportes';
+import { useMonedaNegocio, useZonaHorariaNegocio } from '@/lib/use-zona-negocio';
+import { formatearDinero } from '@/lib/dinero';
 import { reportesApi, type ResumenReportes } from '@/lib/reportes-api';
 import { crearEtiquetaEstadoReserva, type EstadoReserva } from '@/lib/reservas-api';
-
-type Periodo = 'esteMes' | 'mesPasado' | 'ultimos3Meses';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
 
 function crearEtiquetaPeriodo(t: TFunction): Record<Periodo, string> {
   return {
@@ -39,36 +41,6 @@ const COLOR_ESTADO: Record<EstadoReserva, string> = {
   cancelada: '#dc2626',
   ausente: '#64748b',
 };
-
-function rangoDe(periodo: Periodo): { desde: string; hasta: string } {
-  const ahora = new Date();
-  let inicioMes = ahora.getUTCMonth();
-  let anio = ahora.getUTCFullYear();
-  let meses = 1;
-
-  if (periodo === 'mesPasado') {
-    inicioMes -= 1;
-  } else if (periodo === 'ultimos3Meses') {
-    inicioMes -= 2;
-    meses = 3;
-  }
-  if (inicioMes < 0) {
-    inicioMes += 12;
-    anio -= 1;
-  }
-
-  const desde = new Date(Date.UTC(anio, inicioMes, 1));
-  const hasta = new Date(Date.UTC(anio, inicioMes + meses, 0, 23, 59, 59, 999));
-  return { desde: desde.toISOString(), hasta: hasta.toISOString() };
-}
-
-function formatearColones(monto: number): string {
-  return new Intl.NumberFormat('es-CR', {
-    style: 'currency',
-    currency: 'CRC',
-    maximumFractionDigits: 0,
-  }).format(monto);
-}
 
 function formatearDiaCorto(iso: string, idioma: string): string {
   // `iso` es una fecha sin hora (ej. "2026-09-28") que devuelve el backend:
@@ -99,8 +71,11 @@ function descargarCsv(resumen: ResumenReportes, t: TFunction): void {
 
 export default function ReportesPage() {
   const { t, i18n } = useTranslation();
+  useTituloPagina(t('titulos.reportes'));
   const [periodo, setPeriodo] = useState<Periodo>('esteMes');
-  const { desde, hasta } = rangoDe(periodo);
+  const zona = useZonaHorariaNegocio();
+  const moneda = useMonedaNegocio();
+  const { desde, hasta } = rangoPeriodo(periodo, zona);
   const etiquetaPeriodo = useMemo(() => crearEtiquetaPeriodo(t), [t]);
   const etiquetaEstado = useMemo(() => crearEtiquetaEstadoReserva(t), [t]);
 
@@ -222,7 +197,7 @@ export default function ReportesPage() {
                   <Coins className="h-5 w-5" aria-hidden="true" />
                 </div>
                 <p className="mt-3 text-2xl font-semibold text-slate-900 dark:text-white">
-                  {formatearColones(resumenQuery.data.ingresosEstimados)}
+                  {formatearDinero(resumenQuery.data.ingresosEstimados, moneda, i18n.language)}
                 </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   {t('dashboard.ingresosEstimados')}
@@ -255,7 +230,9 @@ export default function ReportesPage() {
                     {t('reportes.sinReservasPeriodo')}
                   </p>
                 ) : (
-                  <div className="mt-4 h-64">
+                  <div className="mt-4 h-64 text-slate-600 dark:text-slate-300">
+                    {/* 1.1: texto de los ejes con currentColor (recharts usa #666 por
+                        defecto: 5.74:1 en claro y menos en oscuro). */}
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={datosBarras}>
                         <CartesianGrid
@@ -264,10 +241,13 @@ export default function ReportesPage() {
                         />
                         <XAxis
                           dataKey="fecha"
-                          tick={{ fontSize: 11 }}
+                          tick={{ fontSize: 11, fill: 'currentColor' }}
                           interval="preserveStartEnd"
                         />
-                        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                        <YAxis
+                          allowDecimals={false}
+                          tick={{ fontSize: 11, fill: 'currentColor' }}
+                        />
                         <Tooltip />
                         <Bar dataKey="reservas" fill="#4f46e5" radius={[4, 4, 0, 0]} />
                       </BarChart>
@@ -300,7 +280,15 @@ export default function ReportesPage() {
                           ))}
                         </Pie>
                         <Tooltip />
-                        <Legend wrapperStyle={{ fontSize: 12 }} />
+                        {/* 1.1: recharts pinta el texto de la leyenda con el color de
+                            la serie (ámbar ~3.2:1 sobre blanco). El color queda en
+                            el marcador y el texto va en gris de texto. */}
+                        <Legend
+                          wrapperStyle={{ fontSize: 12 }}
+                          formatter={(valor) => (
+                            <span className="text-slate-700 dark:text-slate-200">{valor}</span>
+                          )}
+                        />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>

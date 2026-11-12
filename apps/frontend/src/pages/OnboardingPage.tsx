@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Boton, SkeletonText, useToast } from '@/components/ui';
 import { negociosApi } from '@/lib/negocios-api';
@@ -9,6 +9,11 @@ import { serviciosApi } from '@/lib/servicios-api';
 import { ApiError } from '@/lib/api';
 import { crearEtiquetaTipoNegocio } from '@/lib/tipo-negocio';
 import { ESPACIO_INFERIOR_WIDGETS } from '@/components/layout/espacio-widgets';
+import { SelectorZonaHoraria } from '@/components/negocio/SelectorZonaHoraria';
+import { SelectorMoneda } from '@/components/negocio/SelectorMoneda';
+import { monedaOPorDefecto } from '@/lib/dinero';
+import { zonaOPorDefecto } from '@/lib/fecha-negocio';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
 
 /**
  * Precio sugerido de arranque para los servicios creados desde una
@@ -27,9 +32,13 @@ const PRECIO_SUGERIDO_DEFECTO = 5000;
  */
 export default function OnboardingPage() {
   const { t } = useTranslation();
+  useTituloPagina(t('titulos.onboarding'));
   const navigate = useNavigate();
   const mostrarToast = useToast();
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
+  const [zonaElegida, setZonaElegida] = useState<string | null>(null);
+  const [monedaElegida, setMonedaElegida] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: negocio, isLoading: cargandoNegocio } = useQuery({
     queryKey: ['negocio-mi-negocio'],
@@ -42,8 +51,19 @@ export default function OnboardingPage() {
     enabled: Boolean(negocio) && negocio!.tipoNegocio !== 'otro',
   });
 
+  // Bloque 5, punto 5.1: la zona se elige aquí (por defecto Costa Rica) y se
+  // guarda al continuar, antes de crear los servicios.
+  const zonaGuardada = zonaOPorDefecto(negocio?.zonaHoraria);
+  const zona = zonaElegida ?? zonaGuardada;
+  const monedaGuardada = monedaOPorDefecto(negocio?.moneda);
+  const moneda = monedaElegida ?? monedaGuardada;
+
   const crearSeleccionados = useMutation({
     mutationFn: async () => {
+      if (zona !== zonaGuardada || moneda !== monedaGuardada) {
+        await negociosApi.actualizarMiNegocio({ zonaHoraria: zona, moneda });
+        await queryClient.invalidateQueries({ queryKey: ['negocios', 'mi-negocio'] });
+      }
       const elegidas = plantillas.filter((p) => seleccionados.has(p.idPlantilla));
       await Promise.all(
         elegidas.map((plantilla) =>
@@ -90,7 +110,7 @@ export default function OnboardingPage() {
   );
 
   return (
-    <div
+    <main
       className={`flex min-h-screen items-center justify-center bg-slate-50 px-4 pt-10 dark:bg-slate-900 ${ESPACIO_INFERIOR_WIDGETS}`}
     >
       <div className="w-full max-w-lg rounded-xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
@@ -102,6 +122,23 @@ export default function OnboardingPage() {
             ? t('onboarding.subtituloConNegocio', { vertical: etiquetaVertical })
             : t('onboarding.cargandoNegocio')}
         </p>
+
+        {negocio && (
+          <div className="mt-6">
+            <SelectorZonaHoraria
+              value={zona}
+              onChange={setZonaElegida}
+              hint={t('negocio.zonaHorariaAyuda')}
+            />
+            <div className="mt-4">
+              <SelectorMoneda
+                value={moneda}
+                onChange={setMonedaElegida}
+                hint={t('negocio.monedaAyuda')}
+              />
+            </div>
+          </div>
+        )}
 
         <div className="mt-6">
           {cargando && <SkeletonText lineas={5} />}
@@ -147,6 +184,6 @@ export default function OnboardingPage() {
             : t('onboarding.crearYContinuar', { n: seleccionados.size })}
         </Boton>
       </div>
-    </div>
+    </main>
   );
 }

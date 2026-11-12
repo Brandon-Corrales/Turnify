@@ -34,6 +34,8 @@
     "idioma": "Idioma",
     "cambiarATemaClaro": "Cambiar a tema claro",
     "cambiarATemaOscuro": "Cambiar a tema oscuro",
+    "abrirNavegacion": "Abrir navegación",
+    "navegacionPrincipal": "Navegación principal",
     "anterior": "Anterior",
     "siguiente": "Siguiente",
     "paginaDe": "Página {{actual}} de {{total}}"
@@ -43,6 +45,7 @@
     "correoObligatorio": "El correo es obligatorio",
     "correoInvalido": "Correo inválido",
     "soloLetras": "Solo se permiten letras, espacios, apóstrofes y guiones",
+    "telefonoInvalido": "El número no es válido para el país elegido.",
     "soloNumeros": "Solo se permiten números",
     "contrasenaObligatoria": "La contraseña es obligatoria",
     "minimo2Caracteres": "Mínimo 2 caracteres",
@@ -133,7 +136,7 @@
     "planGratisSubtitulo": "Para empezar a probar Turnify",
     "planGratisUsuarios": "Hasta {{n}} usuario (admin)",
     "planGratisServicios": "Hasta {{n}} servicios activos",
-    "planGratisReservas": "Hasta {{n}} reservas por mes",
+    "planGratisReservas": "Hasta {{n}} reservas por mes (las canceladas no cuentan)",
     "planGratisChatbot": "Hasta {{n}} mensajes al chatbot/día",
     "planGratisEmail": "Notificaciones por correo electrónico",
     "planGratisWhatsapp": "Notificaciones por WhatsApp",
@@ -183,9 +186,49 @@
     "sinCitasEsteDia": "No hay citas este día.",
     "errorCitasDelDia": "No se pudieron cargar las citas de este día. Intenta de nuevo más tarde."
   },
+  "negocio": {
+    "zonaHorariaCampo": "Zona horaria del negocio",
+    "zonaHorariaAyuda": "Las horas del calendario, del horario semanal, de la reserva pública y de los avisos a tus clientes se leen en esta zona.",
+    "zonaHorariaAyudaCambio": "Cambiarla no mueve las reservas ya creadas (cada una conserva su hora real); el horario semanal se empieza a leer en la zona nueva.",
+    "preferenciasTitulo": "Zona horaria y moneda",
+    "monedaCampo": "Moneda del negocio",
+    "monedaAyuda": "Los precios de tus servicios, los ingresos y la reserva pública se muestran en esta moneda. Cambiarla no convierte los montos guardados.",
+    "guardar": "Guardar",
+    "guardado": "Cambios guardados",
+    "errorGuardar": "No se pudieron guardar los cambios."
+  },
+  "telefono": {
+    "pais": "País del teléfono"
+  },
+  "titulos": {
+    "landing": "Agenda de citas para tu negocio",
+    "login": "Iniciar sesión",
+    "registro": "Registrar negocio",
+    "inicio": "Inicio",
+    "onboarding": "Primeros pasos",
+    "calendario": "Calendario",
+    "reservas": "Reservas",
+    "clientes": "Clientes",
+    "servicios": "Servicios",
+    "notificaciones": "Notificaciones",
+    "reportes": "Reportes",
+    "configuracion": "Configuración",
+    "suscripcion": "Suscripción",
+    "suscripcionExito": "Pago completado",
+    "suscripcionCancelada": "Pago cancelado",
+    "reservar": "Reservar",
+    "reservarEn": "Reservar en {{nombre}}",
+    "noEncontrado": "Página no encontrada"
+  },
   "suscripcion": {
     "titulo": "Tu suscripción",
     "subtitulo": "Compara los planes y actualiza cuando quieras.",
+    "usoTitulo": "Uso de este mes",
+    "usoReservas": "{{usadas}} de {{limite}} reservas este mes",
+    "usoReservasSinLimite": "{{usadas}} reservas este mes, sin límite en tu plan",
+    "usoAyuda": "Cuentan las reservas creadas este mes. Las canceladas no cuentan: cancelar una libera su cupo.",
+    "usoAlcanzado": "Llegaste al límite del mes. Cancelar una reserva libera su cupo, o actualiza a un plan de pago.",
+    "usoError": "No se pudo cargar el uso del mes.",
     "tuPlanActual": "Tu plan actual",
     "botonActualizar": "Actualizar a Plan de Pago",
     "redirigiendo": "Redirigiendo a la pasarela de pago…",
@@ -263,6 +306,7 @@
     "separadorHoras": "a"
   },
   "reservaPublica": {
+    "notaZonaHoraria": "Los horarios están en la hora del negocio: {{zona}}.",
     "pasoServicio": "Servicio",
     "pasoHorario": "Horario",
     "pasoTusDatos": "Tus datos",
@@ -289,6 +333,10 @@
     "confirmarReserva": "Confirmar reserva"
   },
   "calendario": {
+    "botonHoy": "Hoy",
+    "botonMes": "Mes",
+    "botonSemana": "Semana",
+    "botonLista": "Agenda",
     "citaProgramada": "Cita programada",
     "filtrarPorEmpleado": "Filtrar por empleado",
     "todosLosEmpleados": "Todos los empleados",
@@ -330,7 +378,7 @@
     "clienteCreadoSinReserva": "El cliente se creó, pero la reserva no",
     "errorCrearCliente": "No se pudo crear el cliente",
     "limiteTitulo": "Llegaste al límite de reservas del mes del Plan Gratis",
-    "limiteDescripcion": "El Plan Gratis permite hasta 20 reservas por mes. Actualiza a un plan de pago para seguir reservando."
+    "limiteDescripcion": "El Plan Gratis permite hasta 20 reservas por mes (las canceladas no cuentan). Actualiza a un plan de pago para seguir reservando."
   },
   "clientes": {
     "subtitulo": "Gestiona la base de clientes de tu negocio.",
@@ -378,7 +426,7 @@
     "nombreServicio": "Nombre del servicio",
     "descripcion": "Descripción",
     "duracionMinutos": "Duración (minutos)",
-    "precio": "Precio (₡)",
+    "precio": "Precio ({{simbolo}})",
     "colorCalendario": "Color en el calendario",
     "servicioActualizado": "Servicio actualizado",
     "servicioCreado": "Servicio creado",
@@ -408,7 +456,7 @@
   },
   "notificaciones": {
     "titulo": "Notificaciones",
-    "subtitulo": "Historial de confirmaciones, cancelaciones y recordatorios enviados a tus clientes.",
+    "subtitulo": "Historial de confirmaciones, reprogramaciones, cancelaciones y recordatorios enviados a tus clientes.",
     "canalesTitulo": "Canales de recordatorios",
     "canalCorreo": "Correo electrónico — siempre disponible",
     "canalWhatsapp": "WhatsApp —",
@@ -424,6 +472,7 @@
     "tipoConfirmacion": "Confirmación",
     "tipoCancelacion": "Cancelación",
     "tipoRecordatorio": "Recordatorio",
+    "tipoReprogramacion": "Reprogramación",
     "canalEmail": "email",
     "canalWhatsappCorto": "WhatsApp",
     "canalSms": "SMS",
@@ -431,6 +480,7 @@
     "estadoEntregada": "entregada",
     "estadoPendiente": "pendiente",
     "estadoFallida": "fallida",
+    "estadoAnulada": "anulada",
     "intentos": "Intentos: {{n}}",
     "ayudaDominioSinVerificar": "Mientras el correo se envíe con el remitente de prueba del proveedor (Resend, sin dominio propio verificado), solo se entrega a la dirección dueña de esa cuenta. A cualquier otro destinatario el proveedor lo rechaza: la notificación queda pendiente, se reintenta hasta 3 veces y el motivo aparece en el historial.",
     "motivo": "Motivo:",
@@ -442,7 +492,9 @@
       "REBOTE_PERMANENTE": "la dirección de correo rechazó el mensaje (rebote permanente)",
       "REBOTE_TEMPORAL": "el servidor del destinatario rechazó el mensaje temporalmente (rebote)",
       "ENTREGA_DEMORADA": "entrega demorada; el proveedor sigue intentando",
-      "MARCADO_COMO_SPAM": "el destinatario lo marcó como spam"
+      "MARCADO_COMO_SPAM": "el destinatario lo marcó como spam",
+      "REPROGRAMADA": "la reserva se reprogramó antes del envío; este aviso tenía la hora anterior y no se envió",
+      "CANCELADA": "la reserva se canceló antes del envío; este aviso no se envió"
     }
   }
 }

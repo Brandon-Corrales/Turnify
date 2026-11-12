@@ -3743,3 +3743,208 @@ resets ni operaciones destructivas sobre Supabase; la restricción
     5. Modificación de las reglas de cálculo en `LimitesPlanService` para decidir si las reservas no confirmadas consumen o no la cuota del Plan Gratis.
   - *Impacto en UX y conversión*: Añadir fricción de confirmación obligatoria por correo reduce severamente la tasa de conversión en reservas espontáneas para pymes.
   - *Recomendación*: Se recomienda mantener la reserva directa con notificación inmediata de confirmación, mitigando bots y spam mediante el honeypot invisible y el rate limiting por correo/IP ya implementados en el Bloque 3.
+
+## Bloque 6 — Producción, pruebas y dependencias (rama `brenda`, 11/11/2026)
+- **6.1 Base de pruebas aislada** ✅: servicio `postgres-test` en `docker-compose.yml` (perfil `test`, puerto 5433, datos en tmpfs), `npm run db:test:up` / `db:test:down`, `TEST_DATABASE_URL` en `.env.example`. `npm run test:integration` (config propia `vitest.integration.config.mts`) y `npm run test:e2e` aplican las migraciones y **se niegan a correr** si falta `TEST_DATABASE_URL` o su host no es local; `bootstrapIntegrationApp` vuelve a comprobar la conexión efectiva. En pruebas, la app usa la base local aunque el `.env` tenga Supabase, y las claves de Resend/WhatsApp/Stripe/Groq quedan vacías. El E2E levanta backend (3100) y frontend (5174) propios. La config unitaria excluye `*.integration.spec.ts`. **Primera ejecución real**: integración 6/6 suites, 32/32 pruebas; E2E 1/1. Fallas encontradas, ambas defectos de las pruebas (corregidos): contraseña `Turnify123!` de 11 caracteres (la política del Bloque 3 exige 12) y nombre de cliente con dígitos en el E2E. Después apareció un tercer defecto del E2E, que dependía de la hora: elegía un horario de HOY con disponibilidad de 00:00 a 23:00, así que fallaba entre las 22:30 y la medianoche de Costa Rica. Ahora lleva el wizard a la fecha de mañana (verificado a las 22:57).
+- **6.2 CI** ✅ local / NO VERIFICADO en GitHub: trabajos `integration` y `e2e` en `ci.yml` con PostgreSQL de servicio y JWT ficticios. Verificado con los mismos comandos en una copia limpia sin `.env`.
+- **6.3 SSL** ✅: `database/opciones-conexion.ts` (app y CLI). `DB_SSL_CA` o `DB_SSL_CA_PATH` validan CA y host (verify-full); sin ellas, comportamiento anterior. Verificado contra un Postgres local con SSL y CA propia, y `SELECT 1` de solo lectura a Supabase sin CA.
+- **6.4 Migraciones y ambientes** ✅: i18n `watch` solo en desarrollo; `migration:show`; `MIGRATIONS_RUN_ON_START` (apagado por defecto; las migraciones ahora se compilan en `dist`); aviso en el log por ambiente cruzado; README con tabla de ambientes, procedimiento manual de migraciones y lo que falta saber de respaldos.
+- **6.5 Redis** ⏸ NO HECHO: pendiente de decisión (el adaptador de Socket.IO va en `main.ts`, Bloque 3, o en los gateways del chatbot, Bloque 8; el contexto lo marca opcional).
+- **6.6 Dependencias** ✅: `npm audit --omit=dev` 9 (4 altas, 5 moderadas) → 3 moderadas. `npm audit fix` sin `--force` + zod del backend 3→4.6.7 (versión mayor, commit aparte). Quedan typeorm/glob/minimatch: solo se corrigen con TypeORM 1.x (mayor); glob solo resuelve rutas de la configuración, no datos de usuarios. Completo: 21 → 12 (las otras 9 son eslint/typescript-eslint, solo desarrollo).
+- **6.7 Lint** ✅: backend 46 → 1 y frontend 3 → 1 advertencias. Las dos restantes son del Bloque 3 (no se tocaron).
+- **6.8 render.yaml** — no se creó: no hay datos del panel de Render.
+
+**Migraciones nuevas del Bloque 6: ninguna.** No se ejecutó nada contra Supabase salvo un `SELECT 1` de solo lectura. El orden global sigue siendo: migraciones del Bloque 4 y después las del Bloque 5.
+
+Validación final: lint y typecheck de ambos, unitarias backend 295/295 y frontend 43/43, builds de ambos, integración 32/32 y E2E 1/1 contra la base local.
+
+## Bloque 4 — Notificaciones y reglas de negocio (rama `brenda`, 11–12/11/2026)
+- **4.1 Recordatorios duplicados** ✅ (`2c635eb`). **Causa raíz**: el cron de recordatorios hacía "buscar si existe" y después INSERT, sin restricción única. Render y los backends locales del equipo usan la MISMA base y `@Cron` se alinea al reloj (:00, :10…), así que en el mismo tick dos procesos pasaban el chequeo y ambos insertaban. Evidencia (SELECT de solo lectura en producción): 47 grupos y 97 filas, **todos** `recordatorio` (0 confirmaciones o cancelaciones), 44 pares y 3 tríos, mediana de 0,19 s entre las filas de un grupo, 85 de 97 creadas en minutos múltiplos de 10 (65 en los primeros 10 s). Los tríos implican 3 procesos a la vez. El hallazgo 5 del Seguimiento #3 ("había un solo proceso") miraba solo la máquina local. **Corrección**: `INSERT … ON CONFLICT DO NOTHING` contra el índice único `UQ_notificaciones_reserva_tipo_fecha (id_reserva, tipo, fecha_hora_reserva)`. **Clave**: `(id_reserva, tipo)` no alcanzaba, porque una reserva reprogramada necesita recordatorio de la hora nueva y puede reprogramarse más de una vez; por eso se agregó `fecha_hora_reserva` (decisión de Brenda). Migración `NotificacionClaveUnica1794461165638` y simulación `src/database/simulaciones/1794461165638-NotificacionClaveUnica.sql` (`npm run migration:simular -- <archivo>`, transacción READ ONLY). Verificado en el PostgreSQL local de pruebas: simulación, `up` (conserva la enviada o la más antigua), el índice rechaza un duplicado, `down` y `up` de nuevo.
+- **4.2 Crons con varias instancias** ✅ (`db25b18`). `procesarPendientes` toma cada notificación con `SELECT … FOR UPDATE SKIP LOCKED` en su propia transacción, que dura lo que dura el envío. Candado en memoria en los dos crons contra el solapamiento en la misma instancia. **Por qué SKIP LOCKED y no un advisory lock**: la documentación de PostgreSQL (cláusula de bloqueo de SELECT) lo indica para tablas tipo cola con varios consumidores; reparte el trabajo en vez de serializarlo y no depende de locks de sesión, que el pooler de Supabase en modo transacción no conserva. Entrega "al menos una vez": si el proceso muere a mitad de un envío, la fila vuelve a pendiente. **Verificado con dos procesos reales** contra el PostgreSQL local: 120 pendientes, 120 envíos, 0 repetidos (60/60). Una prueba que quita el SKIP LOCKED de la simulación falla, así que las pruebas sí detectan el problema.
+- **4.3 Aviso al reprogramar** ✅ (`65838f5`). Tipo nuevo `reprogramacion` con plantillas ES/EN, en el idioma preferido del cliente. Las plantillas de notificación no son por rubro, así que no hubo que crear una por tipo de negocio (ver 4.5). Migración `NotificacionTipoReprogramacion1794463653494`. **Antes**, el recordatorio pendiente quedaba con la hora anterior y, como el cron veía que "ya existía", la hora nueva nunca tenía recordatorio. **Ahora**, al reprogramar, los recordatorios y avisos pendientes con otra hora quedan `fallida` + motivo `REPROGRAMADA` (no hay estado cancelada/anulada; no se borra nada). El worker solo toma pendientes, así que no se reintentan. Si la reserva vuelve a una hora anterior, la fila anulada se reactiva como pendiente en vez de insertar otra. `esFalloReal()` en backend y frontend: las anuladas no cuentan como fallo. Hoy no hay reportes que cuenten fallos; en Notificaciones se ven con la insignia neutra "anulada / voided" y el motivo traducido. Reprogramar a la misma hora no avisa. Verificado con el servicio real contra el PostgreSQL local (T1 → T2 → T1: anula, crea el recordatorio de T2, reactiva el de T1 y envía solo los dos avisos vigentes) y en Chrome (ES/EN, tema claro y oscuro). No se probó el envío real por Resend: las claves estaban vacías en esa sesión.
+- **4.4 Canceladas fuera del límite** ✅ (`9396136`). `LimitesPlanService.contar('reservas')` excluye `cancelada` (se conserva el advisory lock); `GET /suscripciones/uso` usa esa misma función. La pantalla de Suscripción muestra "X de 20 reservas este mes" (progressbar accesible) y los textos de planes, banner y error del backend aclaran que las canceladas no cuentan. Reprogramar no duplica el cupo (se cuenta por `creado_en`). No existe "reactivar" una cancelada (`reprogramar` rechaza canceladas), así que ese caso no aplica. Verificado en Chrome contra la base local en ES/EN: 5 de 20 → cancelar una → 4 de 20.
+- **4.5 Tipo "otro"** ✅ (`adbfbba`) — **la auditoría confundió plantillas**. Las "60 plantillas para 9 tipos" son la tabla `plantillas_servicio` (servicios sugeridos del onboarding: 7+9+7+8+7+5+5+6+6 en producción), no plantillas de notificación. Las notificaciones usan una plantilla genérica por tipo e idioma (`src/i18n/{es,en}/notificaciones.json`) y no dependen del rubro: un negocio "otro" no falla, no se omite ni usa un respaldo, recibe las mismas. Prueba `plantillas-notificacion.spec.ts` sobre los archivos reales. No se agregaron plantillas de servicio para "otro" (decisión de Brenda); el onboarding de "otro" sigue mostrando "sin plantillas", que es lo que hacía.
+- **4.6 Excepciones de disponibilidad** — no se implementó (condición no cumplida). `docs/spec.md` solo nombra `EXCEPCION_DISPONIBILIDAD` en el ER (punto 1) y en la tarjeta "DB: Ajustar diagrama ER final (evaluar tabla EXCEPCION_DISPONIBILIDAD)". No hay tarjeta de backend, API ni pantalla. PROGRESS.md la mantiene como tabla separada ("Decisiones técnicas"). Producción: 0 filas. No se tocó el esquema.
+- **4.7 Planes en producción** — diagnóstico, sin cambios. `GET /suscripciones/planes` devuelve solo `gratis` **por diseño**: `SuscripcionesService.obtenerLimitesPlanes()` publica los límites numéricos del Plan Gratis, y el plan de pago no tiene techo en el código. La tarjeta del plan de pago sale de i18n, no de la base ni de una semilla. No falta ningún dato en producción y no hay migración que ejecutar (las 139 `suscripciones` y los 140 negocios están en `gratis`). Interfaz revisada en Chrome (Suscripción, ES/EN): las dos tarjetas se ven bien. No se tocó Stripe.
+
+- **Cancelar anula los avisos pendientes** ✅ (corregido después, a pedido de Brenda; era un hallazgo fuera de alcance). Al cancelar, los recordatorios y avisos de reprogramación pendientes de la reserva quedan `fallida` + motivo `CANCELADA` (traducido ES/EN, insignia "anulada"). No se reintentan, no cuentan como fallo (`esAnulada()`/`esFalloReal()`) y nunca se reactivan. La confirmación pendiente no se toca. Verificado contra la base local: reserva por la API → cron → cancelar por la API → worker. El recordatorio quedó `fallida/CANCELADA` con 0 reintentos y solo se envió la cancelación. Chrome ES/EN.
+
+**Compatibilidad con el código anterior**: sin ayuda, con las dos migraciones aplicadas el backend anterior (`6e4cd10`) **falla al insertar** cualquier notificación (23502, `fecha_hora_reserva` NOT NULL), y el código nuevo falla sin las migraciones. Render mantiene la instancia vieja atendiendo hasta que la nueva pasa el health check, así que esa ventana existe igual. **Solución aplicada** (decisión de Brenda): `NotificacionClaveUnica` crea el trigger `trg_notificaciones_fecha_hora_reserva` (BEFORE INSERT), que completa `fecha_hora_reserva` desde `reservas.fecha_hora_inicio` cuando el INSERT no la trae. El NOT NULL y el índice único no cambian. Su `down` quita el trigger y la función.
+Verificado en la base local, partiendo del esquema anterior al Bloque 4 con duplicados sembrados: simulación (3 a eliminar) → `migration:run` → **código anterior** (build de `6e4cd10`): confirmación, cron y worker OK, `fecha_hora_reserva` tomada de la reserva, y dos crons anteriores a la vez dejan **un** recordatorio (el segundo recibe 23505) → **código nuevo**: escenario completo de reprogramación OK (el trigger no lo toca) → migración diferida `up`: el código anterior vuelve a fallar con 23502 y el nuevo sigue OK → su `down` restaura el trigger → `down` de las dos migraciones: trigger, función y columna eliminados → `up` otra vez. El `down` también funciona con la diferida ya aplicada (`IF EXISTS`).
+
+**Migraciones nuevas del Bloque 4, en este orden** (ninguna ejecutada en Supabase):
+1. `NotificacionClaveUnica1794461165638` — **riesgo medio, destructiva por diseño**: borra los duplicados (hoy 50 filas = 97 − 47, todas `recordatorio`, 95 de ellas `fallida`), crea el índice único y el trigger de compatibilidad. Antes: respaldo de la tabla `notificaciones` y la simulación (`npm run migration:simular -- 1794461165638-NotificacionClaveUnica.sql`). `down` quita trigger, índice y columna, pero **no** devuelve las filas borradas. Falla con un mensaje claro si queda algún duplicado o alguna fila sin reserva.
+2. `NotificacionTipoReprogramacion1794463653494` — **riesgo bajo**: agrega el valor `reprogramacion` al enum, sin tocar datos. `down` se niega a correr si ya hay filas de ese tipo.
+Después van las migraciones del Bloque 5. El Bloque 6 no creó ninguna.
+
+**Despliegue (orden seguro)**: respaldo → simulación → aplicar las dos migraciones en Supabase → desplegar el backend nuevo en Render. Con el trigger, el backend anterior sigue funcionando en el intervalo, así que el orden ya no tiene ventana de fallos. Los backends locales del equipo con código anterior también siguen funcionando, y el índice único impide sus duplicados.
+
+**Migración diferida — ejecutar solo cuando todos los backends tengan el código nuevo** (Render y todos los locales que apunten a Supabase). **No forma parte del primer despliegue.** `src/database/migraciones-diferidas/1794466222654-NotificacionQuitarTriggerCompatibilidad.ts` quita el trigger y la función, sin tocar datos; su `down` los vuelve a crear. Está fuera de `src/database/migrations/` a propósito: `migration:run` y `MIGRATIONS_RUN_ON_START` cargan solo esa carpeta y la ejecutarían en el primer despliegue. Para aplicarla: `git mv` a `src/database/migrations/`, commit, push y `npm run migration:run` (corre aunque haya migraciones del Bloque 5 con marca de tiempo mayor ya aplicadas). Riesgo: si queda algún backend anterior escribiendo, sus notificaciones vuelven a fallar con 23502.
+
+**Datos creados**: solo en el PostgreSQL local de pruebas (5433, tmpfs): negocio y cuenta "Prueba Notificaciones" y sus reservas. Se borran al bajar el contenedor. En Supabase solo se hicieron SELECT dentro de una transacción READ ONLY.
+
+**Validación final**: unitarias backend 335/335 y frontend 50/50, lint (1 advertencia en cada uno, del Bloque 3), typecheck y build de ambos. No se corrieron integración ni E2E (regla del prompt del bloque).
+
+**Fuera de alcance (registrado, no corregido)**:
+- Si una reserva vuelve a una hora cuyo aviso de reprogramación ya se ENVIÓ (T1 → T2 → T1 → T2), el tercer aviso no sale, porque la clave ya existe. Solo se reactivan las anuladas.
+- La base de conocimiento del chatbot (`chatbot/base-conocimiento.ts`, Bloque 8) describe los estados de Notificaciones y todavía no menciona "anulada" ni el aviso de reprogramación.
+- ~~El mes del límite de reservas se calcula en UTC~~ → corregido en el Bloque 5 (corte en la zona del negocio).
+
+## Bloque 5 — Zona horaria, moneda y teléfono por negocio (rama `brenda`, 12/11/2026)
+- **5.1 Zona horaria** ✅ (`10bc043`). Columna `negocios.zona_horaria` (IANA, por defecto `America/Costa_Rica`), validada con `Intl` sin librería nueva. `common/utils/zona-horaria-negocio.ts` reemplaza el desfase fijo UTC-6 por conversión con `Intl` y horario de verano: hora inexistente de primavera → se corre adelante; hora repetida de otoño → la primera. Se usa en:
+  - disponibilidad y "fuera de horario";
+  - horarios de la reserva pública (antes sumaba minutos a la medianoche: el día del cambio de hora corría todo una hora);
+  - hora escrita en las notificaciones;
+  - reportes por día (`AT TIME ZONE`, a pedido de Brenda);
+  - cortes de mes (límite de reservas) y de día (chatbot; el límite de 10 no cambia), también a pedido de Brenda.
+
+  Frontend: la zona del negocio en `fecha-negocio.ts`, el calendario (`timeZone` de FullCalendar con el plugin `moment-timezone` que ya estaba), inicio, reservas, notificaciones, el período de reportes y la reserva pública, con una nota visible ("Los horarios están en la hora del negocio: New York — hora oriental (UTC−05:00)"). Selector traducido (`<select>` nativo, más de 400 zonas de `Intl`) en el onboarding y en Configuración.
+
+  Verificado contra la base local con dos negocios "Prueba Globalización" (CR y NY):
+  - 09:00 locales = 15:00 UTC en CR, 14:00 UTC en NY y 13:00 UTC el día del cambio de hora;
+  - las 08:00 se rechazan por estar fuera del horario;
+  - una cita a las 19:00 cae el día 13 en Reportes (en UTC era el 14);
+  - la confirmación dice "7:00 p. m." en los dos negocios;
+  - en Chrome, ES y EN: Configuración, calendario semanal, reserva pública con la nota, y el onboarding guarda la zona al continuar.
+- **5.2 Moneda** ✅ (`e2e21e4`). Columna `negocios.moneda` (CRC o USD, por defecto CRC), con validación traducida. `lib/dinero.ts` → `formatearDinero()`:
+  - usa los decimales de `Intl`, pero sin ",00" en montos enteros (opción A del grupo): "₡15 000", "₡15 000,50", "$15.50". Antes CRC se redondeaba a entero;
+  - muestra el símbolo corto (₡, $) en los dos idiomas; con el valor por defecto de `Intl` salía "CRC 15,000" o "USD 15 000".
+
+  Se usa en inicio, servicios (incluida la etiqueta "Precio ($)"), reportes y reserva pública. El "₡0" de los planes de Turnify usa el formateador, siempre en colones. Chatbot: "precio en colones" pasa a "la moneda del negocio" en `base-conocimiento.ts`, y `chatbot.service.ts` agrega una línea de contexto con la moneda (sin esa línea el modelo no podía saberla). Selector en Configuración y onboarding. Verificado en Chrome (ES/EN): el negocio de NY en USD muestra "$15,000.50" (el mismo monto guardado, sin convertir); el de CR sigue en "₡15 000,50".
+- **5.3 Teléfono E.164** ✅ (`8d177fd`).
+  - Librería: `libphonenumber-js` **1.13.15** fija (la 1.13.16 tenía dos días), con los metadatos `min` por defecto. Agrega ~30 kB gzip al chunk `validation` del frontend (612 → 643 kB gzip en total); en el backend no suma paquetes, porque `class-validator` ya la traía.
+  - Formularios de clientes, reserva pública y cliente nuevo del calendario: país con prefijo (Costa Rica +506 por defecto) + número; se envía en E.164. El error está traducido y asociado al campo.
+  - Backend: `@NormalizarTelefono` + `@EsTelefono` en los DTOs de clientes y de reserva pública. Un número sin prefijo se interpreta como de Costa Rica, así que el frontend anterior sigue funcionando.
+  - Los teléfonos guardados no se migran: se aceptan como están y se normalizan al editar. Verificado: "8888-0000" se abre como CR + 88880000.
+  - WhatsApp Cloud API recomienda el "+" y el código de país (documentación oficial de números de teléfono), que es E.164.
+  - Verificado en Chrome (ES/EN): error de número inválido para el país, edición guardada como `+12015550123`, reserva pública guardada como `+50688883333`. El backend rechaza en ES/EN.
+- **5.4 Revisión de constantes** ✅. `grep` de `Costa_Rica`, `-06:00`, `UTC-6`, `₡`, `colones`, `es-CR`, `+506`:
+  - **Legítimo:** los valores por defecto (`ZONA_HORARIA_POR_DEFECTO`, columnas, país del selector), el precio de los planes de Turnify en colones, `es-CR` como locale de formato de la interfaz en español (solo existen ES y EN), el pie "UNA Costa Rica", y ejemplos en comentarios, Swagger y mensajes de validación.
+  - **Pendiente, fuera de los puntos del bloque:** ver la lista de abajo.
+
+**Migraciones nuevas del Bloque 5, en este orden** (ninguna ejecutada en Supabase; van después de las del Bloque 4):
+1. `NegocioZonaHoraria1794466959859` — riesgo bajo: agrega `negocios.zona_horaria` con `DEFAULT 'America/Costa_Rica'`, sin tocar datos. Simulación: `npm run migration:simular -- 1794466959859-NegocioZonaHoraria.sql`.
+2. `NegocioMoneda1794469437426` — riesgo bajo: agrega `negocios.moneda` con `DEFAULT 'CRC'`, sin tocar precios. Simulación: `npm run migration:simular -- 1794469437426-NegocioMoneda.sql`.
+
+`down` quita cada columna. El teléfono no tiene migración (decisión del grupo).
+
+**Compatibilidad con el código anterior durante el despliegue** (probada con el build de `203c86e` contra la base local migrada): registro, edición del negocio, reserva y horarios públicos funcionan, y el negocio que registra queda en `America/Costa_Rica` y `CRC` por los valores por defecto. El frontend anterior contra el backend nuevo: los campos nuevos son opcionales y un teléfono sin prefijo se interpreta como de Costa Rica. Orden seguro: respaldo → simulaciones → migraciones (Bloque 4 y Bloque 5) → desplegar backend → desplegar frontend.
+
+**Datos creados** (solo en el PostgreSQL local de pruebas, 5433, tmpfs; se borran al bajar el contenedor): negocios "Prueba Globalización CR", "Prueba Globalización NY", "Prueba Globalización Viejo 2" (dos, creados por el backend anterior), sus clientes, servicios y reservas. En Supabase no se ejecutó nada.
+
+**Validación final:** unitarias backend 397/397 y frontend 77/77; lint con 1 advertencia en cada uno (Bloque 3); typecheck y build de ambos. No se corrieron integración ni E2E (regla del prompt del bloque).
+
+**Fuera de alcance (registrado, no corregido):**
+- El chatbot cuenta "reservas de hoy" con el día en UTC (`chatbot.service.ts:92`, Bloque 8): desde las 18:00 en Costa Rica ya cuenta las de mañana. Reproducir: abrir el chatbot después de las 18:00 (CR) y preguntar cuántas reservas hay hoy.
+- El teléfono del negocio (registro, Configuración) y el de los usuarios siguen como texto libre; 5.3 pedía solo clientes y reserva pública.
+- Servidor de desarrollo de Vite: después de instalar una dependencia con el servidor corriendo, la primera carga de Clientes mostró la pantalla de error ("Failed to fetch dynamically imported module") hasta reiniciar Vite. No afecta al build de producción.
+
+## Bloque 1 — Accesibilidad y metadatos (rama `brenda`, 12/11/2026)
+**Cómo se midió.** axe-core **4.14.0**, instalado fuera del repo, en Chromium vía el Playwright que ya estaba en `node_modules`. Etiquetas `wcag2a, wcag2aa, wcag2aaa, wcag21a, wcag21aa, wcag22aa` más `best-practice`: sin esta última, axe no ejecuta `landmark-one-main`, `region` ni `heading-order`, que la auditoría sí reportó, y axe DevTools la incluye por defecto. Se midieron las 17 pantallas de la auditoría más las del punto 1.4 (modales de nueva reserva, nuevo cliente y nuevo servicio; asistente público en los pasos 2 y 3; listas con datos), en ES/EN × claro/oscuro: 88 mediciones a 1280 px y otras 88 a 390 px.
+
+Todo contra el PostgreSQL local de pruebas, con las migraciones de los Bloques 4 y 5 aplicadas. Datos "Prueba Accesibilidad": 1 negocio, 3 servicios, 7 clientes (uno Premium), 12 reservas (2 canceladas, 1 reprogramada) y sus notificaciones.
+
+La medición respeta el límite del backend de 60 peticiones/min por IP (Bloque 3); la primera corrida lo superaba y daba pantallas en error por 429. Las reglas AAA que evalúa axe son `color-contrast-enhanced`, `identical-links-same-purpose` y `meta-refresh-no-exceptions`; el resto de AAA quedó en revisión manual (1.5).
+
+- **Línea base:** 0 de 88 mediciones con 0 violaciones.
+  - `color-contrast-enhanced` 1155 nodos, casi todos propios;
+  - `color-contrast` 207;
+  - FullCalendar: `role-img-alt` 16, `aria-allowed-attr` 24 y `label-content-name-mismatch` 40;
+  - `landmark-one-main` y `region` en login, registro, onboarding y reserva pública.
+
+  `heading-order` no se reprodujo en ninguna medición (la auditoría reportó 4 nodos en las tarjetas de planes).
+- **1.1 Contraste** ✅ (`d799113`, `e86e557`).
+  - Tokens recalculados con script: el mínimo ajuste en el mismo tono para ≥7:1 contra todos los fondos donde se usan.
+    - Claro: `primary-600` `#4f46e5`→`#433bc2` (blanco encima 6.28→7.94), `slate-400/500/600`, `secondary-700`, `danger`, `warning`, `amber-600/700`.
+    - Oscuro (`.dark`): `slate-300/400/500`, `primary-300/400`, `secondary-400` y `red-400` más claros.
+  - Ajustes puntuales:
+    - la barra lateral es oscura en los dos temas: `slate-300` y variante `superficie="oscura"` de `ControlesGlobales`;
+    - `dark:text-slate-600`→`400`;
+    - FullCalendar: días de otro mes sin la opacidad 0.3, colores fijos a tokens, texto blanco en el botón activo;
+    - reserva cancelada sin `opacity-70` (ya se distingue por texto, ícono y tachado);
+    - gráficas de Reportes: ejes con `currentColor` y leyenda en gris de texto.
+- **1.2 Íconos del calendario** ✅ (`39958f5`). FullCalendar 6.1.21 dibuja `<span class="fc-icon" role="img">` sin nombre (`index.js:1728`) y no permite nombrarlo. Se usa su opción documentada `buttonIcons: false` (https://legacy.fullcalendar.io/v6/buttonIcons) con `buttonText` Anterior/Siguiente ↔ Previous/Next por i18n. `role-img-alt`: 16 → 0 nodos.
+- **1.3 Estructura** ✅ (`94b2157`). `<main>` en login, registro, onboarding y reserva pública (incluido su estado de error). `landmark-one-main` y `region`: 0.
+  - `aria-prohibited-attr` (incomplete) es de **FullCalendar**: `aria-label` en los `<a>` de encabezado de día y `aria-labelledby` en el harness. No se toca.
+  - También son de FullCalendar: `aria-allowed-attr` (`aria-expanded` en el enlace "+N más", un `<a>` sin rol) y `label-content-name-mismatch` (celdas del mes con `aria-labelledby`).
+- **1.4 Pantallas no medidas en la auditoría** ✅ (`3556369`). Modales, asistente público y listas con datos medidos. La tabla de Notificaciones con scroll horizontal no era alcanzable con teclado (`scrollable-region-focusable`, a 390 px): ahora tiene `tabIndex`, `role=region` con nombre e indicador de foco. **UserWay** (iframe de otro origen): **NO VERIFICADO**.
+- **1.5 AAA sin cobertura de axe** — revisado con script y capturas.
+  - **2.5.5** ✅ en lo sencillo (`d2075f5`), llevado a ≥44×44 px: botones de ícono de Clientes y Servicios, vista lista/cuadrícula, tema e idioma, logo, menú, cerrar sesión, "Iniciar sesión" de la landing, barra de FullCalendar y campos de hora.
+  - **2.5.5 pendiente:**
+    - barras de la gráfica del Inicio (27 px de ancho, 31 días; tienen equivalente con las flechas del día);
+    - eventos y "+N más" de FullCalendar;
+    - casillas de día de Configuración (20 px; la etiqueta del día amplía la zona clicable);
+    - enlaces dentro de texto (exentos).
+  - **2.4.12** foco no oculto: 0 casos en 8 pantallas × 2 anchos, recorriendo 25 elementos con Tab en cada una.
+  - **2.4.13** apariencia del foco: todos los elementos recorridos tienen indicador. El único marcado (campo de hora) era un falso positivo por la transición; su anillo pasó de 1 a 2 px, en `primary-500` (4.46:1).
+  - **3.3.9:** login y registro solo piden correo y contraseña, sin CAPTCHA ni pruebas cognitivas; se puede pegar y autocompletar.
+  - **2.3.3:** `@media (prefers-reduced-motion: reduce)` en `index.css` y `MotionConfig reducedMotion="user"` en `main.tsx`. Revisado en el código; la emulación en Playwright no fue concluyente.
+  - **Nombres traducidos:** `aria-label` "Abrir navegación" y "Navegación principal" estaban fijas en español; ahora van por i18n.
+- **1.6 Título, íconos y meta** ✅ (`b44109a`).
+  - `useTituloPagina`: "Pantalla · Turnify" traducido y actualizado al cambiar de idioma. Verificado: "Iniciar sesión · Turnify" → "Appointment scheduling for your business · Turnify" sin recargar; "Reservar en Prueba Accesibilidad" / "Book at Prueba Accesibilidad".
+  - Íconos generados primero desde `favicon.svg`; luego reemplazados por los del logo oficial (ver abajo).
+  - `manifest.webmanifest`, `theme-color` claro/oscuro, `description`, Open Graph (url `https://turnify-frontend-i0kl.onrender.com`, `site_name`, `locale` es_CR + alternativa en_US) y Twitter. ~~Sin `og:image`~~ → resuelto con el logo oficial (ver "Logo oficial" abajo).
+  - `robots.txt`.
+  - Con `vite preview` todos responden 200 con su tipo (`image/x-icon`, `image/png`, `application/manifest+json`, `text/plain`); las rutas de la SPA siguen dando `index.html`.
+  - **NO VERIFICADO:**
+    - el ícono en la pestaña: la extensión de automatización reemplaza el favicon de las pestañas que controla;
+    - que Render no reescriba `robots.txt`: la regla de la SPA vive en su panel, no en el repo.
+- **1.7 CSP** — **no se dejó**.
+  - Se probó una CSP por `<meta>` con hashes del script de tema/idioma y del preámbulo de React Refresh (solo en desarrollo), más los orígenes de UserWay y `%VITE_API_URL%`.
+  - UserWay, FullCalendar y la API funcionaron, pero **el WebSocket del chatbot quedó bloqueado**: Chrome no autoriza `ws://` a partir del origen `http://`, y el chatbot solo seguía conectado por *polling*. Su origen `ws(s)` no sale de `VITE_API_URL` en el HTML sin tocar `vite.config`; la alternativa `wss:` abierto a cualquier servidor vacía la política.
+  - Además, `script-src eval` en Calendario, Clientes y la reserva pública, probablemente zod 4 probando `new Function` (no rompe, pero ensucia).
+  - Recomendación: ponerla como cabecera en el panel de Render, con el origen `wss://` explícito del backend.
+
+**Medición final, 1280 px** (violations por regla, nodos y origen):
+
+| Pantalla | ES claro | ES oscuro | EN claro | EN oscuro | incomplete (nodos, 4 combinaciones) |
+|---|---|---|---|---|---|
+| landing | 0 | 0 | 0 | 0 | 0 |
+| login | 0 | 0 | 0 | 0 | 0 |
+| registro | 0 | 0 | 0 | 0 | 0 |
+| dashboard | 0 | 0 | 0 | 0 | 20 |
+| onboarding | 0 | 0 | 0 | 0 | 0 |
+| calendario | aria-allowed-attr 3 (FullCalendar); label-content-name-mismatch 5 (FullCalendar) | aria-allowed-attr 3 (FullCalendar); label-content-name-mismatch 5 (FullCalendar) | aria-allowed-attr 3 (FullCalendar); label-content-name-mismatch 5 (FullCalendar) | aria-allowed-attr 3 (FullCalendar); label-content-name-mismatch 5 (FullCalendar) | 32 |
+| reservas | 0 | 0 | 0 | 0 | 0 |
+| servicios | 0 | 0 | 0 | 0 | 0 |
+| configuracion | 0 | 0 | 0 | 0 | 0 |
+| suscripcion | 0 | 0 | 0 | 0 | 0 |
+| suscripcion-exito | 0 | 0 | 0 | 0 | 0 |
+| suscripcion-cancelada | 0 | 0 | 0 | 0 | 0 |
+| dashboard-chatbot | 0 | 0 | 0 | 0 | 24 |
+| reservar | 0 | 0 | 0 | 0 | 0 |
+| modal-nueva-reserva | aria-allowed-attr 3 (FullCalendar); label-content-name-mismatch 5 (FullCalendar) | aria-allowed-attr 3 (FullCalendar); label-content-name-mismatch 5 (FullCalendar) | aria-allowed-attr 3 (FullCalendar); label-content-name-mismatch 5 (FullCalendar) | aria-allowed-attr 3 (FullCalendar); label-content-name-mismatch 5 (FullCalendar) | 36 |
+| modal-nuevo-cliente | 0 | 0 | 0 | 0 | 0 |
+| modal-nuevo-servicio | 0 | 0 | 0 | 0 | 0 |
+| reservar-paso2 | 0 | 0 | 0 | 0 | 0 |
+| reservar-paso3 | 0 | 0 | 0 | 0 | 0 |
+| reportes | 0 | 0 | 0 | 0 | 48 |
+| notificaciones | 0 | 0 | 0 | 0 | 0 |
+| clientes | 0 | 0 | 0 | 0 | 0 |
+
+80 de 88 mediciones con 0 violaciones.
+
+A 390 px: **88 de 88** con 0 violaciones (el calendario usa la vista de lista en móvil). Los "incomplete" restantes son textos SVG de las gráficas y elementos superpuestos (contraste por revisar), `aria-prohibited-attr` de FullCalendar y `target-size` (2.5.8, AA) a 390 px. axe DevTools puede reportar algo distinto: **no se afirma "cumple"**, porque quedan los "incomplete", lo pendiente de 1.5, UserWay y FullCalendar.
+
+**Datos creados** (solo en el PostgreSQL local de pruebas, borrado al terminar): negocio y cuenta "Prueba Accesibilidad" con sus servicios, clientes, reservas y notificaciones. En Supabase no se ejecutó nada.
+
+**Validación final:** unitarias backend 397/397 y frontend 79/79; lint con 1 advertencia en cada uno (Bloque 3); typecheck y build de ambos. Además, cada commit del bloque pasa typecheck y lint por separado. No se corrieron integración ni E2E.
+
+**Fuera de alcance (registrado, no corregido):**
+- Clientes en vista de tarjetas a 390 px (ES/EN): las tarjetas con correos largos desbordan horizontalmente (398 px en un viewport de 390). Ya pasaba antes de este bloque (comprobado con `git stash`).
+- El `Select` compartido pasa `defaultValue` y `value` a la vez; React puede advertirlo en consola.
+
+### Logo oficial (12/11/2026)
+- **Fuente:** `~/Downloads/turnify-icono.png` (1024×1024, índigo `#4f46e5` redondeado con calendario blanco y check). Era la única candidata. Se copió sin modificar a `apps/frontend/public/turnify-logo.png`; el original sigue en Descargas.
+- **Íconos:** es otro diseño que el `favicon.svg` anterior (calendario con puntos), así que el logo pasa a ser la fuente de todos los íconos. No existe un SVG de este logo, así que se usó el PNG y se quitó `favicon.svg`, del `<head>` y del manifest.
+  - Regenerados con `sharp` 0.35.5, fuera del repo (reducción lanczos3 y PNG con paleta): `favicon.ico` 16/32/48 (1.9 KB), `favicon-32` (0.6 KB), `favicon-192` (2.9 KB), `favicon-512` (6.3 KB).
+  - `apple-touch-icon` 180 (1.9 KB) va sobre el índigo del logo: iOS rellena la transparencia con negro y aplica su propia máscara.
+- **En la interfaz:** componente `LogoTurnify` (`alt=""` + `aria-hidden`, decorativo) junto al nombre, en la barra lateral (32 px), el encabezado móvil y la barra superior (28), la landing (28), login y registro (36) y la reserva pública (16). Usa `favicon-192.png`, el mismo archivo del manifest. El onboarding no muestra el nombre "Turnify", así que no se le agregó para no cambiar su diseño.
+- **Open Graph y Twitter:** `og-image.png` de 1200×630 (4.3 KB), con el logo de 440 px centrado sobre el mismo índigo. Lleva `og:image`, su tipo, tamaño y `alt`; `twitter:card` pasa a `summary_large_image`, con `twitter:image` y su `alt`.
+- **Verificado:**
+  - con `vite preview`, cada recurso responde 200 con su tipo (`image/png`, `image/x-icon`, `application/manifest+json`); `/favicon.svg` ahora devuelve el `index.html` de la SPA;
+  - axe (mismas etiquetas que el bloque) en landing, login, registro, panel con y sin chatbot y reserva pública en sus tres pasos, en ES/EN × claro/oscuro, a 1280 y 390 px: **64 de 64 con 0 violaciones**;
+  - 32 capturas en el scratchpad, fuera del repo;
+  - el logo carga en todas las pantallas y no causa desborde a 390 px. El encabezado de la landing ya bajaba a dos líneas a 390 px antes del logo (111 px de alto en los dos casos).
+  - **NO VERIFICADO:** cómo se ve la tarjeta en redes sociales. Necesita la URL pública desplegada, y `og:image` apunta al dominio de Render.
+

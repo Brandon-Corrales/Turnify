@@ -34,6 +34,8 @@
     "idioma": "Language",
     "cambiarATemaClaro": "Switch to light theme",
     "cambiarATemaOscuro": "Switch to dark theme",
+    "abrirNavegacion": "Open navigation",
+    "navegacionPrincipal": "Main navigation",
     "anterior": "Previous",
     "siguiente": "Next",
     "paginaDe": "Page {{actual}} of {{total}}"
@@ -43,6 +45,7 @@
     "correoObligatorio": "Email is required",
     "correoInvalido": "Invalid email",
     "soloLetras": "Only letters, spaces, apostrophes, and hyphens are allowed",
+    "telefonoInvalido": "The number isn't valid for the selected country.",
     "soloNumeros": "Only numbers are allowed",
     "contrasenaObligatoria": "Password is required",
     "minimo2Caracteres": "At least 2 characters",
@@ -133,7 +136,7 @@
     "planGratisSubtitulo": "To start trying out Turnify",
     "planGratisUsuarios": "Up to {{n}} user (admin)",
     "planGratisServicios": "Up to {{n}} active services",
-    "planGratisReservas": "Up to {{n}} bookings per month",
+    "planGratisReservas": "Up to {{n}} bookings per month (cancelled ones don't count)",
     "planGratisChatbot": "Up to {{n}} chatbot messages/day",
     "planGratisEmail": "Email notifications",
     "planGratisWhatsapp": "WhatsApp notifications",
@@ -183,9 +186,49 @@
     "sinCitasEsteDia": "No appointments this day.",
     "errorCitasDelDia": "Couldn't load this day's appointments. Please try again later."
   },
+  "negocio": {
+    "zonaHorariaCampo": "Business time zone",
+    "zonaHorariaAyuda": "Calendar times, the weekly schedule, the public booking page and your clients' notices use this time zone.",
+    "zonaHorariaAyudaCambio": "Changing it doesn't move existing bookings (each keeps its actual time); the weekly schedule starts being read in the new time zone.",
+    "preferenciasTitulo": "Time zone and currency",
+    "monedaCampo": "Business currency",
+    "monedaAyuda": "Your service prices, revenue and the public booking page are shown in this currency. Changing it doesn't convert saved amounts.",
+    "guardar": "Save",
+    "guardado": "Changes saved",
+    "errorGuardar": "The changes couldn't be saved."
+  },
+  "telefono": {
+    "pais": "Phone country"
+  },
+  "titulos": {
+    "landing": "Appointment scheduling for your business",
+    "login": "Log in",
+    "registro": "Register your business",
+    "inicio": "Home",
+    "onboarding": "Getting started",
+    "calendario": "Calendar",
+    "reservas": "Bookings",
+    "clientes": "Clients",
+    "servicios": "Services",
+    "notificaciones": "Notifications",
+    "reportes": "Reports",
+    "configuracion": "Settings",
+    "suscripcion": "Subscription",
+    "suscripcionExito": "Payment completed",
+    "suscripcionCancelada": "Payment cancelled",
+    "reservar": "Book",
+    "reservarEn": "Book at {{nombre}}",
+    "noEncontrado": "Page not found"
+  },
   "suscripcion": {
     "titulo": "Your subscription",
     "subtitulo": "Compare plans and upgrade whenever you're ready.",
+    "usoTitulo": "This month's usage",
+    "usoReservas": "{{usadas}} of {{limite}} bookings this month",
+    "usoReservasSinLimite": "{{usadas}} bookings this month, no limit on your plan",
+    "usoAyuda": "Bookings created this month count. Cancelled bookings don't: cancelling one frees its slot.",
+    "usoAlcanzado": "You've reached this month's limit. Cancelling a booking frees its slot, or upgrade to a paid plan.",
+    "usoError": "Couldn't load this month's usage.",
     "tuPlanActual": "Your current plan",
     "botonActualizar": "Upgrade to Paid Plan",
     "redirigiendo": "Redirecting to the payment gateway…",
@@ -263,6 +306,7 @@
     "separadorHoras": "to"
   },
   "reservaPublica": {
+    "notaZonaHoraria": "Times are shown in the business's time zone: {{zona}}.",
     "pasoServicio": "Service",
     "pasoHorario": "Time",
     "pasoTusDatos": "Your info",
@@ -289,6 +333,10 @@
     "confirmarReserva": "Confirm booking"
   },
   "calendario": {
+    "botonHoy": "Today",
+    "botonMes": "Month",
+    "botonSemana": "Week",
+    "botonLista": "List",
     "citaProgramada": "Scheduled appointment",
     "filtrarPorEmpleado": "Filter by staff",
     "todosLosEmpleados": "All staff",
@@ -330,7 +378,7 @@
     "clienteCreadoSinReserva": "The client was created, but the booking wasn't",
     "errorCrearCliente": "Couldn't create the client",
     "limiteTitulo": "You've reached the Free Plan's monthly bookings limit",
-    "limiteDescripcion": "The Free Plan allows up to 20 bookings per month. Upgrade to a paid plan to keep booking."
+    "limiteDescripcion": "The Free Plan allows up to 20 bookings per month (cancelled ones don't count). Upgrade to a paid plan to keep booking."
   },
   "clientes": {
     "subtitulo": "Manage your business's client base.",
@@ -378,7 +426,7 @@
     "nombreServicio": "Service name",
     "descripcion": "Description",
     "duracionMinutos": "Duration (minutes)",
-    "precio": "Price (₡)",
+    "precio": "Price ({{simbolo}})",
     "colorCalendario": "Calendar color",
     "servicioActualizado": "Service updated",
     "servicioCreado": "Service created",
@@ -408,7 +456,7 @@
   },
   "notificaciones": {
     "titulo": "Notifications",
-    "subtitulo": "History of confirmations, cancellations, and reminders sent to your clients.",
+    "subtitulo": "History of confirmations, reschedules, cancellations, and reminders sent to your clients.",
     "canalesTitulo": "Reminder channels",
     "canalCorreo": "Email — always available",
     "canalWhatsapp": "WhatsApp —",
@@ -424,6 +472,7 @@
     "tipoConfirmacion": "Confirmation",
     "tipoCancelacion": "Cancellation",
     "tipoRecordatorio": "Reminder",
+    "tipoReprogramacion": "Reschedule",
     "canalEmail": "email",
     "canalWhatsappCorto": "WhatsApp",
     "canalSms": "SMS",
@@ -431,6 +480,7 @@
     "estadoEntregada": "delivered",
     "estadoPendiente": "pending",
     "estadoFallida": "failed",
+    "estadoAnulada": "voided",
     "intentos": "Attempts: {{n}}",
     "ayudaDominioSinVerificar": "While emails are sent with the provider's test sender (Resend, without your own verified domain), they're only delivered to the address that owns that account. The provider rejects any other recipient: the notification stays pending, is retried up to 3 times, and the reason shows up in the history.",
     "motivo": "Reason:",
@@ -442,7 +492,9 @@
       "REBOTE_PERMANENTE": "the email address rejected the message (permanent bounce)",
       "REBOTE_TEMPORAL": "the recipient's server temporarily rejected the message (bounce)",
       "ENTREGA_DEMORADA": "delivery delayed; the provider keeps trying",
-      "MARCADO_COMO_SPAM": "the recipient marked it as spam"
+      "MARCADO_COMO_SPAM": "the recipient marked it as spam",
+      "REPROGRAMADA": "the booking was rescheduled before sending; this notice had the previous time and was not sent",
+      "CANCELADA": "the booking was cancelled before sending; this notice was not sent"
     }
   }
 }

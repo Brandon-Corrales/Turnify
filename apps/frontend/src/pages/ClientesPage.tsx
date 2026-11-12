@@ -11,6 +11,10 @@ import { useVistaPreferida } from '@/lib/vista-preferida';
 import { ApiError } from '@/lib/api';
 import { crearClienteSchema, type ClienteFormValues } from '@/lib/validation';
 import { clientesApi, type Cliente } from '@/lib/clientes-api';
+import type { CountryCode } from 'libphonenumber-js';
+import { CampoTelefono } from '@/components/negocio/CampoTelefono';
+import { normalizarTelefono, PAIS_TELEFONO_POR_DEFECTO, separarTelefono } from '@/lib/telefono';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
 
 const LIMITE = 12;
 
@@ -18,6 +22,7 @@ const VALORES_VACIOS: ClienteFormValues = {
   nombreCompleto: '',
   correoElectronico: '',
   telefono: '',
+  paisTelefono: PAIS_TELEFONO_POR_DEFECTO,
   notas: '',
   canalPreferido: 'email',
   idiomaPreferido: 'es',
@@ -26,6 +31,7 @@ const VALORES_VACIOS: ClienteFormValues = {
 
 export default function ClientesPage() {
   const { t } = useTranslation();
+  useTituloPagina(t('titulos.clientes'));
   const [pagina, setPagina] = useState(1);
   const [vista, setVista] = useVistaPreferida('clientes');
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -85,7 +91,11 @@ export default function ClientesPage() {
     reset({
       nombreCompleto: cliente.nombreCompleto,
       correoElectronico: cliente.correoElectronico,
-      telefono: cliente.telefono ?? '',
+      // Acepta los formatos antiguos; se normaliza a E.164 al guardar.
+      ...(() => {
+        const { pais, numero } = separarTelefono(cliente.telefono);
+        return { telefono: numero, paisTelefono: pais };
+      })(),
       notas: cliente.notas ?? '',
       canalPreferido: cliente.canalPreferido,
       idiomaPreferido: cliente.idiomaPreferido,
@@ -96,9 +106,13 @@ export default function ClientesPage() {
 
   const guardarMutation = useMutation({
     mutationFn: (valores: ClienteFormValues) => {
+      const { paisTelefono, ...resto } = valores;
       const payload = {
-        ...valores,
-        telefono: valores.telefono || undefined,
+        ...resto,
+        // El esquema ya validó que sea un número válido para ese país.
+        telefono: valores.telefono?.trim()
+          ? (normalizarTelefono(valores.telefono, paisTelefono as CountryCode) ?? valores.telefono)
+          : undefined,
         notas: valores.notas || undefined,
       };
       return clienteEditando
@@ -182,7 +196,7 @@ export default function ClientesPage() {
           {clientesQuery.data?.data.length === 0 && (
             <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-300 py-12 text-center dark:border-slate-700">
               <UserRound
-                className="h-8 w-8 text-slate-300 dark:text-slate-600"
+                className="h-8 w-8 text-slate-300 dark:text-slate-400"
                 aria-hidden="true"
               />
               <p className="text-sm text-slate-500 dark:text-slate-400">{t('clientes.vacio')}</p>
@@ -321,16 +335,12 @@ export default function ClientesPage() {
             error={errors.correoElectronico?.message}
             {...register('correoElectronico')}
           />
-          <Input
-            label={t('clientes.telefono')}
-            type="tel"
-            maxLength={15}
-            inputMode="numeric"
-            pattern="[0-9]*"
+          <CampoTelefono
+            registroPais={register('paisTelefono')}
+            registroNumero={register('telefono')}
             variante={clienteEditando ? 'editar' : 'crear'}
             hint={t('comun.opcional')}
             error={errors.telefono?.message}
-            {...register('telefono')}
           />
           <div className="grid gap-4 sm:grid-cols-2">
             <Select
@@ -461,7 +471,7 @@ function ClienteCard({
             type="button"
             onClick={onEditar}
             aria-label={t('comun.editarAriaLabel', { nombre: cliente.nombreCompleto })}
-            className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-primary-600 dark:text-slate-400 dark:hover:bg-slate-700"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-primary-600 dark:text-slate-400 dark:hover:bg-slate-700"
           >
             <Pencil className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -470,7 +480,7 @@ function ClienteCard({
               type="button"
               onClick={onDesactivar}
               aria-label={t('comun.desactivarAriaLabel', { nombre: cliente.nombreCompleto })}
-              className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-danger dark:text-slate-400 dark:hover:bg-slate-700"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-danger dark:text-slate-400 dark:hover:bg-slate-700"
             >
               <UserRoundX className="h-4 w-4" aria-hidden="true" />
             </button>

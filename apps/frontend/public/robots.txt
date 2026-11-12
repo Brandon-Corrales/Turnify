@@ -1,0 +1,3 @@
+# Turnify. Las pantallas del panel requieren sesión; la landing y la reserva pública son públicas.
+User-agent: *
+Allow: /

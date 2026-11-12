@@ -24,6 +24,44 @@ export enum MotivoFallo {
   ENTREGA_DEMORADA = 'ENTREGA_DEMORADA',
   /** Webhook `email.complained`: el destinatario lo marcó como spam. */
   MARCADO_COMO_SPAM = 'MARCADO_COMO_SPAM',
+  /**
+   * No es un fallo de envío: la reserva se reprogramó antes de enviar este
+   * aviso, que tenía la hora anterior, y se anuló. Se guarda como FALLIDA
+   * (no hay un estado "anulada") con este motivo: el worker solo toma
+   * PENDIENTE, así que nunca se reintenta, y no debe contarse como fallo.
+   */
+  REPROGRAMADA = 'REPROGRAMADA',
+  /**
+   * Tampoco es un fallo: la reserva se canceló antes de enviar este aviso
+   * (recordatorio o aviso de reprogramación) y se anuló. Mismo tratamiento
+   * que REPROGRAMADA, pero nunca se reactiva: una reserva cancelada no vuelve.
+   */
+  CANCELADA = 'CANCELADA',
+}
+
+/** Motivos que marcan una notificación anulada (FALLIDA sin haber fallado el envío). */
+const MOTIVOS_ANULACION = new Set<string>([MotivoFallo.REPROGRAMADA, MotivoFallo.CANCELADA]);
+
+/** Aviso que no se envió porque la reserva cambió de hora antes (FALLIDA + REPROGRAMADA). */
+export function esAnuladaPorReprogramacion(
+  estado: string,
+  motivo: string | null | undefined,
+): boolean {
+  return estado === 'fallida' && motivo === MotivoFallo.REPROGRAMADA;
+}
+
+/** Aviso anulado por una reprogramación o una cancelación de la reserva. */
+export function esAnulada(estado: string, motivo: string | null | undefined): boolean {
+  return estado === 'fallida' && !!motivo && MOTIVOS_ANULACION.has(motivo);
+}
+
+/**
+ * true solo si el envío falló de verdad. Cualquier conteo o indicador de
+ * fallos debe usar esto, no `estado === 'fallida'`: las anuladas (por una
+ * reprogramación o una cancelación) no son fallos.
+ */
+export function esFalloReal(estado: string, motivo: string | null | undefined): boolean {
+  return estado === 'fallida' && !esAnulada(estado, motivo);
 }
 
 const VALORES = new Set<string>(Object.values(MotivoFallo));

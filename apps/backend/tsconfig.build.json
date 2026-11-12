@@ -1,4 +1,4 @@
 {
   "extends": "./tsconfig.json",
-  "exclude": ["node_modules", "dist", "src/database/seed.ts", "src/database/migrations/**"]
+  "exclude": ["node_modules", "dist", "src/database/seed.ts"]
 }

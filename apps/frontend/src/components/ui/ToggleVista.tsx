@@ -26,7 +26,7 @@ export function ToggleVista({ vista, onCambiar }: ToggleVistaProps) {
         onClick={() => onCambiar('cuadricula')}
         aria-pressed={vista === 'cuadricula'}
         aria-label={t('comun.vistaCuadricula')}
-        className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
+        className={`flex h-11 w-11 items-center justify-center rounded-full transition-colors ${
           vista === 'cuadricula'
             ? 'bg-primary-600 text-white'
             : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
@@ -39,7 +39,7 @@ export function ToggleVista({ vista, onCambiar }: ToggleVistaProps) {
         onClick={() => onCambiar('lista')}
         aria-pressed={vista === 'lista'}
         aria-label={t('comun.vistaLista')}
-        className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
+        className={`flex h-11 w-11 items-center justify-center rounded-full transition-colors ${
           vista === 'lista'
             ? 'bg-primary-600 text-white'
             : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'

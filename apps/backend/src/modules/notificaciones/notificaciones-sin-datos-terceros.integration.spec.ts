@@ -45,7 +45,7 @@ describe('Notificaciones: el motivo de fallo no expone datos de terceros (integr
         correoNegocio: `it-terceros-negocio-${s}@example.com`,
         nombreCompletoAdmin: 'Admin Terceros IT',
         correoAdmin: `it-terceros-admin-${s}@example.com`,
-        contrasena: 'Turnify123!',
+        contrasena: 'Turnify-Pruebas-2026!',
       });
     token = reg.body.tokens.accessToken;
     const auth = { Authorization: `Bearer ${token}` };
@@ -84,7 +84,9 @@ describe('Notificaciones: el motivo de fallo no expone datos de terceros (integr
       where: { idReserva: reserva.body.idReserva },
       relations: { cliente: true },
     });
-    await (app.get(NotificacionesService) as any).enviarUna(notificacion);
+    // Acceso por corchetes al método privado: TypeScript sigue comprobando la
+    // firma, así que un cambio en enviarUna() rompe el typecheck de la prueba.
+    await app.get(NotificacionesService)['enviarUna'](notificacion, repo);
   }, 60_000);
 
   afterAll(async () => {

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Bell, Check, CheckCheck, Clock, Info, Mail, MessageCircle, X } from 'lucide-react';
+import { Ban, Bell, Check, CheckCheck, Clock, Info, Mail, MessageCircle, X } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Boton } from '@/components/ui';
 import { SkeletonTable } from '@/components/ui/Skeleton';
@@ -9,14 +9,18 @@ import { negociosApi } from '@/lib/negocios-api';
 import {
   notificacionesApi,
   type CanalNotificacion,
-  type EstadoNotificacion,
   type TipoNotificacion,
 } from '@/lib/notificaciones-api';
+import { estadoVisible, type EstadoVisibleNotificacion } from '@/lib/estado-notificacion';
+import { formatearFechaHoraEnZona } from '@/lib/fecha-negocio';
+import { useZonaHorariaNegocio } from '@/lib/use-zona-negocio';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
 
 const CLAVE_I18N_TIPO: Record<TipoNotificacion, string> = {
   confirmacion: 'notificaciones.tipoConfirmacion',
   cancelacion: 'notificaciones.tipoCancelacion',
   recordatorio: 'notificaciones.tipoRecordatorio',
+  reprogramacion: 'notificaciones.tipoReprogramacion',
 };
 
 const CLAVE_I18N_CANAL: Record<CanalNotificacion, string> = {
@@ -25,11 +29,12 @@ const CLAVE_I18N_CANAL: Record<CanalNotificacion, string> = {
   sms: 'notificaciones.canalSms',
 };
 
-const CLAVE_I18N_ESTADO: Record<EstadoNotificacion, string> = {
+const CLAVE_I18N_ESTADO: Record<EstadoVisibleNotificacion, string> = {
   enviada: 'notificaciones.estadoEnviada',
   entregada: 'notificaciones.estadoEntregada',
   pendiente: 'notificaciones.estadoPendiente',
   fallida: 'notificaciones.estadoFallida',
+  anulada: 'notificaciones.estadoAnulada',
 };
 
 const ICONO_CANAL: Record<CanalNotificacion, typeof Mail> = {
@@ -38,30 +43,27 @@ const ICONO_CANAL: Record<CanalNotificacion, typeof Mail> = {
   sms: MessageCircle,
 };
 
-const ESTILO_ESTADO: Record<EstadoNotificacion, string> = {
+const ESTILO_ESTADO: Record<EstadoVisibleNotificacion, string> = {
   enviada: 'bg-secondary-50 text-secondary-700 dark:bg-secondary-900/30 dark:text-secondary-400',
   entregada: 'bg-secondary-50 text-secondary-700 dark:bg-secondary-900/30 dark:text-secondary-400',
   pendiente: 'bg-amber-50 text-warning dark:bg-amber-900/30 dark:text-amber-400',
   fallida: 'bg-red-50 text-danger dark:bg-red-900/30 dark:text-red-400',
+  // Neutro: una anulada por reprogramación no es un fallo.
+  anulada: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
 };
 
-const ICONO_ESTADO: Record<EstadoNotificacion, typeof Check> = {
+const ICONO_ESTADO: Record<EstadoVisibleNotificacion, typeof Check> = {
   enviada: Check,
   entregada: CheckCheck,
   pendiente: Clock,
   fallida: X,
+  anulada: Ban,
 };
 
-function formatearFechaHora(iso: string, idioma: string): string {
-  return new Date(iso).toLocaleString(idioma.startsWith('en') ? 'en-US' : 'es-CR', {
-    timeZone: 'America/Costa_Rica',
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
-}
-
 export default function NotificacionesPage() {
+  const zona = useZonaHorariaNegocio();
   const { t, i18n } = useTranslation();
+  useTituloPagina(t('titulos.notificaciones'));
   const [pagina, setPagina] = useState(1);
   const LIMITE = 15;
 
@@ -108,7 +110,7 @@ export default function NotificacionesPage() {
                 className={
                   whatsappHabilitado
                     ? 'h-4 w-4 text-secondary-600 dark:text-secondary-400'
-                    : 'h-4 w-4 text-slate-300 dark:text-slate-600'
+                    : 'h-4 w-4 text-slate-300 dark:text-slate-400'
                 }
                 aria-hidden="true"
               />
@@ -116,7 +118,7 @@ export default function NotificacionesPage() {
                 className={
                   whatsappHabilitado
                     ? 'text-slate-600 dark:text-slate-300'
-                    : 'text-slate-400 dark:text-slate-600'
+                    : 'text-slate-400 dark:text-slate-400'
                 }
               >
                 {t('notificaciones.canalWhatsapp')}{' '}
@@ -142,7 +144,7 @@ export default function NotificacionesPage() {
 
           {notificacionesQuery.data?.data.length === 0 && (
             <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-300 py-12 text-center dark:border-slate-700">
-              <Bell className="h-8 w-8 text-slate-300 dark:text-slate-600" aria-hidden="true" />
+              <Bell className="h-8 w-8 text-slate-300 dark:text-slate-400" aria-hidden="true" />
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 {t('notificaciones.vacio')}
               </p>
@@ -150,7 +152,14 @@ export default function NotificacionesPage() {
           )}
 
           {notificacionesQuery.data && notificacionesQuery.data.data.length > 0 && (
-            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+            <div
+              // 1.4: región con scroll horizontal alcanzable con teclado
+              // (scrollable-region-focusable) y con nombre para el lector.
+              tabIndex={0}
+              role="region"
+              aria-label={t('notificaciones.titulo')}
+              className="overflow-x-auto rounded-xl border border-slate-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:border-slate-700"
+            >
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400">
                   <tr>
@@ -164,7 +173,8 @@ export default function NotificacionesPage() {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {notificacionesQuery.data.data.map((n) => {
                     const IconoCanal = ICONO_CANAL[n.canal];
-                    const IconoEstado = ICONO_ESTADO[n.estado];
+                    const estado = estadoVisible(n);
+                    const IconoEstado = ICONO_ESTADO[estado];
                     return (
                       <tr key={n.idNotificacion} className="bg-white dark:bg-slate-900">
                         <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
@@ -181,10 +191,10 @@ export default function NotificacionesPage() {
                         </td>
                         <td className="px-4 py-3">
                           <span
-                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${ESTILO_ESTADO[n.estado]}`}
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${ESTILO_ESTADO[estado]}`}
                           >
                             <IconoEstado className="h-3 w-3" aria-hidden="true" />
-                            {t(CLAVE_I18N_ESTADO[n.estado])}
+                            {t(CLAVE_I18N_ESTADO[estado])}
                           </span>
                           {/* Categoría del motivo, traducida. El texto crudo del proveedor
                               nunca llega al navegador (puede traer datos de terceros). */}
@@ -205,7 +215,11 @@ export default function NotificacionesPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                          {formatearFechaHora(n.enviadoEn ?? n.programadoPara, i18n.language)}
+                          {formatearFechaHoraEnZona(
+                            n.enviadoEn ?? n.programadoPara,
+                            i18n.language,
+                            zona,
+                          )}
                         </td>
                       </tr>
                     );

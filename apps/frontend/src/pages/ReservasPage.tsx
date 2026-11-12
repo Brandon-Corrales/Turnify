@@ -14,19 +14,16 @@ import {
   type EstadoReserva,
   type Reserva,
 } from '@/lib/reservas-api';
+import { formatearFechaHoraEnZona } from '@/lib/fecha-negocio';
+import { useZonaHorariaNegocio } from '@/lib/use-zona-negocio';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
 
 const LIMITE = 12;
 
-function formatearFechaHora(iso: string, idioma: string): string {
-  return new Date(iso).toLocaleString(idioma.startsWith('en') ? 'en-US' : 'es-CR', {
-    timeZone: 'America/Costa_Rica',
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
-}
-
 export default function ReservasPage() {
+  const zona = useZonaHorariaNegocio();
   const { t, i18n } = useTranslation();
+  useTituloPagina(t('titulos.reservas'));
   const [pagina, setPagina] = useState(1);
   const [estado, setEstado] = useState<EstadoReserva | ''>('');
   const [vista, setVista] = useVistaPreferida('reservas');
@@ -115,7 +112,7 @@ export default function ReservasPage() {
           {reservasQuery.data?.data.length === 0 && (
             <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-300 py-12 text-center dark:border-slate-700">
               <CalendarX2
-                className="h-8 w-8 text-slate-300 dark:text-slate-600"
+                className="h-8 w-8 text-slate-300 dark:text-slate-400"
                 aria-hidden="true"
               />
               <p className="text-sm text-slate-500 dark:text-slate-400">{t('reservas.vacio')}</p>
@@ -158,7 +155,7 @@ export default function ReservasPage() {
                         {reserva.servicio?.nombre ?? '—'}
                       </td>
                       <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                        {formatearFechaHora(reserva.fechaHoraInicio, i18n.language)}
+                        {formatearFechaHoraEnZona(reserva.fechaHoraInicio, i18n.language, zona)}
                       </td>
                       <td className="px-4 py-3">
                         <span
@@ -231,6 +228,7 @@ export default function ReservasPage() {
 }
 
 function ReservaCard({ reserva, onCancelar }: { reserva: Reserva; onCancelar: () => void }) {
+  const zona = useZonaHorariaNegocio();
   const { t, i18n } = useTranslation();
   const etiquetaEstado = useMemo(() => crearEtiquetaEstadoReserva(t), [t]);
   return (
@@ -258,7 +256,7 @@ function ReservaCard({ reserva, onCancelar }: { reserva: Reserva; onCancelar: ()
         )}
       </div>
       <p className="text-sm text-slate-500 dark:text-slate-400">
-        {formatearFechaHora(reserva.fechaHoraInicio, i18n.language)}
+        {formatearFechaHoraEnZona(reserva.fechaHoraInicio, i18n.language, zona)}
       </p>
       <div className="flex flex-wrap items-center gap-2">
         <span

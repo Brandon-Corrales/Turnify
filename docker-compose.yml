@@ -17,5 +17,28 @@ services:
       timeout: 5s
       retries: 10
 
+  # Base de PRUEBAS (Bloque 6, punto 6.1): solo para `test:integration` y
+  # `test:e2e`. Aparte del servicio `postgres` de arriba (otro puerto,
+  # credenciales fijas y sin volumen): los datos viven en memoria (tmpfs) y
+  # se pierden al bajar el contenedor. Solo arranca con el perfil `test`:
+  #   npm run db:test:up   /   npm run db:test:down
+  postgres-test:
+    image: postgres:16-alpine
+    container_name: turnify-postgres-test
+    profiles: ['test']
+    environment:
+      POSTGRES_USER: turnify_test
+      POSTGRES_PASSWORD: turnify_test
+      POSTGRES_DB: turnify_test
+    ports:
+      - '127.0.0.1:5433:5432'
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U turnify_test -d turnify_test']
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
 volumes:
   turnify-postgres-data:

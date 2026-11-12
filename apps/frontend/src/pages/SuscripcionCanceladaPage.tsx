@@ -3,10 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { CircleX } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Boton } from '@/components/ui';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
 
 /** Stripe redirige aquí si el usuario cierra/cancela el Checkout (Test Mode) — la URL exacta de `IniciarCheckoutDto.cancelUrl`. Ningún cambio de plan ocurrió. */
 export default function SuscripcionCanceladaPage() {
   const { t } = useTranslation();
+  useTituloPagina(t('titulos.suscripcionCancelada'));
   const navigate = useNavigate();
 
   return (
