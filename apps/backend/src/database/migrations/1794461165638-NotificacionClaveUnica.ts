@@ -19,8 +19,18 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  *   limpieza quedara algún duplicado o alguna fila sin hora, la migración
  *   falla con un mensaje claro y la transacción se revierte entera.
  *
- * `down` quita el índice y la columna. Las filas borradas NO vuelven: para
- * recuperarlas hace falta el respaldo previo.
+ * - Trigger de compatibilidad `trg_notificaciones_fecha_hora_reserva`
+ *   (BEFORE INSERT): si un INSERT no trae `fecha_hora_reserva` (el backend
+ *   anterior a esta migración no conoce la columna), la toma de
+ *   `reservas.fecha_hora_inicio`. Así, mientras Render o un backend local del
+ *   equipo sigan con el código anterior, sus notificaciones no fallan por el
+ *   NOT NULL, y el índice único igual impide sus duplicados. El código nuevo
+ *   siempre manda la columna, así que el trigger no lo toca. Se quita con
+ *   `src/database/migraciones-diferidas/1794466222654-NotificacionQuitarTriggerCompatibilidad.ts`
+ *   cuando todos los backends tengan el código nuevo (ver PROGRESS.md).
+ *
+ * `down` quita el trigger, el índice y la columna. Las filas borradas NO
+ * vuelven: para recuperarlas hace falta el respaldo previo.
  */
 export class NotificacionClaveUnica1794461165638 implements MigrationInterface {
   name = 'NotificacionClaveUnica1794461165638';
@@ -74,9 +84,36 @@ export class NotificacionClaveUnica1794461165638 implements MigrationInterface {
     await queryRunner.query(
       `CREATE UNIQUE INDEX "UQ_notificaciones_reserva_tipo_fecha" ON "notificaciones" ("id_reserva", "tipo", "fecha_hora_reserva")`,
     );
+
+    // Compatibilidad con el backend anterior (ver comentario de la clase).
+    // Los BEFORE triggers corren antes de verificar el NOT NULL y el índice.
+    await queryRunner.query(
+      `CREATE FUNCTION "notificaciones_completar_fecha_hora_reserva"() RETURNS trigger
+       LANGUAGE plpgsql AS $$
+       BEGIN
+         IF NEW."fecha_hora_reserva" IS NULL THEN
+           SELECT r."fecha_hora_inicio" INTO NEW."fecha_hora_reserva"
+           FROM "reservas" r WHERE r."id_reserva" = NEW."id_reserva";
+         END IF;
+         RETURN NEW;
+       END
+       $$`,
+    );
+    await queryRunner.query(
+      `CREATE TRIGGER "trg_notificaciones_fecha_hora_reserva"
+       BEFORE INSERT ON "notificaciones"
+       FOR EACH ROW EXECUTE FUNCTION "notificaciones_completar_fecha_hora_reserva"()`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    // IF EXISTS: puede haberlo quitado ya la migración diferida.
+    await queryRunner.query(
+      `DROP TRIGGER IF EXISTS "trg_notificaciones_fecha_hora_reserva" ON "notificaciones"`,
+    );
+    await queryRunner.query(
+      `DROP FUNCTION IF EXISTS "notificaciones_completar_fecha_hora_reserva"()`,
+    );
     await queryRunner.query(`DROP INDEX "public"."UQ_notificaciones_reserva_tipo_fecha"`);
     await queryRunner.query(`ALTER TABLE "notificaciones" DROP COLUMN "fecha_hora_reserva"`);
   }
