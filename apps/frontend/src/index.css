@@ -47,7 +47,7 @@
 
   /* Variantes de feedback (Toast/Alert/Banner, punto 7) */
   --color-success: #059669;
-  --color-warning: #d97706;
+  --color-warning: #7b4303; /* 1.1: 7.65:1 sobre amber-50 (antes #d97706, 3.07) */
   --color-danger: #a21c1c; /* 1.1: 7.72:1 sobre blanco (antes #dc2626, 4.83:1) */
   --color-info: #2563eb;
 
@@ -60,6 +60,9 @@
   --color-slate-400: #49525e;
   --color-slate-500: #465265;
   --color-slate-600: #3e4c61; /* 7.95:1 sobre slate-100 (antes #45556c, 6.92) */
+  /* Ámbar usado como texto (Premium, fortaleza de contraseña): >7:1 en claro. */
+  --color-amber-600: #864300;
+  --color-amber-700: #923c00;
 
   --radius-sm: 0.25rem;
   --radius-md: 0.5rem;

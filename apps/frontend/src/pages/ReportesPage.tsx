@@ -230,7 +230,9 @@ export default function ReportesPage() {
                     {t('reportes.sinReservasPeriodo')}
                   </p>
                 ) : (
-                  <div className="mt-4 h-64">
+                  <div className="mt-4 h-64 text-slate-600 dark:text-slate-300">
+                    {/* 1.1: texto de los ejes con currentColor (recharts usa #666 por
+                        defecto: 5.74:1 en claro y menos en oscuro). */}
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={datosBarras}>
                         <CartesianGrid
@@ -239,10 +241,13 @@ export default function ReportesPage() {
                         />
                         <XAxis
                           dataKey="fecha"
-                          tick={{ fontSize: 11 }}
+                          tick={{ fontSize: 11, fill: 'currentColor' }}
                           interval="preserveStartEnd"
                         />
-                        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                        <YAxis
+                          allowDecimals={false}
+                          tick={{ fontSize: 11, fill: 'currentColor' }}
+                        />
                         <Tooltip />
                         <Bar dataKey="reservas" fill="#4f46e5" radius={[4, 4, 0, 0]} />
                       </BarChart>
@@ -275,7 +280,15 @@ export default function ReportesPage() {
                           ))}
                         </Pie>
                         <Tooltip />
-                        <Legend wrapperStyle={{ fontSize: 12 }} />
+                        {/* 1.1: recharts pinta el texto de la leyenda con el color de
+                            la serie (ámbar ~3.2:1 sobre blanco). El color queda en
+                            el marcador y el texto va en gris de texto. */}
+                        <Legend
+                          wrapperStyle={{ fontSize: 12 }}
+                          formatter={(valor) => (
+                            <span className="text-slate-700 dark:text-slate-200">{valor}</span>
+                          )}
+                        />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
