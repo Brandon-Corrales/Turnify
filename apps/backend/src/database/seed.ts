@@ -43,7 +43,9 @@ async function seed() {
     }),
   );
 
-  const contrasenaHash = await bcrypt.hash('Turnify123!', 10);
+  // Contraseña de 15 caracteres que cumple la política NIST (mínimo 12 caracteres,
+  // letras y números, no común y < 72 bytes).
+  const contrasenaHash = await bcrypt.hash('TurnifyDemo123!', 10);
 
   const admin = await usuarioRepo.save(
     usuarioRepo.create({
@@ -107,7 +109,7 @@ async function seed() {
 
   console.log('Seed aplicado:');
   console.log(`  Negocio:  ${negocio.nombre} (${negocio.idNegocio})`);
-  console.log(`  Admin:    ${admin.correoElectronico} / Turnify123!`);
+  console.log(`  Admin:    ${admin.correoElectronico} / TurnifyDemo123!`);
   console.log(`  Servicios: ${servicios.length}`);
 
   await AppDataSource.destroy();

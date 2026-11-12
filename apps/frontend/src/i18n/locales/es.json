@@ -38,7 +38,9 @@
     "navegacionPrincipal": "Navegación principal",
     "anterior": "Anterior",
     "siguiente": "Siguiente",
-    "paginaDe": "Página {{actual}} de {{total}}"
+    "paginaDe": "Página {{actual}} de {{total}}",
+    "reintentar": "Reintentar",
+    "volverAlInicio": "Volver al inicio"
   },
   "validacion": {
     "contrasenaInvalida": "La contraseña debe tener entre 12 y 64 caracteres, una letra y un número",
@@ -496,5 +498,20 @@
       "REPROGRAMADA": "la reserva se reprogramó antes del envío; este aviso tenía la hora anterior y no se envió",
       "CANCELADA": "la reserva se canceló antes del envío; este aviso no se envió"
     }
+  },
+  "auth": {
+    "cerrarSesion": "Cerrar sesión"
+  },
+  "errores": {
+    "paginaNoEncontrada": "Página no encontrada",
+    "paginaNoEncontradaTitulo": "Página no encontrada",
+    "paginaNoEncontradaDescripcion": "La página que buscas no existe o fue movida.",
+    "errorInesperado": "Algo salió mal",
+    "errorInesperadoTitulo": "Algo salió mal",
+    "errorInesperadoDescripcion": "Ocurrió un error inesperado al cargar esta sección. Puedes intentar recargarla.",
+    "errorConexion": "No se pudo conectar con el servidor. Revisa tu conexión a internet.",
+    "errorConexionTitulo": "Problema de conexión",
+    "errorConexionDescripcion": "No se pudo conectar con el servidor. Verifica tu conexión a internet o intenta de nuevo.",
+    "tiempoAgotado": "El servidor tardó demasiado en responder. Intenta de nuevo."
   }
 }
