@@ -120,7 +120,14 @@ describe('ChatbotService', () => {
 
     expect(ctx.negociosService.obtenerMiNegocio).toHaveBeenCalled();
     expect(ctx.serviciosService.listar).toHaveBeenCalled();
-    expect(ctx.reservasService.listar).toHaveBeenCalled();
+    expect(ctx.reservasService.listar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        page: 1,
+        limit: 1,
+        desde: expect.any(String),
+        hasta: expect.any(String),
+      }),
+    );
 
     const systemPrompt = ctx.llm.generarRespuestaStream.mock.calls[0][0] as string;
     expect(systemPrompt).toContain('Barbería Nico');

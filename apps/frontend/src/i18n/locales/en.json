@@ -38,7 +38,9 @@
     "navegacionPrincipal": "Main navigation",
     "anterior": "Previous",
     "siguiente": "Next",
-    "paginaDe": "Page {{actual}} of {{total}}"
+    "paginaDe": "Page {{actual}} of {{total}}",
+    "reintentar": "Retry",
+    "volverAlInicio": "Back to home"
   },
   "validacion": {
     "contrasenaInvalida": "Password must be 12-64 characters, with a letter and a number",
@@ -496,5 +498,20 @@
       "REPROGRAMADA": "the booking was rescheduled before sending; this notice had the previous time and was not sent",
       "CANCELADA": "the booking was cancelled before sending; this notice was not sent"
     }
+  },
+  "auth": {
+    "cerrarSesion": "Log out"
+  },
+  "errores": {
+    "paginaNoEncontrada": "Page not found",
+    "paginaNoEncontradaTitulo": "Page not found",
+    "paginaNoEncontradaDescripcion": "The page you are looking for does not exist or has been moved.",
+    "errorInesperado": "Something went wrong",
+    "errorInesperadoTitulo": "Something went wrong",
+    "errorInesperadoDescripcion": "An unexpected error occurred while loading this section. You can try reloading it.",
+    "errorConexion": "Could not connect to the server. Check your internet connection.",
+    "errorConexionTitulo": "Connection problem",
+    "errorConexionDescripcion": "Could not connect to the server. Check your internet connection or try again.",
+    "tiempoAgotado": "The server took too long to respond. Please try again."
   }
 }

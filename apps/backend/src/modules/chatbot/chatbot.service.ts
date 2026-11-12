@@ -8,6 +8,13 @@ import { ServiciosService } from '../servicios/servicios.service';
 import { ReservasService } from '../reservas/reservas.service';
 import { BASE_CONOCIMIENTO_TURNIFY } from './base-conocimiento';
 import { LLM_CLIENT, LlmClient, MensajeLlm } from './providers/llm-client.interface';
+import {
+  aMomentoLocal,
+  diaSiguiente,
+  inicioDeDiaLocal,
+  inicioDelDiaActual,
+  zonaOPorDefecto,
+} from '../../common/utils/zona-horaria-negocio';
 
 export interface PreguntaChatbot {
   idNegocio: string;
@@ -88,10 +95,13 @@ export class ChatbotService {
     const negocio = await this.negociosService.obtenerMiNegocio();
     const servicios = await this.serviciosService.listar({ page: 1, limit: 1 });
 
-    const inicioHoy = new Date();
-    inicioHoy.setUTCHours(0, 0, 0, 0);
-    const finHoy = new Date();
-    finHoy.setUTCHours(23, 59, 59, 999);
+    const zona = zonaOPorDefecto(negocio.zonaHoraria);
+    const ahora = new Date();
+    const inicioHoy = inicioDelDiaActual(ahora, zona);
+    const momentoHoy = aMomentoLocal(ahora, zona);
+    const finHoy = new Date(
+      inicioDeDiaLocal(diaSiguiente(momentoHoy.fecha), zona).getTime() - 1,
+    );
 
     // Solo para admin/empleado (nunca hay "cliente final" autenticado
     // todavía — ver el comentario largo en la entidad MensajeChatbot).
