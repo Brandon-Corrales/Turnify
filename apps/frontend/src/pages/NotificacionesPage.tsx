@@ -108,7 +108,7 @@ export default function NotificacionesPage() {
                 className={
                   whatsappHabilitado
                     ? 'h-4 w-4 text-secondary-600 dark:text-secondary-400'
-                    : 'h-4 w-4 text-slate-300 dark:text-slate-600'
+                    : 'h-4 w-4 text-slate-300 dark:text-slate-400'
                 }
                 aria-hidden="true"
               />
@@ -116,7 +116,7 @@ export default function NotificacionesPage() {
                 className={
                   whatsappHabilitado
                     ? 'text-slate-600 dark:text-slate-300'
-                    : 'text-slate-400 dark:text-slate-600'
+                    : 'text-slate-400 dark:text-slate-400'
                 }
               >
                 {t('notificaciones.canalWhatsapp')}{' '}
@@ -142,7 +142,7 @@ export default function NotificacionesPage() {
 
           {notificacionesQuery.data?.data.length === 0 && (
             <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-300 py-12 text-center dark:border-slate-700">
-              <Bell className="h-8 w-8 text-slate-300 dark:text-slate-600" aria-hidden="true" />
+              <Bell className="h-8 w-8 text-slate-300 dark:text-slate-400" aria-hidden="true" />
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 {t('notificaciones.vacio')}
               </p>

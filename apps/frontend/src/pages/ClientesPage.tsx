@@ -194,7 +194,7 @@ export default function ClientesPage() {
           {clientesQuery.data?.data.length === 0 && (
             <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-300 py-12 text-center dark:border-slate-700">
               <UserRound
-                className="h-8 w-8 text-slate-300 dark:text-slate-600"
+                className="h-8 w-8 text-slate-300 dark:text-slate-400"
                 aria-hidden="true"
               />
               <p className="text-sm text-slate-500 dark:text-slate-400">{t('clientes.vacio')}</p>

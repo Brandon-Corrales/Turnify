@@ -12,11 +12,11 @@ function ItemPlan({ incluido, texto }: { incluido: boolean; texto: string }) {
       {incluido ? (
         <Check className="mt-0.5 h-4 w-4 shrink-0 text-secondary-600 dark:text-secondary-400" />
       ) : (
-        <X className="mt-0.5 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-600" />
+        <X className="mt-0.5 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-400" />
       )}
       <span
         className={
-          incluido ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-600'
+          incluido ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-400'
         }
       >
         {texto}
@@ -62,7 +62,7 @@ export function TarjetasPlanes({ ctaGratis, ctaPago, planActual }: TarjetasPlane
         {/* Plan Gratis */}
         <div className="relative rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
           {planActual === 'gratis' && (
-            <span className="absolute -top-3 left-6 rounded-full bg-slate-600 px-3 py-0.5 text-xs font-medium text-white dark:bg-slate-500">
+            <span className="absolute -top-3 left-6 rounded-full bg-slate-600 px-3 py-0.5 text-xs font-medium text-white dark:bg-slate-600">
               {t('suscripcion.tuPlanActual')}
             </span>
           )}

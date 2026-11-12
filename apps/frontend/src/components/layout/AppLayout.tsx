@@ -96,7 +96,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                   `group flex items-center gap-3 border-l-4 px-3 py-3 text-sm font-medium transition-all duration-200 ${
                     isActive
                       ? 'border-violet-500 bg-violet-500/10 text-violet-300 shadow-[inset_8px_0_22px_-18px_rgba(167,139,250,0.95),0_0_18px_-12px_rgba(139,92,246,0.9)]'
-                      : 'border-transparent text-slate-400 hover:border-violet-400/50 hover:bg-white/5 hover:text-violet-200'
+                      : 'border-transparent text-slate-300 hover:border-violet-400/50 hover:bg-white/5 hover:text-violet-200'
                   }`
                 }
               >
@@ -104,7 +104,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                   <>
                     <Icon
                       className={`h-5 w-5 transition-colors duration-200 ${
-                        isActive ? 'text-violet-300' : 'text-slate-500 group-hover:text-violet-300'
+                        isActive ? 'text-violet-300' : 'text-slate-300 group-hover:text-violet-300'
                       }`}
                       aria-hidden="true"
                     />
@@ -117,7 +117,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="space-y-4 border-t border-white/10 p-4">
-            <ControlesGlobales />
+            <ControlesGlobales superficie="oscura" />
             <div className="flex items-center justify-between gap-3">
               <span className="min-w-0 truncate text-sm text-slate-300">
                 {usuario?.nombreCompleto}

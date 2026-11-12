@@ -56,7 +56,7 @@ function Indicador({
                   ? 'border-primary-600 bg-primary-600 text-white'
                   : numero === pasoActual
                     ? 'border-primary-600 text-primary-600 dark:text-primary-400'
-                    : 'border-slate-300 text-slate-400 dark:border-slate-600 dark:text-slate-600'
+                    : 'border-slate-300 text-slate-400 dark:border-slate-600 dark:text-slate-400'
               }`}
             >
               {numero < pasoActual ? (

@@ -557,7 +557,7 @@ export default function InicioPage() {
               {total === 0 ? (
                 <div className="mt-4 flex flex-col items-center gap-2 py-8 text-center">
                   <Calendar
-                    className="h-8 w-8 text-slate-300 dark:text-slate-600"
+                    className="h-8 w-8 text-slate-300 dark:text-slate-400"
                     aria-hidden="true"
                   />
                   <p className="text-sm text-slate-500 dark:text-slate-400">

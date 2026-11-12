@@ -166,7 +166,7 @@ export default function LandingPage() {
         </Seccion>
       </main>
 
-      <footer className="border-t border-slate-200 py-8 text-center text-xs text-slate-400 dark:border-slate-800 dark:text-slate-600">
+      <footer className="border-t border-slate-200 py-8 text-center text-xs text-slate-400 dark:border-slate-800 dark:text-slate-400">
         {t('landing.footer')}
       </footer>
     </div>

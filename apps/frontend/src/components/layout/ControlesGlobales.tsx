@@ -17,7 +17,16 @@ const IDIOMAS = [
  * usan este navbar (Calendario, Reportes, formularios) no listan nada, así
  * que un control global fijo ahí sería un no-op confuso en esas pantallas.
  */
-export function ControlesGlobales() {
+export interface ControlesGlobalesProps {
+  /**
+   * `oscura`: el fondo es oscuro en los dos temas (barra lateral). Los grises
+   * de texto se eligen para ese fondo, no según el tema (Bloque 1, punto 1.1).
+   */
+  superficie?: 'tema' | 'oscura';
+}
+
+export function ControlesGlobales({ superficie = 'tema' }: ControlesGlobalesProps) {
+  const sobreOscuro = superficie === 'oscura';
   const { t, i18n } = useTranslation();
   const idiomaActual = i18n.language.startsWith('en') ? 'en' : 'es';
   const [tema, alternarTema] = useTema();
@@ -42,7 +51,9 @@ export function ControlesGlobales() {
       <div
         role="group"
         aria-label={t('comun.idioma')}
-        className="flex items-center rounded-full border border-slate-200 p-0.5 dark:border-slate-700"
+        className={`flex items-center rounded-full border p-0.5 ${
+          sobreOscuro ? 'border-white/25' : 'border-slate-200 dark:border-slate-700'
+        }`}
       >
         {IDIOMAS.map(({ codigo, etiqueta }) => (
           <button
@@ -53,7 +64,9 @@ export function ControlesGlobales() {
             className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
               idiomaActual === codigo
                 ? 'bg-primary-600 text-white'
-                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                : sobreOscuro
+                  ? 'text-slate-300 hover:text-white'
+                  : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
             {etiqueta}

@@ -219,11 +219,13 @@ export default function CalendarioPage() {
           title: `${reserva.cliente?.nombreCompleto ?? t('calendario.clienteEliminado')} · ${reserva.servicio?.nombre ?? t('calendario.servicioEliminado')}${cancelada ? ` (${t('calendario.sufijoCancelada')})` : ''}`,
           start: reserva.fechaHoraInicio,
           end: reserva.fechaHoraFin,
-          backgroundColor: cancelada ? '#94a3b8' : (reserva.servicio?.colorCalendario ?? '#4f46e5'),
+          backgroundColor: cancelada ? '#94a3b8' : (reserva.servicio?.colorCalendario ?? '#433bc2'),
           borderColor: 'transparent',
           // una reserva cancelada se puede seguir viendo (historial) pero no se arrastra ni se cancela de nuevo
           editable: !cancelada,
-          classNames: cancelada ? ['opacity-70'] : [],
+          // Sin opacidad (Bloque 1, 1.1: bajaba el texto a 3.4:1). La
+          // cancelada ya se distingue sin color: texto, ícono y tachado.
+          classNames: [],
           extendedProps: { reserva },
         };
       }),
