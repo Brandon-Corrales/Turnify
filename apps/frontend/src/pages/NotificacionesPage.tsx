@@ -152,7 +152,14 @@ export default function NotificacionesPage() {
           )}
 
           {notificacionesQuery.data && notificacionesQuery.data.data.length > 0 && (
-            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+            <div
+              // 1.4: región con scroll horizontal alcanzable con teclado
+              // (scrollable-region-focusable) y con nombre para el lector.
+              tabIndex={0}
+              role="region"
+              aria-label={t('notificaciones.titulo')}
+              className="overflow-x-auto rounded-xl border border-slate-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:border-slate-700"
+            >
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400">
                   <tr>
