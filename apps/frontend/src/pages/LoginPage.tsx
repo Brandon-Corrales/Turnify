@@ -36,7 +36,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div
+    <main
       className={`flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-900 ${ESPACIO_INFERIOR_WIDGETS}`}
     >
       <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
@@ -81,6 +81,6 @@ export default function LoginPage() {
           </Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }

@@ -163,13 +163,13 @@ export default function ReservaPublicaPage() {
 
   if (negocioQuery.isError) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-900">
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-900">
         <Banner
           variante="error"
           titulo={t('reservaPublica.negocioNoEncontradoTitulo')}
           descripcion={t('reservaPublica.negocioNoEncontradoDescripcion')}
         />
-      </div>
+      </main>
     );
   }
 
@@ -190,7 +190,7 @@ export default function ReservaPublicaPage() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-2xl px-4 py-8">
+      <main className="mx-auto max-w-2xl px-4 py-8">
         <Indicador pasoActual={paso} pasos={pasos} />
 
         <div className="relative mt-8 min-h-80">
@@ -497,7 +497,7 @@ export default function ReservaPublicaPage() {
             )}
           </>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
