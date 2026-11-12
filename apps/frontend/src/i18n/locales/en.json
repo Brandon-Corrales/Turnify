@@ -43,6 +43,7 @@
     "correoObligatorio": "Email is required",
     "correoInvalido": "Invalid email",
     "soloLetras": "Only letters, spaces, apostrophes, and hyphens are allowed",
+    "telefonoInvalido": "The number isn't valid for the selected country.",
     "soloNumeros": "Only numbers are allowed",
     "contrasenaObligatoria": "Password is required",
     "minimo2Caracteres": "At least 2 characters",
@@ -193,6 +194,9 @@
     "guardar": "Save",
     "guardado": "Changes saved",
     "errorGuardar": "The changes couldn't be saved."
+  },
+  "telefono": {
+    "pais": "Phone country"
   },
   "suscripcion": {
     "titulo": "Your subscription",

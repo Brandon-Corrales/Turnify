@@ -24,6 +24,9 @@ import { ApiError } from '@/lib/api';
 import { crearNuevaReservaSchema, type NuevaReservaFormValues } from '@/lib/validation';
 import { fechaHoraEnZona, formatearFechaHoraEnZona, instanteLocal } from '@/lib/fecha-negocio';
 import { useZonaHorariaNegocio } from '@/lib/use-zona-negocio';
+import type { CountryCode } from 'libphonenumber-js';
+import { CampoTelefono } from '@/components/negocio/CampoTelefono';
+import { normalizarTelefono, PAIS_TELEFONO_POR_DEFECTO } from '@/lib/telefono';
 
 // Todo el calendario va en la zona horaria del NEGOCIO (Bloque 5, punto
 // 5.1), nunca en la del navegador del admin: la posición de los bloques en
@@ -262,7 +265,12 @@ export default function CalendarioPage() {
     defaultValues: {
       modoCliente: 'existente',
       idCliente: '',
-      nuevoCliente: { nombreCompleto: '', correoElectronico: '', telefono: '' },
+      nuevoCliente: {
+        nombreCompleto: '',
+        correoElectronico: '',
+        telefono: '',
+        paisTelefono: PAIS_TELEFONO_POR_DEFECTO,
+      },
       idServicio: '',
       idUsuario: '',
       fecha: '',
@@ -285,7 +293,12 @@ export default function CalendarioPage() {
           const creado = await clientesApi.crear({
             nombreCompleto: valores.nuevoCliente.nombreCompleto,
             correoElectronico: valores.nuevoCliente.correoElectronico,
-            telefono: valores.nuevoCliente.telefono || undefined,
+            telefono: valores.nuevoCliente.telefono?.trim()
+              ? (normalizarTelefono(
+                  valores.nuevoCliente.telefono,
+                  valores.nuevoCliente.paisTelefono as CountryCode,
+                ) ?? valores.nuevoCliente.telefono)
+              : undefined,
           });
           idCliente = creado.idCliente;
           clienteRecienCreado = true;
@@ -411,7 +424,12 @@ export default function CalendarioPage() {
         // Sin ningún cliente todavía, arranca directo en "cliente nuevo".
         modoCliente: clientesActivos.length > 0 ? 'existente' : 'nuevo',
         idCliente: '',
-        nuevoCliente: { nombreCompleto: '', correoElectronico: '', telefono: '' },
+        nuevoCliente: {
+          nombreCompleto: '',
+          correoElectronico: '',
+          telefono: '',
+          paisTelefono: PAIS_TELEFONO_POR_DEFECTO,
+        },
         idServicio: '',
         idUsuario: idUsuarioFiltro || empleadosActivos[0]?.idUsuario || '',
         fecha: fechaCR,
@@ -692,17 +710,12 @@ export default function CalendarioPage() {
                 error={erroresNuevaReserva.nuevoCliente?.correoElectronico?.message}
                 {...registerNuevaReserva('nuevoCliente.correoElectronico')}
               />
-              <Input
-                label={t('clientes.telefono')}
-                type="tel"
+              <CampoTelefono
+                registroPais={registerNuevaReserva('nuevoCliente.paisTelefono')}
+                registroNumero={registerNuevaReserva('nuevoCliente.telefono')}
                 variante="crear"
-                maxLength={15}
-                inputMode="numeric"
-                pattern="[0-9]*"
                 hint={t('comun.opcional')}
-                autoComplete="off"
                 error={erroresNuevaReserva.nuevoCliente?.telefono?.message}
-                {...registerNuevaReserva('nuevoCliente.telefono')}
               />
               {clientesActivos.length > 0 && (
                 <Boton

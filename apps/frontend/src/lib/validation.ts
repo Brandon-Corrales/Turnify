@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { TFunction } from 'i18next';
 import { TIPOS_NEGOCIO } from './tipo-negocio';
+import { esPaisTelefono, normalizarTelefono } from './telefono';
 
 /**
  * Cada schema es una función que recibe `t()` en vez de una constante — los
@@ -13,6 +14,35 @@ import { TIPOS_NEGOCIO } from './tipo-negocio';
 const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d).+$/;
 const NOMBRE_REGEX = /^[\p{L}]+(?:[ '\u002D][\p{L}]+)*$/u;
 const TELEFONO_REGEX = /^\d+$/;
+
+/**
+ * Teléfono de cliente (Bloque 5, punto 5.3): número nacional + país. Se
+ * aceptan espacios, guiones y paréntesis al escribir; la validación real (y
+ * la conversión a E.164 al enviar) la hace `libphonenumber-js` según el país.
+ */
+function campoTelefono() {
+  return z.string().max(25).optional().or(z.literal(''));
+}
+
+function campoPaisTelefono() {
+  // Opcional: si falta, se toma Costa Rica (+506), el país por defecto.
+  return z
+    .string()
+    .refine((valor): boolean => esPaisTelefono(valor))
+    .optional();
+}
+
+function validarTelefono(
+  valores: { telefono?: string; paisTelefono?: string },
+  ctx: z.RefinementCtx,
+  t: TFunction,
+): void {
+  if (!valores.telefono?.trim()) return;
+  const pais = esPaisTelefono(valores.paisTelefono) ? valores.paisTelefono : undefined;
+  if (!normalizarTelefono(valores.telefono, pais)) {
+    ctx.addIssue({ code: 'custom', path: ['telefono'], message: t('validacion.telefonoInvalido') });
+  }
+}
 
 const CONTRASENAS_COMUNES = new Set([
   '123456789012',
@@ -109,32 +139,31 @@ export function crearRegistroSchema(t: TFunction) {
 export type RegistroFormValues = z.infer<ReturnType<typeof crearRegistroSchema>>;
 
 export function crearDatosClientePublicoSchema(t: TFunction) {
-  return z.object({
-    nombreCompleto: z
-      .string()
-      .min(2, t('validacion.minimo2Caracteres'))
-      .max(60)
-      .regex(NOMBRE_REGEX, t('validacion.soloLetras')),
-    correoElectronico: z
-      .string()
-      .min(1, t('validacion.correoObligatorio'))
-      .max(100)
-      .email(t('validacion.correoInvalido')),
-    telefono: z
-      .string()
-      .max(15)
-      .regex(TELEFONO_REGEX, t('validacion.soloNumeros'))
-      .optional()
-      .or(z.literal('')),
-    sitioWeb: z.string().optional(),
-  });
+  return z
+    .object({
+      nombreCompleto: z
+        .string()
+        .min(2, t('validacion.minimo2Caracteres'))
+        .max(60)
+        .regex(NOMBRE_REGEX, t('validacion.soloLetras')),
+      correoElectronico: z
+        .string()
+        .min(1, t('validacion.correoObligatorio'))
+        .max(100)
+        .email(t('validacion.correoInvalido')),
+      telefono: campoTelefono(),
+      paisTelefono: campoPaisTelefono(),
+      sitioWeb: z.string().optional(),
+    })
+    .superRefine((valores, ctx) => validarTelefono(valores, ctx, t));
 }
 
 export type DatosClientePublicoFormValues = z.infer<
   ReturnType<typeof crearDatosClientePublicoSchema>
 >;
 
-export function crearClienteSchema(t: TFunction) {
+/** Campos del formulario de cliente, sin la validación cruzada país + número (para poder usar `.pick`). */
+function camposCliente(t: TFunction) {
   return z.object({
     nombreCompleto: z
       .string()
@@ -146,17 +175,17 @@ export function crearClienteSchema(t: TFunction) {
       .min(1, t('validacion.correoObligatorio'))
       .max(100)
       .email(t('validacion.correoInvalido')),
-    telefono: z
-      .string()
-      .max(15)
-      .regex(TELEFONO_REGEX, t('validacion.soloNumeros'))
-      .optional()
-      .or(z.literal('')),
+    telefono: campoTelefono(),
+    paisTelefono: campoPaisTelefono(),
     notas: z.string().max(500).optional().or(z.literal('')),
     canalPreferido: z.enum(['email', 'whatsapp']),
     idiomaPreferido: z.enum(['es', 'en']),
     nivelCliente: z.enum(['gratis', 'premium']),
   });
+}
+
+export function crearClienteSchema(t: TFunction) {
+  return camposCliente(t).superRefine((valores, ctx) => validarTelefono(valores, ctx, t));
 }
 
 export type ClienteFormValues = z.infer<ReturnType<typeof crearClienteSchema>>;
@@ -194,11 +223,9 @@ export type ServicioFormValues = z.infer<ReturnType<typeof crearServicioSchema>>
  * no hay dos versiones de "qué es un cliente válido".
  */
 export function crearNuevaReservaSchema(t: TFunction) {
-  const datosClienteNuevo = crearClienteSchema(t).pick({
-    nombreCompleto: true,
-    correoElectronico: true,
-    telefono: true,
-  });
+  const datosClienteNuevo = camposCliente(t)
+    .pick({ nombreCompleto: true, correoElectronico: true, telefono: true, paisTelefono: true })
+    .superRefine((valores, ctx) => validarTelefono(valores, ctx, t));
   return z
     .object({
       modoCliente: z.enum(['existente', 'nuevo']),
@@ -206,11 +233,8 @@ export function crearNuevaReservaSchema(t: TFunction) {
       nuevoCliente: z.object({
         nombreCompleto: z.string().max(60),
         correoElectronico: z.string().max(100),
-        telefono: z
-          .string()
-          .max(15)
-          .optional()
-          .or(z.literal('')),
+        telefono: campoTelefono(),
+        paisTelefono: campoPaisTelefono(),
       }),
       idServicio: z.string().max(100).min(1, t('validacion.seleccionaServicio')),
       idUsuario: z.string().max(100).min(1, t('validacion.seleccionaEmpleado')),

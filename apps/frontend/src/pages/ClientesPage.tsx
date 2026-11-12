@@ -11,6 +11,9 @@ import { useVistaPreferida } from '@/lib/vista-preferida';
 import { ApiError } from '@/lib/api';
 import { crearClienteSchema, type ClienteFormValues } from '@/lib/validation';
 import { clientesApi, type Cliente } from '@/lib/clientes-api';
+import type { CountryCode } from 'libphonenumber-js';
+import { CampoTelefono } from '@/components/negocio/CampoTelefono';
+import { normalizarTelefono, PAIS_TELEFONO_POR_DEFECTO, separarTelefono } from '@/lib/telefono';
 
 const LIMITE = 12;
 
@@ -18,6 +21,7 @@ const VALORES_VACIOS: ClienteFormValues = {
   nombreCompleto: '',
   correoElectronico: '',
   telefono: '',
+  paisTelefono: PAIS_TELEFONO_POR_DEFECTO,
   notas: '',
   canalPreferido: 'email',
   idiomaPreferido: 'es',
@@ -85,7 +89,11 @@ export default function ClientesPage() {
     reset({
       nombreCompleto: cliente.nombreCompleto,
       correoElectronico: cliente.correoElectronico,
-      telefono: cliente.telefono ?? '',
+      // Acepta los formatos antiguos; se normaliza a E.164 al guardar.
+      ...(() => {
+        const { pais, numero } = separarTelefono(cliente.telefono);
+        return { telefono: numero, paisTelefono: pais };
+      })(),
       notas: cliente.notas ?? '',
       canalPreferido: cliente.canalPreferido,
       idiomaPreferido: cliente.idiomaPreferido,
@@ -96,9 +104,13 @@ export default function ClientesPage() {
 
   const guardarMutation = useMutation({
     mutationFn: (valores: ClienteFormValues) => {
+      const { paisTelefono, ...resto } = valores;
       const payload = {
-        ...valores,
-        telefono: valores.telefono || undefined,
+        ...resto,
+        // El esquema ya validó que sea un número válido para ese país.
+        telefono: valores.telefono?.trim()
+          ? (normalizarTelefono(valores.telefono, paisTelefono as CountryCode) ?? valores.telefono)
+          : undefined,
         notas: valores.notas || undefined,
       };
       return clienteEditando
@@ -321,16 +333,12 @@ export default function ClientesPage() {
             error={errors.correoElectronico?.message}
             {...register('correoElectronico')}
           />
-          <Input
-            label={t('clientes.telefono')}
-            type="tel"
-            maxLength={15}
-            inputMode="numeric"
-            pattern="[0-9]*"
+          <CampoTelefono
+            registroPais={register('paisTelefono')}
+            registroNumero={register('telefono')}
             variante={clienteEditando ? 'editar' : 'crear'}
             hint={t('comun.opcional')}
             error={errors.telefono?.message}
-            {...register('telefono')}
           />
           <div className="grid gap-4 sm:grid-cols-2">
             <Select

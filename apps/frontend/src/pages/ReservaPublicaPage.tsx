@@ -17,6 +17,9 @@ import {
 import { formatearDinero, monedaOPorDefecto } from '@/lib/dinero';
 import { etiquetaZona, hoyEnZonaNegocio, localeDe, zonaOPorDefecto } from '@/lib/fecha-negocio';
 import { ESPACIO_INFERIOR_WIDGETS } from '@/components/layout/espacio-widgets';
+import type { CountryCode } from 'libphonenumber-js';
+import { CampoTelefono } from '@/components/negocio/CampoTelefono';
+import { normalizarTelefono, PAIS_TELEFONO_POR_DEFECTO } from '@/lib/telefono';
 
 function formatearHora(iso: string, idioma: string, zona: string): string {
   return new Date(iso).toLocaleTimeString(localeDe(idioma), {
@@ -129,15 +132,24 @@ export default function ReservaPublicaPage() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<DatosClientePublicoFormValues>({ resolver: zodResolver(datosClientePublicoSchema) });
+  } = useForm<DatosClientePublicoFormValues>({
+    resolver: zodResolver(datosClientePublicoSchema),
+    defaultValues: { paisTelefono: PAIS_TELEFONO_POR_DEFECTO },
+  });
 
   const confirmarMutation = useMutation({
     mutationFn: () => {
-      const { sitioWeb, ...clienteDto } = datosCliente!;
+      const { sitioWeb, paisTelefono, telefono, ...clienteDto } = datosCliente!;
       return reservaPublicaApi.crearReserva(idNegocio, {
         idServicio: servicio!.idServicio,
         fechaHoraInicio: horario!,
-        cliente: clienteDto,
+        cliente: {
+          ...clienteDto,
+          // E.164 (Bloque 5, punto 5.3); el esquema ya lo validó con el país.
+          telefono: telefono?.trim()
+            ? (normalizarTelefono(telefono, paisTelefono as CountryCode) ?? telefono)
+            : undefined,
+        },
         honeypot: sitioWeb || undefined,
       });
     },
@@ -330,14 +342,10 @@ export default function ReservaPublicaPage() {
                     error={errors.correoElectronico?.message}
                     {...register('correoElectronico')}
                   />
-                  <Input
-                    label={t('clientes.telefono')}
-                    type="tel"
-                    maxLength={15}
-                    inputMode="numeric"
-                    pattern="[0-9]*"
+                  <CampoTelefono
+                    registroPais={register('paisTelefono')}
+                    registroNumero={register('telefono')}
                     error={errors.telefono?.message}
-                    {...register('telefono')}
                   />
                   <div
                     aria-hidden="true"

@@ -43,6 +43,7 @@
     "correoObligatorio": "El correo es obligatorio",
     "correoInvalido": "Correo inválido",
     "soloLetras": "Solo se permiten letras, espacios, apóstrofes y guiones",
+    "telefonoInvalido": "El número no es válido para el país elegido.",
     "soloNumeros": "Solo se permiten números",
     "contrasenaObligatoria": "La contraseña es obligatoria",
     "minimo2Caracteres": "Mínimo 2 caracteres",
@@ -193,6 +194,9 @@
     "guardar": "Guardar",
     "guardado": "Cambios guardados",
     "errorGuardar": "No se pudieron guardar los cambios."
+  },
+  "telefono": {
+    "pais": "País del teléfono"
   },
   "suscripcion": {
     "titulo": "Tu suscripción",
