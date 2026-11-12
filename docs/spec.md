@@ -33,9 +33,20 @@ nombre literal para que el equipo la mueva de "Backlog técnico" a
   estado[pendiente|confirmada|cancelada|ausente], notas,
   origen[online|admin], creado_en)
 - NOTIFICACION(id_notificacion PK, id_reserva FK, id_cliente FK,
-  tipo[recordatorio|confirmacion|cancelacion], canal[email|whatsapp|sms],
+  tipo[recordatorio|confirmacion|cancelacion|reprogramacion], canal[email|whatsapp|sms],
   estado[pendiente|enviada|entregada|fallida], programado_para, enviado_en, mensaje,
-  reintentos, ultimo_error, id_correo_proveedor)
+  reintentos, ultimo_error, id_correo_proveedor, fecha_hora_reserva)
+  - `fecha_hora_reserva` y clave única (Bloque 4, migración
+    `NotificacionClaveUnica`): hora de inicio de la cita a la que se refiere
+    el aviso, tal como estaba al programarlo. Índice único
+    `(id_reserva, tipo, fecha_hora_reserva)`: un solo envío por reserva, tipo
+    y hora; una reserva reprogramada recibe recordatorio de la hora nueva.
+  - `reprogramacion` (Bloque 4, migración `NotificacionTipoReprogramacion`):
+    aviso al cliente cuando su reserva cambia de hora. Los recordatorios y
+    avisos de reprogramación aún pendientes con la hora anterior quedan
+    `fallida` con motivo `REPROGRAMADA` (anulados, no fallos: nunca se
+    reintentan ni cuentan como fallo). Si la reserva vuelve a esa hora, la
+    fila anulada se reactiva como pendiente.
   - `ultimo_error` (agregado en el cierre del Seguimiento #3, nullable): la
     CATEGORÍA del motivo del último intento fallido
     (`DESTINATARIO_NO_HABILITADO` | `CREDENCIALES_FALTANTES` |
@@ -212,7 +223,8 @@ gobierna los privilegios del/los USUARIO(s) de ese negocio.
   deben existir límites reales, no solo de nombre):
   - Máximo 1 usuario (solo el admin, sin poder invitar empleados)
   - Máximo 3 servicios activos
-  - Máximo 20 reservas por mes calendario
+  - Máximo 20 reservas por mes calendario (las canceladas no cuentan;
+    decisión del grupo, Bloque 4)
   - Notificaciones solo por correo electrónico (WhatsApp bloqueado)
   - Reportes básicos, sin exportación de datos
   - Límite diario de mensajes al chatbot del punto 16 (ej: 10 mensajes/día)
