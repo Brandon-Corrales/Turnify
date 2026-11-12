@@ -333,6 +333,10 @@
     "confirmarReserva": "Confirm booking"
   },
   "calendario": {
+    "botonHoy": "Today",
+    "botonMes": "Month",
+    "botonSemana": "Week",
+    "botonLista": "List",
     "citaProgramada": "Scheduled appointment",
     "filtrarPorEmpleado": "Filter by staff",
     "todosLosEmpleados": "All staff",

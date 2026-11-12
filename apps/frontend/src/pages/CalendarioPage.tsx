@@ -573,7 +573,14 @@ export default function CalendarioPage() {
             // (https://legacy.fullcalendar.io/v6/buttonIcons), que aquí va
             // traducido. Las pistas (title) siguen siendo las del locale.
             buttonIcons={false}
-            buttonText={{ prev: t('comun.anterior'), next: t('comun.siguiente') }}
+            buttonText={{
+              prev: t('comun.anterior'),
+              next: t('comun.siguiente'),
+              today: t('calendario.botonHoy'),
+              month: t('calendario.botonMes'),
+              week: t('calendario.botonSemana'),
+              list: t('calendario.botonLista'),
+            }}
             eventStartEditable
             eventDurationEditable={false}
             businessHours={businessHours.length > 0 ? businessHours : undefined}

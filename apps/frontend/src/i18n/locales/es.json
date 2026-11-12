@@ -333,6 +333,10 @@
     "confirmarReserva": "Confirmar reserva"
   },
   "calendario": {
+    "botonHoy": "Hoy",
+    "botonMes": "Mes",
+    "botonSemana": "Semana",
+    "botonLista": "Agenda",
     "citaProgramada": "Cita programada",
     "filtrarPorEmpleado": "Filtrar por empleado",
     "todosLosEmpleados": "Todos los empleados",
