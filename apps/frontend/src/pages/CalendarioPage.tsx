@@ -564,6 +564,14 @@ export default function CalendarioPage() {
             locale={i18n.language.startsWith('en') ? undefined : esLocale}
             height="auto"
             editable
+            // Bloque 1, punto 1.2 (role-img-alt): FullCalendar 6 dibuja las
+            // flechas como <span class="fc-icon" role="img"> sin nombre
+            // accesible y no ofrece forma de nombrarlo. Su opción documentada
+            // `buttonIcons: false` muestra en su lugar el texto de `buttonText`
+            // (https://legacy.fullcalendar.io/v6/buttonIcons), que aquí va
+            // traducido. Las pistas (title) siguen siendo las del locale.
+            buttonIcons={false}
+            buttonText={{ prev: t('comun.anterior'), next: t('comun.siguiente') }}
             eventStartEditable
             eventDurationEditable={false}
             businessHours={businessHours.length > 0 ? businessHours : undefined}
