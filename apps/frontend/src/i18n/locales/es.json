@@ -408,7 +408,7 @@
   },
   "notificaciones": {
     "titulo": "Notificaciones",
-    "subtitulo": "Historial de confirmaciones, cancelaciones y recordatorios enviados a tus clientes.",
+    "subtitulo": "Historial de confirmaciones, reprogramaciones, cancelaciones y recordatorios enviados a tus clientes.",
     "canalesTitulo": "Canales de recordatorios",
     "canalCorreo": "Correo electrónico — siempre disponible",
     "canalWhatsapp": "WhatsApp —",
@@ -424,6 +424,7 @@
     "tipoConfirmacion": "Confirmación",
     "tipoCancelacion": "Cancelación",
     "tipoRecordatorio": "Recordatorio",
+    "tipoReprogramacion": "Reprogramación",
     "canalEmail": "email",
     "canalWhatsappCorto": "WhatsApp",
     "canalSms": "SMS",
@@ -431,6 +432,7 @@
     "estadoEntregada": "entregada",
     "estadoPendiente": "pendiente",
     "estadoFallida": "fallida",
+    "estadoAnulada": "anulada",
     "intentos": "Intentos: {{n}}",
     "ayudaDominioSinVerificar": "Mientras el correo se envíe con el remitente de prueba del proveedor (Resend, sin dominio propio verificado), solo se entrega a la dirección dueña de esa cuenta. A cualquier otro destinatario el proveedor lo rechaza: la notificación queda pendiente, se reintenta hasta 3 veces y el motivo aparece en el historial.",
     "motivo": "Motivo:",
@@ -442,7 +444,8 @@
       "REBOTE_PERMANENTE": "la dirección de correo rechazó el mensaje (rebote permanente)",
       "REBOTE_TEMPORAL": "el servidor del destinatario rechazó el mensaje temporalmente (rebote)",
       "ENTREGA_DEMORADA": "entrega demorada; el proveedor sigue intentando",
-      "MARCADO_COMO_SPAM": "el destinatario lo marcó como spam"
+      "MARCADO_COMO_SPAM": "el destinatario lo marcó como spam",
+      "REPROGRAMADA": "la reserva se reprogramó antes del envío; este aviso tenía la hora anterior y no se envió"
     }
   }
 }

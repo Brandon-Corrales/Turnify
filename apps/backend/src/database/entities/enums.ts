@@ -34,6 +34,8 @@ export enum TipoNotificacion {
   RECORDATORIO = 'recordatorio',
   CONFIRMACION = 'confirmacion',
   CANCELACION = 'cancelacion',
+  /** Aviso al cliente de que su reserva cambió de hora (Bloque 4, punto 4.3). */
+  REPROGRAMACION = 'reprogramacion',
 }
 
 export enum CanalNotificacion {

@@ -71,6 +71,40 @@ function crearTablaNotificacionesFalsa() {
       filas.push(fila);
       return [{ id_notificacion: fila.idNotificacion }];
     }
+    if (sql.includes('SET "estado" = \'pendiente\'')) {
+      // SQL_REACTIVAR_ANULADA. TypeORM devuelve [filas, cantidad] en UPDATE.
+      const [idReserva, tipo, fecha, programadoPara, mensaje, canal] = params;
+      const fila = filas.find(
+        (f) =>
+          mismaClave(f, idReserva, tipo, fecha) &&
+          f.estado === EstadoNotificacion.FALLIDA &&
+          f.ultimoError === 'REPROGRAMADA',
+      );
+      if (!fila) return [[], 0];
+      Object.assign(fila, {
+        estado: EstadoNotificacion.PENDIENTE,
+        ultimoError: null,
+        reintentos: 0,
+        programadoPara,
+        mensaje,
+        canal,
+      });
+      return [[{ id_notificacion: fila.idNotificacion }], 1];
+    }
+    if (sql.includes('SET "estado" = \'fallida\'')) {
+      // SQL_ANULAR_AVISOS_HORA_ANTERIOR
+      const [idReserva, fechaNueva] = params;
+      const afectadas = filas.filter(
+        (f) =>
+          f.idReserva === idReserva &&
+          f.estado === EstadoNotificacion.PENDIENTE &&
+          [TipoNotificacion.RECORDATORIO, TipoNotificacion.REPROGRAMACION].includes(f.tipo) &&
+          f.fechaHoraReserva.getTime() !== new Date(fechaNueva as Date).getTime(),
+      );
+      for (const f of afectadas)
+        Object.assign(f, { estado: EstadoNotificacion.FALLIDA, ultimoError: 'REPROGRAMADA' });
+      return [afectadas.map((f) => ({ id_notificacion: f.idNotificacion })), afectadas.length];
+    }
     throw new Error(`SQL no simulado en la tabla falsa: ${sql}`);
   }
 
@@ -160,7 +194,8 @@ function crearNotificacionRepoMock(tabla = crearTablaNotificacionesFalsa()) {
     findOne: vi.fn(async ({ where }: { where: { idNotificacion: string } }) => {
       await Promise.resolve();
       const fila = tabla.filas.find((f) => f.idNotificacion === where.idNotificacion);
-      return fila ? { ...fila } : null;
+      // Como el join con `cliente`: las filas insertadas por SQL no lo traen.
+      return fila ? { cliente: CLIENTES_POR_ID[fila.idCliente], ...fila } : null;
     }),
     createQueryBuilder: vi.fn(() => queryBuilder),
     query: vi.fn(tabla.query),
@@ -197,6 +232,14 @@ function crearI18nMock() {
       es: 'Recordatorio de tu cita',
       en: 'Appointment reminder',
     },
+    'notificaciones.REPROGRAMACION_ASUNTO': {
+      es: 'Reserva reprogramada',
+      en: 'Booking rescheduled',
+    },
+    'notificaciones.REPROGRAMACION_TEXTO': {
+      es: 'Tu reserva de "{nombreServicio}" se reprogramó para el {fechaHoraTexto}.',
+      en: 'Your "{nombreServicio}" appointment has been rescheduled to {fechaHoraTexto}.',
+    },
     'notificaciones.RECORDATORIO_TEXTO': {
       es: 'Te recordamos tu reserva de "{nombreServicio}" para el {fechaHoraTexto}.',
       en: 'This is a reminder of your "{nombreServicio}" appointment on {fechaHoraTexto}.',
@@ -218,6 +261,9 @@ const CLIENTE_EMAIL = {
   canalPreferido: CanalPreferido.EMAIL,
   idiomaPreferido: Idioma.ES,
 };
+
+/** Clientes que resuelve el join de la tabla falsa. */
+const CLIENTES_POR_ID: Record<string, unknown> = { 'cliente-1': CLIENTE_EMAIL };
 
 const RESERVA = {
   idReserva: 'reserva-1',
@@ -691,5 +737,200 @@ describe('NotificacionesService', () => {
       { idNegocio: 'negocio-1' },
     );
     expect(resultado).toEqual({ data: filas, total: 1, page: 1, limit: 20 });
+  });
+
+  describe('reprogramación (Bloque 4, punto 4.3)', () => {
+    const T1 = new Date(Date.now() + 5 * 60 * 60 * 1000);
+    const T2 = new Date(Date.now() + 8 * 60 * 60 * 1000);
+    const reservaEn = (fecha: Date) => ({
+      idReserva: 'reserva-r',
+      estado: EstadoReserva.CONFIRMADA,
+      fechaHoraInicio: fecha,
+      cliente: CLIENTE_EMAIL,
+      servicio: SERVICIO,
+    });
+    const filasDe = (tipo: TipoNotificacion) =>
+      notificacionRepo._tabla.filas.filter((f) => f.tipo === tipo);
+    /** El cron de recordatorios, leyendo de verdad la tabla falsa. */
+    const correrCronCon = async (fecha: Date) => {
+      reservaRepo.find.mockResolvedValue([reservaEn(fecha)]);
+      notificacionRepo.find.mockImplementation(async () =>
+        notificacionRepo._tabla.filas.filter((f) => f.tipo === TipoNotificacion.RECORDATORIO),
+      );
+      await service.programarRecordatorios();
+    };
+
+    it('crea un aviso de reprogramación con la hora nueva, en el idioma del cliente', async () => {
+      await service.programarReprogramacion(
+        reservaEn(T2) as any,
+        { ...CLIENTE_EMAIL, idiomaPreferido: Idioma.EN } as any,
+        SERVICIO as any,
+      );
+      const [aviso] = filasDe(TipoNotificacion.REPROGRAMACION);
+      expect(aviso).toMatchObject({
+        estado: EstadoNotificacion.PENDIENTE,
+        fechaHoraReserva: T2,
+      });
+      expect(aviso.mensaje).toContain('Booking rescheduled');
+      expect(aviso.mensaje).toContain('has been rescheduled to');
+    });
+
+    it('anula (sin borrar) el recordatorio pendiente que tenía la hora anterior', async () => {
+      await correrCronCon(T1);
+      await service.programarReprogramacion(
+        reservaEn(T2) as any,
+        CLIENTE_EMAIL as any,
+        SERVICIO as any,
+      );
+
+      expect(notificacionRepo._tabla.filas).toHaveLength(2);
+      expect(filasDe(TipoNotificacion.RECORDATORIO)[0]).toMatchObject({
+        estado: EstadoNotificacion.FALLIDA,
+        ultimoError: 'REPROGRAMADA',
+        fechaHoraReserva: T1,
+      });
+    });
+
+    it('no toca los avisos ya enviados ni la confirmación', async () => {
+      await service.programarConfirmacion(
+        reservaEn(T1) as any,
+        CLIENTE_EMAIL as any,
+        SERVICIO as any,
+      );
+      await correrCronCon(T1);
+      filasDe(TipoNotificacion.RECORDATORIO)[0].estado = EstadoNotificacion.ENVIADA;
+
+      await service.programarReprogramacion(
+        reservaEn(T2) as any,
+        CLIENTE_EMAIL as any,
+        SERVICIO as any,
+      );
+
+      expect(filasDe(TipoNotificacion.RECORDATORIO)[0].estado).toBe(EstadoNotificacion.ENVIADA);
+      expect(filasDe(TipoNotificacion.CONFIRMACION)[0].estado).toBe(EstadoNotificacion.PENDIENTE);
+    });
+
+    it('después de reprogramar, el cron crea el recordatorio de la hora nueva', async () => {
+      await correrCronCon(T1);
+      await service.programarReprogramacion(
+        reservaEn(T2) as any,
+        CLIENTE_EMAIL as any,
+        SERVICIO as any,
+      );
+      await correrCronCon(T2);
+
+      const recordatorios = filasDe(TipoNotificacion.RECORDATORIO);
+      expect(recordatorios).toHaveLength(2);
+      expect(
+        recordatorios.find((f) => f.fechaHoraReserva.getTime() === T2.getTime()),
+      ).toMatchObject({ estado: EstadoNotificacion.PENDIENTE });
+    });
+
+    it('las anuladas nunca se envían ni se reintentan, en ninguna corrida', async () => {
+      await correrCronCon(T1);
+      await service.programarReprogramacion(
+        reservaEn(T2) as any,
+        CLIENTE_EMAIL as any,
+        SERVICIO as any,
+      );
+      resend.enviarCorreo.mockResolvedValue({ exito: true });
+
+      for (let i = 0; i < 4; i++) await service.procesarPendientes();
+
+      const anulada = filasDe(TipoNotificacion.RECORDATORIO)[0];
+      expect(anulada).toMatchObject({
+        estado: EstadoNotificacion.FALLIDA,
+        ultimoError: 'REPROGRAMADA',
+        reintentos: 0,
+      });
+      // Solo se envió el aviso de reprogramación.
+      expect(resend.enviarCorreo).toHaveBeenCalledTimes(1);
+      expect(resend.enviarCorreo.mock.calls[0][1]).toBe('Reserva reprogramada');
+    });
+
+    it('volver a una hora anterior REACTIVA el recordatorio anulado en vez de insertar otro, y el cliente lo recibe', async () => {
+      await correrCronCon(T1); // recordatorio de T1, pendiente
+      await service.programarReprogramacion(
+        reservaEn(T2) as any,
+        CLIENTE_EMAIL as any,
+        SERVICIO as any,
+      );
+      await service.programarReprogramacion(
+        reservaEn(T1) as any,
+        CLIENTE_EMAIL as any,
+        SERVICIO as any,
+      );
+      const anulada = filasDe(TipoNotificacion.RECORDATORIO).find(
+        (f) => f.fechaHoraReserva.getTime() === T1.getTime(),
+      )!;
+      expect(anulada.estado).toBe(EstadoNotificacion.FALLIDA);
+      anulada.reintentos = 2;
+      anulada.mensaje = 'mensaje viejo';
+
+      await correrCronCon(T1);
+
+      const recordatoriosT1 = filasDe(TipoNotificacion.RECORDATORIO).filter(
+        (f) => f.fechaHoraReserva.getTime() === T1.getTime(),
+      );
+      expect(recordatoriosT1).toHaveLength(1);
+      expect(recordatoriosT1[0]).toMatchObject({
+        idNotificacion: anulada.idNotificacion,
+        estado: EstadoNotificacion.PENDIENTE,
+        ultimoError: null,
+        reintentos: 0,
+      });
+      expect(recordatoriosT1[0].mensaje).toContain('Te recordamos tu reserva');
+
+      resend.enviarCorreo.mockResolvedValue({ exito: true });
+      await service.procesarPendientes();
+      expect(recordatoriosT1[0].estado).toBe(EstadoNotificacion.ENVIADA);
+      expect(resend.enviarCorreo).toHaveBeenCalledWith(
+        'cliente@example.com',
+        'Recordatorio de tu cita',
+        expect.any(String),
+      );
+    });
+
+    it('volver a la hora de un aviso de reprogramación anulado también lo reactiva', async () => {
+      await service.programarReprogramacion(
+        reservaEn(T2) as any,
+        CLIENTE_EMAIL as any,
+        SERVICIO as any,
+      );
+      await service.programarReprogramacion(
+        reservaEn(T1) as any,
+        CLIENTE_EMAIL as any,
+        SERVICIO as any,
+      );
+      await service.programarReprogramacion(
+        reservaEn(T2) as any,
+        CLIENTE_EMAIL as any,
+        SERVICIO as any,
+      );
+
+      const avisos = filasDe(TipoNotificacion.REPROGRAMACION);
+      expect(avisos).toHaveLength(2);
+      expect(avisos.find((f) => f.fechaHoraReserva.getTime() === T2.getTime())).toMatchObject({
+        estado: EstadoNotificacion.PENDIENTE,
+        ultimoError: null,
+      });
+      expect(avisos.find((f) => f.fechaHoraReserva.getTime() === T1.getTime())).toMatchObject({
+        estado: EstadoNotificacion.FALLIDA,
+        ultimoError: 'REPROGRAMADA',
+      });
+    });
+
+    it('un fallo REAL con la misma clave no se reactiva', async () => {
+      await correrCronCon(T1);
+      Object.assign(filasDe(TipoNotificacion.RECORDATORIO)[0], {
+        estado: EstadoNotificacion.FALLIDA,
+        ultimoError: 'RECHAZADO_POR_PROVEEDOR',
+        reintentos: 3,
+      });
+      await correrCronCon(T1);
+      expect(filasDe(TipoNotificacion.RECORDATORIO)).toEqual([
+        expect.objectContaining({ estado: EstadoNotificacion.FALLIDA, reintentos: 3 }),
+      ]);
+    });
   });
 });

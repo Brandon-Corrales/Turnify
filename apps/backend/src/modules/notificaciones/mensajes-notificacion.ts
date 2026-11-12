@@ -6,8 +6,11 @@ export interface DatosMensajeReserva {
   fechaHoraTexto: string;
 }
 
-type TipoMensajeReserva =
-  TipoNotificacion.CONFIRMACION | TipoNotificacion.CANCELACION | TipoNotificacion.RECORDATORIO;
+export type TipoMensajeReserva =
+  | TipoNotificacion.CONFIRMACION
+  | TipoNotificacion.CANCELACION
+  | TipoNotificacion.RECORDATORIO
+  | TipoNotificacion.REPROGRAMACION;
 
 const CLAVES: Record<TipoMensajeReserva, { asunto: string; texto: string }> = {
   [TipoNotificacion.CONFIRMACION]: {
@@ -21,6 +24,10 @@ const CLAVES: Record<TipoMensajeReserva, { asunto: string; texto: string }> = {
   [TipoNotificacion.RECORDATORIO]: {
     asunto: 'notificaciones.RECORDATORIO_ASUNTO',
     texto: 'notificaciones.RECORDATORIO_TEXTO',
+  },
+  [TipoNotificacion.REPROGRAMACION]: {
+    asunto: 'notificaciones.REPROGRAMACION_ASUNTO',
+    texto: 'notificaciones.REPROGRAMACION_TEXTO',
   },
 };
 

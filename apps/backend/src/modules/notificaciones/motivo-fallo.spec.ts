@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { clasificarRechazoProveedor, MotivoFallo, motivoPublico } from './motivo-fallo';
+import {
+  clasificarRechazoProveedor,
+  esAnuladaPorReprogramacion,
+  esFalloReal,
+  MotivoFallo,
+  motivoPublico,
+} from './motivo-fallo';
 
 describe('clasificarRechazoProveedor()', () => {
   it('Resend sin dominio verificado → destinatario no habilitado', () => {
@@ -39,5 +45,29 @@ describe('motivoPublico()', () => {
   it('null o vacío → null', () => {
     expect(motivoPublico(null)).toBeNull();
     expect(motivoPublico('')).toBeNull();
+  });
+});
+
+describe('anuladas por reprogramación (Bloque 4, punto 4.3)', () => {
+  it('motivoPublico deja pasar REPROGRAMADA (el frontend la traduce)', () => {
+    expect(motivoPublico('REPROGRAMADA')).toBe(MotivoFallo.REPROGRAMADA);
+  });
+
+  it('una FALLIDA con motivo REPROGRAMADA no es un fallo real', () => {
+    expect(esAnuladaPorReprogramacion('fallida', MotivoFallo.REPROGRAMADA)).toBe(true);
+    expect(esFalloReal('fallida', MotivoFallo.REPROGRAMADA)).toBe(false);
+  });
+
+  it('una FALLIDA con cualquier otro motivo (o sin motivo) sí es un fallo real', () => {
+    expect(esFalloReal('fallida', MotivoFallo.RECHAZADO_POR_PROVEEDOR)).toBe(true);
+    expect(esFalloReal('fallida', null)).toBe(true);
+    expect(esAnuladaPorReprogramacion('fallida', MotivoFallo.REBOTE_PERMANENTE)).toBe(false);
+  });
+
+  it('los demás estados nunca son fallos', () => {
+    for (const estado of ['pendiente', 'enviada', 'entregada']) {
+      expect(esFalloReal(estado, MotivoFallo.ENTREGA_DEMORADA)).toBe(false);
+      expect(esAnuladaPorReprogramacion(estado, MotivoFallo.REPROGRAMADA)).toBe(false);
+    }
   });
 });

@@ -408,7 +408,7 @@
   },
   "notificaciones": {
     "titulo": "Notifications",
-    "subtitulo": "History of confirmations, cancellations, and reminders sent to your clients.",
+    "subtitulo": "History of confirmations, reschedules, cancellations, and reminders sent to your clients.",
     "canalesTitulo": "Reminder channels",
     "canalCorreo": "Email — always available",
     "canalWhatsapp": "WhatsApp —",
@@ -424,6 +424,7 @@
     "tipoConfirmacion": "Confirmation",
     "tipoCancelacion": "Cancellation",
     "tipoRecordatorio": "Reminder",
+    "tipoReprogramacion": "Reschedule",
     "canalEmail": "email",
     "canalWhatsappCorto": "WhatsApp",
     "canalSms": "SMS",
@@ -431,6 +432,7 @@
     "estadoEntregada": "delivered",
     "estadoPendiente": "pending",
     "estadoFallida": "failed",
+    "estadoAnulada": "voided",
     "intentos": "Attempts: {{n}}",
     "ayudaDominioSinVerificar": "While emails are sent with the provider's test sender (Resend, without your own verified domain), they're only delivered to the address that owns that account. The provider rejects any other recipient: the notification stays pending, is retried up to 3 times, and the reason shows up in the history.",
     "motivo": "Reason:",
@@ -442,7 +444,8 @@
       "REBOTE_PERMANENTE": "the email address rejected the message (permanent bounce)",
       "REBOTE_TEMPORAL": "the recipient's server temporarily rejected the message (bounce)",
       "ENTREGA_DEMORADA": "delivery delayed; the provider keeps trying",
-      "MARCADO_COMO_SPAM": "the recipient marked it as spam"
+      "MARCADO_COMO_SPAM": "the recipient marked it as spam",
+      "REPROGRAMADA": "the booking was rescheduled before sending; this notice had the previous time and was not sent"
     }
   }
 }

@@ -1,6 +1,6 @@
 import { apiFetch } from './api';
 
-export type TipoNotificacion = 'recordatorio' | 'confirmacion' | 'cancelacion';
+export type TipoNotificacion = 'recordatorio' | 'confirmacion' | 'cancelacion' | 'reprogramacion';
 export type CanalNotificacion = 'email' | 'whatsapp' | 'sms';
 export type EstadoNotificacion = 'pendiente' | 'enviada' | 'entregada' | 'fallida';
 export type MotivoFallo =
@@ -12,7 +12,9 @@ export type MotivoFallo =
   | 'REBOTE_PERMANENTE'
   | 'REBOTE_TEMPORAL'
   | 'ENTREGA_DEMORADA'
-  | 'MARCADO_COMO_SPAM';
+  | 'MARCADO_COMO_SPAM'
+  // No es un fallo: aviso anulado porque la reserva se reprogramó antes de enviarlo.
+  | 'REPROGRAMADA';
 
 export interface Notificacion {
   idNotificacion: string;

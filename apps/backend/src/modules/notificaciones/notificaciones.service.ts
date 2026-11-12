@@ -16,10 +16,10 @@ import {
   TipoNotificacion,
 } from '../../database/entities';
 import { formatearFechaHoraLocalCR } from '../../common/utils/zona-horaria-negocio';
-import { construirMensaje } from './mensajes-notificacion';
+import { construirMensaje, type TipoMensajeReserva } from './mensajes-notificacion';
 import { ResendService, type ResultadoEnvio } from './providers/resend.service';
 import { WhatsappCloudApiService } from './providers/whatsapp-cloud-api.service';
-import { MotivoFallo, motivoPublico } from './motivo-fallo';
+import { esAnuladaPorReprogramacion, MotivoFallo, motivoPublico } from './motivo-fallo';
 
 /** Después de este número de reintentos fallidos, la notificación se marca FALLIDA en vez de reintentar por siempre. */
 const MAX_REINTENTOS = 3;
@@ -35,7 +35,7 @@ const CANAL_POR_PREFERENCIA: Record<CanalPreferido, CanalNotificacion> = {
   [CanalPreferido.WHATSAPP]: CanalNotificacion.WHATSAPP,
 };
 
-export type ResultadoProgramar = 'creada' | 'existente';
+export type ResultadoProgramar = 'creada' | 'reactivada' | 'existente';
 
 /**
  * Un solo INSERT atómico contra el índice único
@@ -63,6 +63,42 @@ export const SQL_TOMAR_SIGUIENTE_PENDIENTE = `
   ORDER BY "programado_para" ASC
   LIMIT 1
   FOR UPDATE SKIP LOCKED`;
+
+/**
+ * Si la clave ya existía porque se ANULÓ por una reprogramación (la reserva
+ * se movió y después volvió a esta misma hora), esa fila vuelve a quedar
+ * pendiente con el mensaje recién generado, en vez de insertar otra (el
+ * índice único no lo permitiría) o de quedarse sin aviso. Atómica: solo la
+ * toma quien la encuentra todavía anulada.
+ */
+export const SQL_REACTIVAR_ANULADA = `
+  UPDATE "notificaciones"
+  SET "estado" = 'pendiente', "ultimo_error" = NULL, "reintentos" = 0,
+      "programado_para" = $4, "mensaje" = $5, "canal" = $6, "actualizado_en" = now()
+  WHERE "id_reserva" = $1 AND "tipo" = $2 AND "fecha_hora_reserva" = $3
+    AND "estado" = 'fallida' AND "ultimo_error" = '${MotivoFallo.REPROGRAMADA}'
+  RETURNING "id_notificacion"`;
+
+/**
+ * Al reprogramar: los avisos de la reserva que siguen pendientes con OTRA
+ * hora (recordatorio o aviso de una reprogramación anterior) llevan una hora
+ * que ya no es la de la cita. Se anulan sin borrarlos: quedan FALLIDA con
+ * motivo REPROGRAMADA (no hay un estado "anulada"), y el worker solo toma
+ * PENDIENTE, así que no se envían ni se reintentan.
+ */
+export const SQL_ANULAR_AVISOS_HORA_ANTERIOR = `
+  UPDATE "notificaciones"
+  SET "estado" = 'fallida', "ultimo_error" = '${MotivoFallo.REPROGRAMADA}', "actualizado_en" = now()
+  WHERE "id_reserva" = $1 AND "estado" = 'pendiente'
+    AND "tipo" IN ('${TipoNotificacion.RECORDATORIO}', '${TipoNotificacion.REPROGRAMACION}')
+    AND "fecha_hora_reserva" <> $2
+  RETURNING "id_notificacion"`;
+
+/** TypeORM devuelve `[filas, cantidad]` para UPDATE y solo `filas` para el resto. */
+function filasDe<T>(resultado: unknown): T[] {
+  const r = resultado as unknown[];
+  return Array.isArray(r[0]) ? (r[0] as T[]) : (r as T[]);
+}
 
 /** Clave de un envío único, como texto, para comparar en memoria. */
 function claveEnvio(idReserva: string, fechaHoraReserva: Date): string {
@@ -111,6 +147,31 @@ export class NotificacionesService {
   }
 
   /**
+   * Punto 4.3: avisa al cliente la hora nueva y anula los avisos pendientes
+   * que tenían la hora anterior. El recordatorio de la hora nueva lo crea el
+   * cron cuando falten menos de 24 h, como para cualquier reserva (la clave
+   * incluye la hora, así que no choca con el de la hora anterior).
+   */
+  async programarReprogramacion(
+    reserva: Reserva,
+    cliente: Cliente,
+    servicio: Servicio,
+  ): Promise<void> {
+    const anuladas = filasDe<{ id_notificacion: string }>(
+      await this.notificacionRepo.query(SQL_ANULAR_AVISOS_HORA_ANTERIOR, [
+        reserva.idReserva,
+        reserva.fechaHoraInicio,
+      ]),
+    );
+    if (anuladas.length > 0) {
+      this.logger.log(
+        `Reserva ${reserva.idReserva} reprogramada: ${anuladas.length} aviso(s) pendiente(s) con la hora anterior anulado(s)`,
+      );
+    }
+    await this.programar(TipoNotificacion.REPROGRAMACION, reserva, cliente, servicio);
+  }
+
+  /**
    * Inserción idempotente (punto 4.1 del Bloque 4). Antes era "buscar si
    * existe y luego INSERT", dos sentencias separadas: dos procesos con el
    * mismo cron (Render y los backends locales del equipo, todos contra la
@@ -120,8 +181,7 @@ export class NotificacionesService {
    * no inserta nada y no hay ventana de carrera.
    */
   private async programar(
-    tipo:
-      TipoNotificacion.CONFIRMACION | TipoNotificacion.CANCELACION | TipoNotificacion.RECORDATORIO,
+    tipo: TipoMensajeReserva,
     reserva: Reserva,
     cliente: Cliente,
     servicio: Servicio,
@@ -134,21 +194,31 @@ export class NotificacionesService {
     // mensaje — el ER no tiene una columna separada para asunto y no vale la
     // pena una migración solo por eso.
     const mensaje = `${asunto}\n${texto}`;
+    const canal = CANAL_POR_PREFERENCIA[cliente.canalPreferido];
+    const ahora = new Date();
     const insertadas: Array<{ id_notificacion: string }> = await this.notificacionRepo.query(
       SQL_INSERTAR_IDEMPOTENTE,
-      [
-        reserva.idReserva,
-        cliente.idCliente,
-        tipo,
-        CANAL_POR_PREFERENCIA[cliente.canalPreferido],
-        new Date(),
-        mensaje,
-        reserva.fechaHoraInicio,
-      ],
+      [reserva.idReserva, cliente.idCliente, tipo, canal, ahora, mensaje, reserva.fechaHoraInicio],
     );
     if (insertadas.length > 0) {
       this.logger.log(`Notificación ${tipo} programada para cliente ${cliente.idCliente}`);
       return 'creada';
+    }
+    const reactivadas = filasDe<{ id_notificacion: string }>(
+      await this.notificacionRepo.query(SQL_REACTIVAR_ANULADA, [
+        reserva.idReserva,
+        tipo,
+        reserva.fechaHoraInicio,
+        ahora,
+        mensaje,
+        canal,
+      ]),
+    );
+    if (reactivadas.length > 0) {
+      this.logger.log(
+        `Notificación ${tipo} de la reserva ${reserva.idReserva} reactivada: la cita volvió a esa hora`,
+      );
+      return 'reactivada';
     }
     this.logger.log(
       `Notificación ${tipo} de la reserva ${reserva.idReserva} ya existía para esa hora; no se duplica`,
@@ -308,8 +378,12 @@ export class NotificacionesService {
         tipo: TipoNotificacion.RECORDATORIO,
       },
     });
+    // Las anuladas por una reprogramación no cuentan: si la cita volvió a
+    // esa hora, programar() las reactiva.
     const clavesYaProgramadas = new Set(
-      yaProgramadas.map((n) => claveEnvio(n.idReserva, n.fechaHoraReserva)),
+      yaProgramadas
+        .filter((n) => !esAnuladaPorReprogramacion(n.estado, n.ultimoError))
+        .map((n) => claveEnvio(n.idReserva, n.fechaHoraReserva)),
     );
 
     for (const reserva of proximas) {

@@ -47,6 +47,7 @@ describe('ReservasService', () => {
   let notificaciones: {
     programarConfirmacion: ReturnType<typeof vi.fn>;
     programarCancelacion: ReturnType<typeof vi.fn>;
+    programarReprogramacion: ReturnType<typeof vi.fn>;
   };
   let limitesPlan: { asegurarDentroDelLimite: ReturnType<typeof vi.fn> };
   let service: ReservasService;
@@ -67,6 +68,7 @@ describe('ReservasService', () => {
     notificaciones = {
       programarConfirmacion: vi.fn().mockResolvedValue(undefined),
       programarCancelacion: vi.fn().mockResolvedValue(undefined),
+      programarReprogramacion: vi.fn().mockResolvedValue(undefined),
     };
     limitesPlan = { asegurarDentroDelLimite: vi.fn().mockResolvedValue(undefined) };
     service = new ReservasService(
@@ -219,6 +221,55 @@ describe('ReservasService', () => {
     await expect(
       comoAdmin(() => service.reprogramar('reserva-1', { fechaHoraInicio: LUNES_10AM_UTC })),
     ).rejects.toThrow(ConflictException);
+  });
+
+  it('reprogramar() avisa al cliente con la reserva ya actualizada (Bloque 4, punto 4.3)', async () => {
+    const cliente = { idCliente: 'cliente-1' };
+    reservaRepo.findOne.mockResolvedValue({
+      idReserva: 'reserva-1',
+      estado: EstadoReserva.CONFIRMADA,
+      idUsuario: USUARIO_ID,
+      idServicio: SERVICIO_ID,
+      fechaHoraInicio: new Date('2027-03-02T16:00:00.000Z'),
+      cliente,
+    });
+    const actualizada = { idReserva: 'reserva-1', fechaHoraInicio: new Date(LUNES_10AM_UTC) };
+    managerMock.findOneOrFail.mockResolvedValue(actualizada);
+
+    await comoAdmin(() => service.reprogramar('reserva-1', { fechaHoraInicio: LUNES_10AM_UTC }));
+
+    expect(notificaciones.programarReprogramacion).toHaveBeenCalledWith(
+      actualizada,
+      cliente,
+      expect.objectContaining({ idServicio: SERVICIO_ID }),
+    );
+  });
+
+  it('reprogramar() a la MISMA hora no avisa al cliente', async () => {
+    reservaRepo.findOne.mockResolvedValue({
+      idReserva: 'reserva-1',
+      estado: EstadoReserva.CONFIRMADA,
+      idUsuario: USUARIO_ID,
+      idServicio: SERVICIO_ID,
+      fechaHoraInicio: new Date(LUNES_10AM_UTC),
+    });
+    await comoAdmin(() => service.reprogramar('reserva-1', { fechaHoraInicio: LUNES_10AM_UTC }));
+    expect(notificaciones.programarReprogramacion).not.toHaveBeenCalled();
+  });
+
+  it('reprogramar() no avisa si la reprogramación falla (traslape)', async () => {
+    reservaRepo.findOne.mockResolvedValue({
+      idReserva: 'reserva-1',
+      estado: EstadoReserva.CONFIRMADA,
+      idUsuario: USUARIO_ID,
+      idServicio: SERVICIO_ID,
+      fechaHoraInicio: new Date('2027-03-02T16:00:00.000Z'),
+    });
+    managerMock.find.mockResolvedValue([{ idReserva: 'otra' }]);
+    await expect(
+      comoAdmin(() => service.reprogramar('reserva-1', { fechaHoraInicio: LUNES_10AM_UTC })),
+    ).rejects.toThrow(ConflictException);
+    expect(notificaciones.programarReprogramacion).not.toHaveBeenCalled();
   });
 
   it('reprogramar() excluye la propia reserva del chequeo de traslape', async () => {

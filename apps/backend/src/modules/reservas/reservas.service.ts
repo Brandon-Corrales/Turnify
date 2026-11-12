@@ -235,7 +235,7 @@ export class ReservasService {
 
     await this.asegurarDentroDeDisponibilidad(actual.idUsuario, fechaHoraInicio, fechaHoraFin);
 
-    return this.dataSource.transaction(async (manager) => {
+    const reprogramada = await this.dataSource.transaction(async (manager) => {
       await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [actual.idUsuario]);
 
       const traslapes = await manager.find(Reserva, {
@@ -261,6 +261,15 @@ export class ReservasService {
       this.logger.log(`Reserva ${idReserva} reprogramada`);
       return manager.findOneOrFail(Reserva, { where: { idReserva } });
     });
+
+    // Punto 4.3 del Bloque 4: avisar al cliente. Fuera de la transacción por
+    // el mismo motivo que en crear(): un fallo al programar el aviso no debe
+    // revertir una reprogramación ya hecha. Si la hora no cambió, no hay nada
+    // que avisar.
+    if (new Date(actual.fechaHoraInicio).getTime() !== fechaHoraInicio.getTime()) {
+      await this.notificaciones.programarReprogramacion(reprogramada, actual.cliente, servicio);
+    }
+    return reprogramada;
   }
 
   private asegurarNoEsPasado(fecha: Date, errorCode: string, message: string): void {
