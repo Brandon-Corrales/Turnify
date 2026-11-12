@@ -32,6 +32,25 @@ const CANAL_POR_PREFERENCIA: Record<CanalPreferido, CanalNotificacion> = {
   [CanalPreferido.WHATSAPP]: CanalNotificacion.WHATSAPP,
 };
 
+export type ResultadoProgramar = 'creada' | 'existente';
+
+/**
+ * Un solo INSERT atómico contra el índice único
+ * `UQ_notificaciones_reserva_tipo_fecha`. Si la clave ya existe no inserta
+ * nada y RETURNING devuelve cero filas.
+ */
+export const SQL_INSERTAR_IDEMPOTENTE = `
+  INSERT INTO "notificaciones"
+    ("id_reserva", "id_cliente", "tipo", "canal", "estado", "programado_para", "mensaje", "reintentos", "fecha_hora_reserva")
+  VALUES ($1, $2, $3, $4, 'pendiente', $5, $6, 0, $7)
+  ON CONFLICT ("id_reserva", "tipo", "fecha_hora_reserva") DO NOTHING
+  RETURNING "id_notificacion"`;
+
+/** Clave de un envío único, como texto, para comparar en memoria. */
+function claveEnvio(idReserva: string, fechaHoraReserva: Date): string {
+  return `${idReserva}|${new Date(fechaHoraReserva).getTime()}`;
+}
+
 /**
  * Worker de Notificaciones (punto 3 del brief): separado del ciclo
  * request/response — un cron dentro del propio proceso de Nest revisa
@@ -70,32 +89,50 @@ export class NotificacionesService {
     await this.programar(TipoNotificacion.CANCELACION, reserva, cliente, servicio);
   }
 
+  /**
+   * Inserción idempotente (punto 4.1 del Bloque 4). Antes era "buscar si
+   * existe y luego INSERT", dos sentencias separadas: dos procesos con el
+   * mismo cron (Render y los backends locales del equipo, todos contra la
+   * misma base) pasaban el chequeo a la vez y ambos insertaban. Ahora es una
+   * sola sentencia contra el índice único
+   * (id_reserva, tipo, fecha_hora_reserva): si la clave ya existe, PostgreSQL
+   * no inserta nada y no hay ventana de carrera.
+   */
   private async programar(
     tipo:
       TipoNotificacion.CONFIRMACION | TipoNotificacion.CANCELACION | TipoNotificacion.RECORDATORIO,
     reserva: Reserva,
     cliente: Cliente,
     servicio: Servicio,
-  ): Promise<void> {
+  ): Promise<ResultadoProgramar> {
     const { asunto, texto } = construirMensaje(this.i18n, tipo, cliente.idiomaPreferido, {
       nombreServicio: servicio.nombre,
       fechaHoraTexto: formatearFechaHoraLocalCR(reserva.fechaHoraInicio, cliente.idiomaPreferido),
     });
-    const notificacion = this.notificacionRepo.create({
-      idReserva: reserva.idReserva,
-      idCliente: cliente.idCliente,
-      tipo,
-      canal: CANAL_POR_PREFERENCIA[cliente.canalPreferido],
-      estado: EstadoNotificacion.PENDIENTE,
-      programadoPara: new Date(),
-      // El asunto (solo relevante para email) viaja como primera línea del
-      // mensaje — el ER no tiene una columna separada para asunto y no
-      // vale la pena una migración solo por eso.
-      mensaje: `${asunto}\n${texto}`,
-      reintentos: 0,
-    });
-    await this.notificacionRepo.save(notificacion);
-    this.logger.log(`Notificación ${tipo} programada para cliente ${cliente.idCliente}`);
+    // El asunto (solo relevante para email) viaja como primera línea del
+    // mensaje — el ER no tiene una columna separada para asunto y no vale la
+    // pena una migración solo por eso.
+    const mensaje = `${asunto}\n${texto}`;
+    const insertadas: Array<{ id_notificacion: string }> = await this.notificacionRepo.query(
+      SQL_INSERTAR_IDEMPOTENTE,
+      [
+        reserva.idReserva,
+        cliente.idCliente,
+        tipo,
+        CANAL_POR_PREFERENCIA[cliente.canalPreferido],
+        new Date(),
+        mensaje,
+        reserva.fechaHoraInicio,
+      ],
+    );
+    if (insertadas.length > 0) {
+      this.logger.log(`Notificación ${tipo} programada para cliente ${cliente.idCliente}`);
+      return 'creada';
+    }
+    this.logger.log(
+      `Notificación ${tipo} de la reserva ${reserva.idReserva} ya existía para esa hora; no se duplica`,
+    );
+    return 'existente';
   }
 
   /**
@@ -163,12 +200,12 @@ export class NotificacionesService {
    * Cron de RECORDATORIO
    * Corre cada 10 minutos y programa el recordatorio de toda reserva
    * confirmada cuya hora de inicio cae dentro de las próximas
-   * `HORAS_ANTES_RECORDATORIO` horas. Es idempotente por diseño, no por la
-   * ventana de tiempo: antes de programar, se descarta cualquier reserva
-   * que YA tenga una notificación tipo RECORDATORIO (sin importar su
-   * estado — incluso una que falló ya se marca como "intentada" para no
-   * reencolarla en cada corrida), así que un cron cada 10 minutos con una
-   * ventana de 24h nunca duplica el recordatorio de una misma reserva.
+   * `HORAS_ANTES_RECORDATORIO` horas. Una reserva que YA tiene un
+   * recordatorio para su hora actual se descarta, sin importar su estado
+   * (incluso uno que falló cuenta como "intentado", para no reencolarlo en
+   * cada corrida). Ese filtro solo ahorra trabajo: la garantía real de no
+   * duplicar, incluso con varias instancias a la vez, es el INSERT
+   * idempotente de `programar()`.
    */
   @Cron(CronExpression.EVERY_10_MINUTES)
   async programarRecordatorios(): Promise<void> {
@@ -187,10 +224,12 @@ export class NotificacionesService {
         tipo: TipoNotificacion.RECORDATORIO,
       },
     });
-    const idsYaProgramados = new Set(yaProgramadas.map((n) => n.idReserva));
+    const clavesYaProgramadas = new Set(
+      yaProgramadas.map((n) => claveEnvio(n.idReserva, n.fechaHoraReserva)),
+    );
 
     for (const reserva of proximas) {
-      if (idsYaProgramados.has(reserva.idReserva)) continue;
+      if (clavesYaProgramadas.has(claveEnvio(reserva.idReserva, reserva.fechaHoraInicio))) continue;
       await this.programar(
         TipoNotificacion.RECORDATORIO,
         reserva,

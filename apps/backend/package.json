@@ -12,6 +12,7 @@
     "migration:generate": "npm run typeorm -- migration:generate",
     "migration:run": "npm run typeorm -- migration:run",
     "migration:show": "npm run typeorm -- migration:show",
+    "migration:simular": "ts-node src/database/simulaciones/simular.ts",
     "migration:revert": "npm run typeorm -- migration:revert",
     "seed": "ts-node src/database/seed.ts",
     "seed:plantillas": "ts-node src/database/seed-plantillas-servicio.ts",

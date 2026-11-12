@@ -4,6 +4,14 @@ import { CanalNotificacion, EstadoNotificacion, TipoNotificacion } from './enums
 import { Reserva } from './reserva.entity';
 import { Cliente } from './cliente.entity';
 
+/**
+ * Un solo envío por (reserva, tipo, hora de la cita). La hora entra en la
+ * clave porque una reserva reprogramada necesita un recordatorio para la hora
+ * nueva. Migración `NotificacionClaveUnica`.
+ */
+@Index('UQ_notificaciones_reserva_tipo_fecha', ['idReserva', 'tipo', 'fechaHoraReserva'], {
+  unique: true,
+})
 @Entity('notificaciones')
 export class Notificacion extends AuditableEntity {
   @PrimaryGeneratedColumn('uuid', { name: 'id_notificacion' })
@@ -43,6 +51,10 @@ export class Notificacion extends AuditableEntity {
   @Index()
   @Column({ name: 'programado_para', type: 'timestamptz' })
   programadoPara!: Date;
+
+  /** Hora de inicio de la cita a la que se refiere el aviso, tal como estaba al programarlo. */
+  @Column({ name: 'fecha_hora_reserva', type: 'timestamptz' })
+  fechaHoraReserva!: Date;
 
   @Column({ name: 'enviado_en', type: 'timestamptz', nullable: true })
   enviadoEn?: Date | null;

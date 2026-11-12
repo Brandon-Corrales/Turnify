@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { NotificacionesService } from './notificaciones.service';
+import { NotificacionesService, SQL_INSERTAR_IDEMPOTENTE } from './notificaciones.service';
 import {
   CanalNotificacion,
   CanalPreferido,
@@ -9,7 +9,64 @@ import {
   TipoNotificacion,
 } from '../../database/entities';
 
-function crearNotificacionRepoMock() {
+interface FilaNotificacionFalsa {
+  idNotificacion: string;
+  idReserva: string;
+  idCliente: string;
+  tipo: TipoNotificacion;
+  canal: CanalNotificacion;
+  estado: EstadoNotificacion;
+  programadoPara: Date;
+  mensaje: string;
+  reintentos: number;
+  fechaHoraReserva: Date;
+  ultimoError: string | null;
+}
+
+/**
+ * Tabla `notificaciones` en memoria que responde a las sentencias SQL del
+ * servicio. Cada llamada a `query` es atómica (JavaScript no la interrumpe),
+ * igual que una sentencia en PostgreSQL, y el INSERT respeta el índice único
+ * (id_reserva, tipo, fecha_hora_reserva). Antes de responder cede el turno
+ * con `await`, como un viaje real a la base, para que las llamadas
+ * concurrentes se intercalen.
+ */
+function crearTablaNotificacionesFalsa() {
+  const filas: FilaNotificacionFalsa[] = [];
+  let secuencia = 0;
+  const mismaClave = (f: FilaNotificacionFalsa, idReserva: unknown, tipo: unknown, fecha: unknown) =>
+    f.idReserva === idReserva &&
+    f.tipo === tipo &&
+    f.fechaHoraReserva.getTime() === new Date(fecha as Date).getTime();
+
+  async function query(sql: string, params: unknown[] = []): Promise<unknown> {
+    await Promise.resolve();
+    if (sql.includes('INSERT INTO "notificaciones"')) {
+      const [idReserva, idCliente, tipo, canal, programadoPara, mensaje, fechaHoraReserva] = params;
+      if (filas.some((f) => mismaClave(f, idReserva, tipo, fechaHoraReserva))) return [];
+      const fila: FilaNotificacionFalsa = {
+        idNotificacion: `notif-${++secuencia}`,
+        idReserva: idReserva as string,
+        idCliente: idCliente as string,
+        tipo: tipo as TipoNotificacion,
+        canal: canal as CanalNotificacion,
+        estado: EstadoNotificacion.PENDIENTE,
+        programadoPara: programadoPara as Date,
+        mensaje: mensaje as string,
+        reintentos: 0,
+        fechaHoraReserva: new Date(fechaHoraReserva as Date),
+        ultimoError: null,
+      };
+      filas.push(fila);
+      return [{ id_notificacion: fila.idNotificacion }];
+    }
+    throw new Error(`SQL no simulado en la tabla falsa: ${sql}`);
+  }
+
+  return { filas, query, mismaClave };
+}
+
+function crearNotificacionRepoMock(tabla = crearTablaNotificacionesFalsa()) {
   const queryBuilder: any = {
     innerJoin: vi.fn().mockReturnThis(),
     addSelect: vi.fn().mockReturnThis(),
@@ -26,7 +83,9 @@ function crearNotificacionRepoMock() {
     find: vi.fn().mockResolvedValue([]),
     update: vi.fn().mockResolvedValue(undefined),
     createQueryBuilder: vi.fn(() => queryBuilder),
+    query: vi.fn(tabla.query),
     _queryBuilder: queryBuilder,
+    _tabla: tabla,
   };
 }
 
@@ -109,7 +168,7 @@ describe('NotificacionesService', () => {
 
   it('programarConfirmacion() crea una notificación pendiente con el canal preferido del cliente', async () => {
     await service.programarConfirmacion(RESERVA as any, CLIENTE_EMAIL as any, SERVICIO as any);
-    expect(notificacionRepo.save).toHaveBeenCalledWith(
+    expect(notificacionRepo._tabla.filas).toEqual([
       expect.objectContaining({
         idReserva: 'reserva-1',
         idCliente: 'cliente-1',
@@ -117,8 +176,9 @@ describe('NotificacionesService', () => {
         canal: CanalNotificacion.EMAIL,
         estado: EstadoNotificacion.PENDIENTE,
         reintentos: 0,
+        fechaHoraReserva: RESERVA.fechaHoraInicio,
       }),
-    );
+    ]);
   });
 
   it('programarConfirmacion() genera el mensaje en inglés si el cliente prefiere inglés', async () => {
@@ -127,7 +187,7 @@ describe('NotificacionesService', () => {
       { ...CLIENTE_EMAIL, idiomaPreferido: Idioma.EN } as any,
       SERVICIO as any,
     );
-    const guardado = notificacionRepo.save.mock.calls[0][0];
+    const guardado = notificacionRepo._tabla.filas[0];
     expect(guardado.mensaje).toContain('Booking confirmed');
     expect(guardado.mensaje).toContain('confirmed');
   });
@@ -299,14 +359,15 @@ describe('NotificacionesService', () => {
 
     await service.programarRecordatorios();
 
-    expect(notificacionRepo.save).toHaveBeenCalledWith(
+    expect(notificacionRepo._tabla.filas).toEqual([
       expect.objectContaining({
         idReserva: 'reserva-2',
         idCliente: 'cliente-1',
         tipo: TipoNotificacion.RECORDATORIO,
         estado: EstadoNotificacion.PENDIENTE,
+        fechaHoraReserva: reserva.fechaHoraInicio,
       }),
-    );
+    ]);
   });
 
   it('programarRecordatorios() no duplica el recordatorio de una reserva que ya lo tiene programado', async () => {
@@ -319,12 +380,99 @@ describe('NotificacionesService', () => {
     };
     reservaRepo.find.mockResolvedValue([reserva]);
     notificacionRepo.find.mockResolvedValue([
-      { idReserva: 'reserva-3', tipo: TipoNotificacion.RECORDATORIO },
+      {
+        idReserva: 'reserva-3',
+        tipo: TipoNotificacion.RECORDATORIO,
+        fechaHoraReserva: reserva.fechaHoraInicio,
+      },
     ]);
 
     await service.programarRecordatorios();
 
-    expect(notificacionRepo.save).not.toHaveBeenCalled();
+    expect(notificacionRepo.query).not.toHaveBeenCalled();
+  });
+
+  describe('creación idempotente (Bloque 4, punto 4.1)', () => {
+    const reservaProxima = () => ({
+      idReserva: 'reserva-dup',
+      estado: EstadoReserva.CONFIRMADA,
+      fechaHoraInicio: new Date(Date.now() + 3 * 60 * 60 * 1000),
+      cliente: CLIENTE_EMAIL,
+      servicio: SERVICIO,
+    });
+
+    it('programar dos veces la misma confirmación deja una sola fila', async () => {
+      await service.programarConfirmacion(RESERVA as any, CLIENTE_EMAIL as any, SERVICIO as any);
+      await service.programarConfirmacion(RESERVA as any, CLIENTE_EMAIL as any, SERVICIO as any);
+      expect(notificacionRepo._tabla.filas).toHaveLength(1);
+    });
+
+    it('la causa raíz: dos instancias con el cron a la misma hora pasan el chequeo previo a la vez y aun así queda un solo recordatorio', async () => {
+      // Dos procesos (p. ej. Render y un backend local) contra la MISMA base:
+      // ambos leen "no hay recordatorio" antes de que ninguno inserte. Con el
+      // código anterior (find + save) esto creaba 2 filas, que es el patrón
+      // de producción: pares creados con ~0,2 s de diferencia en el tick.
+      const reserva = reservaProxima();
+      const otraInstanciaRepo = crearNotificacionRepoMock(notificacionRepo._tabla);
+      const otraInstancia = new NotificacionesService(
+        otraInstanciaRepo as any,
+        { find: vi.fn().mockResolvedValue([reserva]) } as any,
+        resend as any,
+        whatsapp as any,
+        i18n as any,
+      );
+      reservaRepo.find.mockResolvedValue([reserva]);
+
+      await Promise.all([service.programarRecordatorios(), otraInstancia.programarRecordatorios()]);
+
+      expect(notificacionRepo.find).toHaveBeenCalled();
+      expect(otraInstanciaRepo.find).toHaveBeenCalled();
+      expect(notificacionRepo._tabla.filas).toHaveLength(1);
+    });
+
+    it('diez programaciones concurrentes del mismo recordatorio dejan una sola fila', async () => {
+      const reserva = reservaProxima();
+      reservaRepo.find.mockResolvedValue([reserva]);
+      await Promise.all(Array.from({ length: 10 }, () => service.programarRecordatorios()));
+      expect(notificacionRepo._tabla.filas).toHaveLength(1);
+    });
+
+    it('la misma reserva con OTRA hora (reprogramada) sí recibe un recordatorio nuevo', async () => {
+      const reserva = reservaProxima();
+      const horaAnterior = new Date(reserva.fechaHoraInicio.getTime() + 60 * 60 * 1000);
+      reservaRepo.find.mockResolvedValue([reserva]);
+      notificacionRepo.find.mockResolvedValue([
+        {
+          idReserva: reserva.idReserva,
+          tipo: TipoNotificacion.RECORDATORIO,
+          fechaHoraReserva: horaAnterior,
+        },
+      ]);
+
+      await service.programarRecordatorios();
+
+      expect(notificacionRepo._tabla.filas).toEqual([
+        expect.objectContaining({ fechaHoraReserva: reserva.fechaHoraInicio }),
+      ]);
+    });
+
+    it('confirmación y recordatorio de la misma reserva son envíos distintos', async () => {
+      await service.programarConfirmacion(RESERVA as any, CLIENTE_EMAIL as any, SERVICIO as any);
+      reservaRepo.find.mockResolvedValue([
+        { ...RESERVA, estado: EstadoReserva.CONFIRMADA, cliente: CLIENTE_EMAIL, servicio: SERVICIO },
+      ]);
+      await service.programarRecordatorios();
+      expect(notificacionRepo._tabla.filas.map((f) => f.tipo).sort()).toEqual([
+        TipoNotificacion.CONFIRMACION,
+        TipoNotificacion.RECORDATORIO,
+      ]);
+    });
+
+    it('el INSERT usa ON CONFLICT sobre la clave (id_reserva, tipo, fecha_hora_reserva)', () => {
+      expect(SQL_INSERTAR_IDEMPOTENTE).toMatch(
+        /ON CONFLICT \("id_reserva", "tipo", "fecha_hora_reserva"\) DO NOTHING/,
+      );
+    });
   });
 
   it('programarRecordatorios() no consulta notificaciones existentes si no hay reservas próximas (evita un query vacío)', async () => {
