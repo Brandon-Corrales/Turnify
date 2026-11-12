@@ -15,6 +15,7 @@ import { Boton } from '@/components/ui';
 import { ControlesGlobales } from '@/components/layout/ControlesGlobales';
 import { TarjetasPlanes } from '@/components/suscripciones/TarjetasPlanes';
 import { ESPACIO_INFERIOR_WIDGETS } from '@/components/layout/espacio-widgets';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
 
 const ICONOS_CARACTERISTICAS = [Calendar, Bell, BarChart3, MessageCircle, Building2, ShieldCheck];
 
@@ -40,6 +41,7 @@ function Seccion({ children, className }: { children: ReactNode; className?: str
 
 export default function LandingPage() {
   const { t } = useTranslation();
+  useTituloPagina(t('titulos.landing'));
   const navigate = useNavigate();
 
   const caracteristicas = [1, 2, 3, 4, 5, 6].map((n, i) => ({

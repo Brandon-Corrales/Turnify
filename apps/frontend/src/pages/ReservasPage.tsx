@@ -16,12 +16,14 @@ import {
 } from '@/lib/reservas-api';
 import { formatearFechaHoraEnZona } from '@/lib/fecha-negocio';
 import { useZonaHorariaNegocio } from '@/lib/use-zona-negocio';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
 
 const LIMITE = 12;
 
 export default function ReservasPage() {
   const zona = useZonaHorariaNegocio();
   const { t, i18n } = useTranslation();
+  useTituloPagina(t('titulos.reservas'));
   const [pagina, setPagina] = useState(1);
   const [estado, setEstado] = useState<EstadoReserva | ''>('');
   const [vista, setVista] = useVistaPreferida('reservas');

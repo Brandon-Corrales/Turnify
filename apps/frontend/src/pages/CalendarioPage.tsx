@@ -27,6 +27,7 @@ import { useZonaHorariaNegocio } from '@/lib/use-zona-negocio';
 import type { CountryCode } from 'libphonenumber-js';
 import { CampoTelefono } from '@/components/negocio/CampoTelefono';
 import { normalizarTelefono, PAIS_TELEFONO_POR_DEFECTO } from '@/lib/telefono';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
 
 // Todo el calendario va en la zona horaria del NEGOCIO (Bloque 5, punto
 // 5.1), nunca en la del navegador del admin: la posición de los bloques en
@@ -82,6 +83,7 @@ class ErrorReservaConClienteCreado extends Error {
 export default function CalendarioPage() {
   const zona = useZonaHorariaNegocio();
   const { t, i18n } = useTranslation();
+  useTituloPagina(t('titulos.calendario'));
   const calendarRef = useRef<FullCalendar>(null);
   const [rango, setRango] = useState<RangoVisible | null>(null);
   const [idUsuarioFiltro, setIdUsuarioFiltro] = useState('');

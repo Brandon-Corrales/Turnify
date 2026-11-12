@@ -200,6 +200,26 @@
   "telefono": {
     "pais": "Phone country"
   },
+  "titulos": {
+    "landing": "Appointment scheduling for your business",
+    "login": "Log in",
+    "registro": "Register your business",
+    "inicio": "Home",
+    "onboarding": "Getting started",
+    "calendario": "Calendar",
+    "reservas": "Bookings",
+    "clientes": "Clients",
+    "servicios": "Services",
+    "notificaciones": "Notifications",
+    "reportes": "Reports",
+    "configuracion": "Settings",
+    "suscripcion": "Subscription",
+    "suscripcionExito": "Payment completed",
+    "suscripcionCancelada": "Payment cancelled",
+    "reservar": "Book",
+    "reservarEn": "Book at {{nombre}}",
+    "noEncontrado": "Page not found"
+  },
   "suscripcion": {
     "titulo": "Your subscription",
     "subtitulo": "Compare plans and upgrade whenever you're ready.",

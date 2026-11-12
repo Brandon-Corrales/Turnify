@@ -12,6 +12,7 @@ import { disponibilidadApi, type Disponibilidad } from '@/lib/disponibilidad-api
 import { negociosApi } from '@/lib/negocios-api';
 import { usuariosApi } from '@/lib/usuarios-api';
 import { TarjetaPreferenciasRegionales } from '@/components/negocio/TarjetaPreferenciasRegionales';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
 
 const DIAS_CLAVE = [
   { valor: 0, clave: 'domingo' },
@@ -73,6 +74,7 @@ function filasIniciales(disponibilidad: Disponibilidad[]): FilaDia[] {
  */
 export default function ConfiguracionPage() {
   const { t } = useTranslation();
+  useTituloPagina(t('titulos.configuracion'));
   const { usuario } = useAuth();
   const mostrarToast = useToast();
   const queryClient = useQueryClient();

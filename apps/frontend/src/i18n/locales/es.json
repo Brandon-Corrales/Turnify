@@ -200,6 +200,26 @@
   "telefono": {
     "pais": "País del teléfono"
   },
+  "titulos": {
+    "landing": "Agenda de citas para tu negocio",
+    "login": "Iniciar sesión",
+    "registro": "Registrar negocio",
+    "inicio": "Inicio",
+    "onboarding": "Primeros pasos",
+    "calendario": "Calendario",
+    "reservas": "Reservas",
+    "clientes": "Clientes",
+    "servicios": "Servicios",
+    "notificaciones": "Notificaciones",
+    "reportes": "Reportes",
+    "configuracion": "Configuración",
+    "suscripcion": "Suscripción",
+    "suscripcionExito": "Pago completado",
+    "suscripcionCancelada": "Pago cancelado",
+    "reservar": "Reservar",
+    "reservarEn": "Reservar en {{nombre}}",
+    "noEncontrado": "Página no encontrada"
+  },
   "suscripcion": {
     "titulo": "Tu suscripción",
     "subtitulo": "Compara los planes y actualiza cuando quieras.",

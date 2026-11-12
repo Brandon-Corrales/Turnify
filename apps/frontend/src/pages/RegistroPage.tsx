@@ -13,9 +13,11 @@ import {
 } from '@/lib/validation';
 import { crearEtiquetaTipoNegocio, TIPOS_NEGOCIO } from '@/lib/tipo-negocio';
 import { ESPACIO_INFERIOR_WIDGETS } from '@/components/layout/espacio-widgets';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
 
 export default function RegistroPage() {
   const { t } = useTranslation();
+  useTituloPagina(t('titulos.registro'));
   const { registrar } = useAuth();
   const navigate = useNavigate();
   const mostrarToast = useToast();

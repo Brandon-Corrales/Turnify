@@ -14,6 +14,7 @@ import { clientesApi, type Cliente } from '@/lib/clientes-api';
 import type { CountryCode } from 'libphonenumber-js';
 import { CampoTelefono } from '@/components/negocio/CampoTelefono';
 import { normalizarTelefono, PAIS_TELEFONO_POR_DEFECTO, separarTelefono } from '@/lib/telefono';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
 
 const LIMITE = 12;
 
@@ -30,6 +31,7 @@ const VALORES_VACIOS: ClienteFormValues = {
 
 export default function ClientesPage() {
   const { t } = useTranslation();
+  useTituloPagina(t('titulos.clientes'));
   const [pagina, setPagina] = useState(1);
   const [vista, setVista] = useVistaPreferida('clientes');
   const [modalAbierto, setModalAbierto] = useState(false);

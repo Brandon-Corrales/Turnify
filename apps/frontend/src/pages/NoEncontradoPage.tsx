@@ -1,9 +1,11 @@
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Boton } from '@/components/ui';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
 
 export default function NoEncontradoPage() {
   const { t } = useTranslation();
+  useTituloPagina(t('titulos.noEncontrado'));
 
   return (
     <main

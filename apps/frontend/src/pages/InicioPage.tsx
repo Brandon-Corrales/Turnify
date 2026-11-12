@@ -34,6 +34,7 @@ import {
   reservasApi,
   type Reserva,
 } from '@/lib/reservas-api';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
 
 /** Todas las reservas del rango, recorriendo las páginas (el backend devuelve como máximo 100 por página). */
 async function listarTodasLasReservas(desde: string, hasta: string): Promise<Reserva[]> {
@@ -370,6 +371,7 @@ function CitasDelDia({
 
 export default function InicioPage() {
   const { t, i18n } = useTranslation();
+  useTituloPagina(t('titulos.inicio'));
   const { usuario } = useAuth();
   const navigate = useNavigate();
   const zona = useZonaHorariaNegocio();

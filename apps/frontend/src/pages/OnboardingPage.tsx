@@ -13,6 +13,7 @@ import { SelectorZonaHoraria } from '@/components/negocio/SelectorZonaHoraria';
 import { SelectorMoneda } from '@/components/negocio/SelectorMoneda';
 import { monedaOPorDefecto } from '@/lib/dinero';
 import { zonaOPorDefecto } from '@/lib/fecha-negocio';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
 
 /**
  * Precio sugerido de arranque para los servicios creados desde una
@@ -31,6 +32,7 @@ const PRECIO_SUGERIDO_DEFECTO = 5000;
  */
 export default function OnboardingPage() {
   const { t } = useTranslation();
+  useTituloPagina(t('titulos.onboarding'));
   const navigate = useNavigate();
   const mostrarToast = useToast();
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());

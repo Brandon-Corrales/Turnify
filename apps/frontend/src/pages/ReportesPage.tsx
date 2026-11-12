@@ -25,6 +25,7 @@ import { useMonedaNegocio, useZonaHorariaNegocio } from '@/lib/use-zona-negocio'
 import { formatearDinero } from '@/lib/dinero';
 import { reportesApi, type ResumenReportes } from '@/lib/reportes-api';
 import { crearEtiquetaEstadoReserva, type EstadoReserva } from '@/lib/reservas-api';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
 
 function crearEtiquetaPeriodo(t: TFunction): Record<Periodo, string> {
   return {
@@ -70,6 +71,7 @@ function descargarCsv(resumen: ResumenReportes, t: TFunction): void {
 
 export default function ReportesPage() {
   const { t, i18n } = useTranslation();
+  useTituloPagina(t('titulos.reportes'));
   const [periodo, setPeriodo] = useState<Periodo>('esteMes');
   const zona = useZonaHorariaNegocio();
   const moneda = useMonedaNegocio();

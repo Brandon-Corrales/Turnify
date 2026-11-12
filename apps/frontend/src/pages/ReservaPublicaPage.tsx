@@ -20,6 +20,7 @@ import { ESPACIO_INFERIOR_WIDGETS } from '@/components/layout/espacio-widgets';
 import type { CountryCode } from 'libphonenumber-js';
 import { CampoTelefono } from '@/components/negocio/CampoTelefono';
 import { normalizarTelefono, PAIS_TELEFONO_POR_DEFECTO } from '@/lib/telefono';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
 
 function formatearHora(iso: string, idioma: string, zona: string): string {
   return new Date(iso).toLocaleTimeString(localeDe(idioma), {
@@ -112,6 +113,11 @@ export default function ReservaPublicaPage() {
   // en la del navegador del cliente) y la nota de abajo lo dice.
   const zona = zonaOPorDefecto(negocioQuery.data?.zonaHoraria);
   const moneda = monedaOPorDefecto(negocioQuery.data?.moneda);
+  useTituloPagina(
+    negocioQuery.data
+      ? t('titulos.reservarEn', { nombre: negocioQuery.data.nombre })
+      : t('titulos.reservar'),
+  );
   const hoy = hoyEnZonaNegocio(new Date(), zona);
   const fecha = fechaElegida ?? hoy;
 

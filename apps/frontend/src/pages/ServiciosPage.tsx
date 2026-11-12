@@ -14,6 +14,7 @@ import { crearServicioSchema, type ServicioFormValues } from '@/lib/validation';
 import { serviciosApi, type Servicio } from '@/lib/servicios-api';
 import { formatearDinero, simboloMoneda } from '@/lib/dinero';
 import { useMonedaNegocio } from '@/lib/use-zona-negocio';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
 
 const LIMITE = 12;
 
@@ -28,6 +29,7 @@ const VALORES_VACIOS: ServicioFormValues = {
 export default function ServiciosPage() {
   const moneda = useMonedaNegocio();
   const { t, i18n } = useTranslation();
+  useTituloPagina(t('titulos.servicios'));
   const [pagina, setPagina] = useState(1);
   const [vista, setVista] = useVistaPreferida('servicios');
   const navigate = useNavigate();

@@ -8,9 +8,11 @@ import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/lib/api';
 import { crearLoginSchema, type LoginFormValues } from '@/lib/validation';
 import { ESPACIO_INFERIOR_WIDGETS } from '@/components/layout/espacio-widgets';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
 
 export default function LoginPage() {
   const { t } = useTranslation();
+  useTituloPagina(t('titulos.login'));
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();

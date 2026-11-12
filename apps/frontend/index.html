@@ -19,9 +19,39 @@
       data-position="4"
     ></script>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Título inicial; cada pantalla lo cambia con useTituloPagina (Bloque 1, punto 1.6). -->
     <title>Turnify</title>
+    <meta
+      name="description"
+      content="Turnify: agenda de citas para negocios de servicios. Reservas en línea, calendario, recordatorios por correo y WhatsApp, y reportes."
+    />
+    <!-- Íconos generados a partir de favicon.svg, sin rediseñarlo. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f8fafc" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f172b" />
+    <!-- Open Graph y Twitter. Sin og:image: no existía ninguna imagen para
+         compartir (solo favicon.svg, que las redes no muestran). -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Turnify" />
+    <meta property="og:title" content="Turnify — agenda de citas para tu negocio" />
+    <meta
+      property="og:description"
+      content="Reservas en línea, calendario, recordatorios por correo y WhatsApp, y reportes para negocios de servicios."
+    />
+    <meta property="og:url" content="https://turnify-frontend-i0kl.onrender.com" />
+    <meta property="og:locale" content="es_CR" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Turnify — agenda de citas para tu negocio" />
+    <meta
+      name="twitter:description"
+      content="Reservas en línea, calendario, recordatorios por correo y WhatsApp, y reportes para negocios de servicios."
+    />
     <script>
       // Aplica el tema ANTES de que React monte (punto 9 del brief: tema
       // persistente, sistema operativo como default la primera vez) para

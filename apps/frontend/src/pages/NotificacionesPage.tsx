@@ -14,6 +14,7 @@ import {
 import { estadoVisible, type EstadoVisibleNotificacion } from '@/lib/estado-notificacion';
 import { formatearFechaHoraEnZona } from '@/lib/fecha-negocio';
 import { useZonaHorariaNegocio } from '@/lib/use-zona-negocio';
+import { useTituloPagina } from '@/lib/use-titulo-pagina';
 
 const CLAVE_I18N_TIPO: Record<TipoNotificacion, string> = {
   confirmacion: 'notificaciones.tipoConfirmacion',
@@ -62,6 +63,7 @@ const ICONO_ESTADO: Record<EstadoVisibleNotificacion, typeof Check> = {
 export default function NotificacionesPage() {
   const zona = useZonaHorariaNegocio();
   const { t, i18n } = useTranslation();
+  useTituloPagina(t('titulos.notificaciones'));
   const [pagina, setPagina] = useState(1);
   const LIMITE = 15;
 
