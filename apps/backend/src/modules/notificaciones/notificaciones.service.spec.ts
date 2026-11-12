@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { NotificacionesService, SQL_INSERTAR_IDEMPOTENTE } from './notificaciones.service';
+import {
+  NotificacionesService,
+  SQL_INSERTAR_IDEMPOTENTE,
+  SQL_TOMAR_SIGUIENTE_PENDIENTE,
+} from './notificaciones.service';
 import {
   CanalNotificacion,
   CanalPreferido,
@@ -21,6 +25,8 @@ interface FilaNotificacionFalsa {
   reintentos: number;
   fechaHoraReserva: Date;
   ultimoError: string | null;
+  cliente?: unknown;
+  [otro: string]: unknown;
 }
 
 /**
@@ -34,7 +40,12 @@ interface FilaNotificacionFalsa {
 function crearTablaNotificacionesFalsa() {
   const filas: FilaNotificacionFalsa[] = [];
   let secuencia = 0;
-  const mismaClave = (f: FilaNotificacionFalsa, idReserva: unknown, tipo: unknown, fecha: unknown) =>
+  const mismaClave = (
+    f: FilaNotificacionFalsa,
+    idReserva: unknown,
+    tipo: unknown,
+    fecha: unknown,
+  ) =>
     f.idReserva === idReserva &&
     f.tipo === tipo &&
     f.fechaHoraReserva.getTime() === new Date(fecha as Date).getTime();
@@ -63,7 +74,69 @@ function crearTablaNotificacionesFalsa() {
     throw new Error(`SQL no simulado en la tabla falsa: ${sql}`);
   }
 
-  return { filas, query, mismaClave };
+  /** Filas bloqueadas por alguna transacción abierta (FOR UPDATE). */
+  const bloqueadas = new Set<string>();
+
+  /** `SELECT ... FOR UPDATE SKIP LOCKED`: salta las filas que tiene otra transacción. */
+  function tomarSiguiente(params: unknown[], propias: Set<string>) {
+    const [excluidas, ahora] = params as [string[], Date];
+    const libre = filas
+      .filter(
+        (f) =>
+          f.estado === EstadoNotificacion.PENDIENTE &&
+          f.programadoPara.getTime() <= ahora.getTime() &&
+          !excluidas.includes(f.idNotificacion) &&
+          !bloqueadas.has(f.idNotificacion),
+      )
+      .sort((a, b) => a.programadoPara.getTime() - b.programadoPara.getTime())[0];
+    if (!libre) return [];
+    bloqueadas.add(libre.idNotificacion);
+    propias.add(libre.idNotificacion);
+    return [{ id_notificacion: libre.idNotificacion }];
+  }
+
+  /** Simula `manager.transaction()`: los bloqueos se liberan al terminar (commit o rollback). */
+  function crearTransaction(repo: unknown) {
+    return async <T>(cb: (manager: unknown) => Promise<T>): Promise<T> => {
+      const propias = new Set<string>();
+      const manager = {
+        query: async (sql: string, params: unknown[] = []) => {
+          await Promise.resolve();
+          return sql.includes('FOR UPDATE SKIP LOCKED')
+            ? tomarSiguiente(params, propias)
+            : query(sql, params);
+        },
+        getRepository: () => repo,
+      };
+      try {
+        return await cb(manager);
+      } finally {
+        for (const id of propias) bloqueadas.delete(id);
+      }
+    };
+  }
+
+  /** Agrega filas pendientes ya vencidas (listas para enviarse). */
+  function agregarPendientes(parciales: Array<Partial<FilaNotificacionFalsa>>) {
+    for (const p of parciales) {
+      filas.push({
+        idNotificacion: `notif-${++secuencia}`,
+        idReserva: `reserva-${secuencia}`,
+        idCliente: 'cliente-1',
+        tipo: TipoNotificacion.CONFIRMACION,
+        canal: CanalNotificacion.EMAIL,
+        estado: EstadoNotificacion.PENDIENTE,
+        programadoPara: new Date(Date.now() - 60_000),
+        mensaje: 'Asunto\nCuerpo',
+        reintentos: 0,
+        fechaHoraReserva: new Date('2027-03-01T16:00:00.000Z'),
+        ultimoError: null,
+        ...p,
+      });
+    }
+  }
+
+  return { filas, query, mismaClave, crearTransaction, agregarPendientes };
 }
 
 function crearNotificacionRepoMock(tabla = crearTablaNotificacionesFalsa()) {
@@ -77,16 +150,26 @@ function crearNotificacionRepoMock(tabla = crearTablaNotificacionesFalsa()) {
     take: vi.fn().mockReturnThis(),
     getManyAndCount: vi.fn().mockResolvedValue([[], 0]),
   };
-  return {
-    create: vi.fn((data) => data),
-    save: vi.fn((data) => Promise.resolve({ idNotificacion: 'notif-nueva', ...data })),
+  const repo = {
     find: vi.fn().mockResolvedValue([]),
-    update: vi.fn().mockResolvedValue(undefined),
+    update: vi.fn(async (where: { idNotificacion: string }, cambios: object) => {
+      await Promise.resolve();
+      const fila = tabla.filas.find((f) => f.idNotificacion === where.idNotificacion);
+      if (fila) Object.assign(fila, cambios);
+    }),
+    findOne: vi.fn(async ({ where }: { where: { idNotificacion: string } }) => {
+      await Promise.resolve();
+      const fila = tabla.filas.find((f) => f.idNotificacion === where.idNotificacion);
+      return fila ? { ...fila } : null;
+    }),
     createQueryBuilder: vi.fn(() => queryBuilder),
     query: vi.fn(tabla.query),
+    manager: { transaction: vi.fn() },
     _queryBuilder: queryBuilder,
     _tabla: tabla,
   };
+  repo.manager.transaction.mockImplementation(tabla.crearTransaction(repo));
+  return repo;
 }
 
 function crearReservaRepoMock() {
@@ -193,7 +276,7 @@ describe('NotificacionesService', () => {
   });
 
   it('procesarPendientes() envía por Resend cuando el canal es email y marca ENVIADA', async () => {
-    notificacionRepo.find.mockResolvedValue([
+    notificacionRepo._tabla.agregarPendientes([
       {
         idNotificacion: 'notif-1',
         canal: CanalNotificacion.EMAIL,
@@ -218,7 +301,7 @@ describe('NotificacionesService', () => {
   });
 
   it('procesarPendientes() envía por WhatsApp Cloud API cuando el canal es whatsapp', async () => {
-    notificacionRepo.find.mockResolvedValue([
+    notificacionRepo._tabla.agregarPendientes([
       {
         idNotificacion: 'notif-2',
         canal: CanalNotificacion.WHATSAPP,
@@ -236,7 +319,7 @@ describe('NotificacionesService', () => {
   });
 
   it('procesarPendientes() reintenta (sigue PENDIENTE) mientras no se agoten los reintentos', async () => {
-    notificacionRepo.find.mockResolvedValue([
+    notificacionRepo._tabla.agregarPendientes([
       {
         idNotificacion: 'notif-3',
         canal: CanalNotificacion.EMAIL,
@@ -260,7 +343,7 @@ describe('NotificacionesService', () => {
   });
 
   it('procesarPendientes() guarda solo la categoría saneada, nunca el texto crudo del proveedor', async () => {
-    notificacionRepo.find.mockResolvedValue([
+    notificacionRepo._tabla.agregarPendientes([
       {
         idNotificacion: 'notif-crudo',
         canal: CanalNotificacion.EMAIL,
@@ -281,7 +364,7 @@ describe('NotificacionesService', () => {
   });
 
   it('procesarPendientes() marca FALLIDA al agotar los reintentos', async () => {
-    notificacionRepo.find.mockResolvedValue([
+    notificacionRepo._tabla.agregarPendientes([
       {
         idNotificacion: 'notif-4',
         canal: CanalNotificacion.EMAIL,
@@ -301,14 +384,16 @@ describe('NotificacionesService', () => {
   });
 
   it('procesarPendientes() busca las pendientes con withDeleted (el cliente puede haberse desactivado después de programar la notificación)', async () => {
+    notificacionRepo._tabla.agregarPendientes([{ cliente: CLIENTE_EMAIL }]);
+    resend.enviarCorreo.mockResolvedValue({ exito: true });
     await service.procesarPendientes();
-    expect(notificacionRepo.find).toHaveBeenCalledWith(
+    expect(notificacionRepo.findOne).toHaveBeenCalledWith(
       expect.objectContaining({ withDeleted: true }),
     );
   });
 
   it('procesarPendientes() — bug real corregido: una notificación con cliente irrecuperable se marca FALLIDA y NO bloquea el resto del lote', async () => {
-    notificacionRepo.find.mockResolvedValue([
+    notificacionRepo._tabla.agregarPendientes([
       {
         idNotificacion: 'notif-envenenada',
         canal: CanalNotificacion.EMAIL,
@@ -344,6 +429,113 @@ describe('NotificacionesService', () => {
       { idNotificacion: 'notif-5' },
       expect.objectContaining({ estado: EstadoNotificacion.ENVIADA }),
     );
+  });
+
+  describe('varias instancias y solapamiento (Bloque 4, punto 4.2)', () => {
+    const lento = (ms: number) => () =>
+      new Promise((resolver) => setTimeout(() => resolver({ exito: true }), ms));
+
+    it('dos instancias corriendo a la vez envían cada pendiente una sola vez', async () => {
+      notificacionRepo._tabla.agregarPendientes(
+        Array.from({ length: 8 }, () => ({ cliente: CLIENTE_EMAIL })),
+      );
+      resend.enviarCorreo.mockImplementation(lento(5));
+      const otraInstancia = new NotificacionesService(
+        crearNotificacionRepoMock(notificacionRepo._tabla) as any,
+        reservaRepo as any,
+        resend as any,
+        whatsapp as any,
+        i18n as any,
+      );
+
+      await Promise.all([service.procesarPendientes(), otraInstancia.procesarPendientes()]);
+
+      expect(resend.enviarCorreo).toHaveBeenCalledTimes(8);
+      expect(
+        notificacionRepo._tabla.filas.every((f) => f.estado === EstadoNotificacion.ENVIADA),
+      ).toBe(true);
+    });
+
+    it('las dos instancias reparten el trabajo (SKIP LOCKED salta la fila tomada en vez de esperar)', async () => {
+      notificacionRepo._tabla.agregarPendientes(
+        Array.from({ length: 6 }, () => ({ cliente: CLIENTE_EMAIL })),
+      );
+      resend.enviarCorreo.mockImplementation(lento(5));
+      const repoOtra = crearNotificacionRepoMock(notificacionRepo._tabla);
+      const otraInstancia = new NotificacionesService(
+        repoOtra as any,
+        reservaRepo as any,
+        resend as any,
+        whatsapp as any,
+        i18n as any,
+      );
+
+      await Promise.all([service.procesarPendientes(), otraInstancia.procesarPendientes()]);
+
+      const enviadasPor = (repo: typeof notificacionRepo) =>
+        repo.update.mock.calls.filter(
+          ([, cambios]: any) => cambios.estado === EstadoNotificacion.ENVIADA,
+        ).length;
+      expect(enviadasPor(notificacionRepo)).toBeGreaterThan(0);
+      expect(enviadasPor(repoOtra)).toBeGreaterThan(0);
+      expect(enviadasPor(notificacionRepo) + enviadasPor(repoOtra)).toBe(6);
+    });
+
+    it('una corrida lenta no se solapa con la siguiente en la misma instancia', async () => {
+      notificacionRepo._tabla.agregarPendientes([{ cliente: CLIENTE_EMAIL }]);
+      resend.enviarCorreo.mockImplementation(lento(20));
+
+      await Promise.all([service.procesarPendientes(), service.procesarPendientes()]);
+
+      expect(resend.enviarCorreo).toHaveBeenCalledTimes(1);
+      expect(notificacionRepo.manager.transaction).toHaveBeenCalledTimes(2); // la fila + "no queda ninguna"
+    });
+
+    it('al terminar la corrida libera el candado: la siguiente sí procesa', async () => {
+      notificacionRepo._tabla.agregarPendientes([{ cliente: CLIENTE_EMAIL }]);
+      resend.enviarCorreo.mockResolvedValue({ exito: true });
+      await service.procesarPendientes();
+      notificacionRepo._tabla.agregarPendientes([{ cliente: CLIENTE_EMAIL }]);
+      await service.procesarPendientes();
+      expect(resend.enviarCorreo).toHaveBeenCalledTimes(2);
+    });
+
+    it('una que falla y sigue pendiente no se reintenta en la MISMA corrida', async () => {
+      notificacionRepo._tabla.agregarPendientes([{ cliente: CLIENTE_EMAIL }]);
+      resend.enviarCorreo.mockResolvedValue({ exito: false, error: 'timeout' });
+      await service.procesarPendientes();
+      expect(resend.enviarCorreo).toHaveBeenCalledTimes(1);
+      expect(notificacionRepo._tabla.filas[0]).toMatchObject({
+        estado: EstadoNotificacion.PENDIENTE,
+        reintentos: 1,
+      });
+    });
+
+    it('un error de la base corta la corrida sin dejar el candado tomado', async () => {
+      notificacionRepo.manager.transaction.mockRejectedValueOnce(new Error('conexión perdida'));
+      await service.procesarPendientes();
+      notificacionRepo._tabla.agregarPendientes([{ cliente: CLIENTE_EMAIL }]);
+      resend.enviarCorreo.mockResolvedValue({ exito: true });
+      await service.procesarPendientes();
+      expect(resend.enviarCorreo).toHaveBeenCalledTimes(1);
+    });
+
+    it('toma las pendientes con FOR UPDATE SKIP LOCKED', () => {
+      expect(SQL_TOMAR_SIGUIENTE_PENDIENTE).toMatch(/FOR UPDATE SKIP LOCKED/);
+      expect(SQL_TOMAR_SIGUIENTE_PENDIENTE).toMatch(/"estado" = 'pendiente'/);
+    });
+
+    it('el cron de recordatorios tampoco se solapa consigo mismo', async () => {
+      let liberar!: (v: unknown) => void;
+      reservaRepo.find.mockReturnValueOnce(new Promise((r) => (liberar = r)));
+      const primera = service.programarRecordatorios();
+      await service.programarRecordatorios(); // se salta: la primera sigue activa
+      expect(reservaRepo.find).toHaveBeenCalledTimes(1);
+      liberar([]);
+      await primera;
+      await service.programarRecordatorios();
+      expect(reservaRepo.find).toHaveBeenCalledTimes(2);
+    });
   });
 
   it('programarRecordatorios() programa un recordatorio para una reserva confirmada dentro de las próximas 24h', async () => {
@@ -459,7 +651,12 @@ describe('NotificacionesService', () => {
     it('confirmación y recordatorio de la misma reserva son envíos distintos', async () => {
       await service.programarConfirmacion(RESERVA as any, CLIENTE_EMAIL as any, SERVICIO as any);
       reservaRepo.find.mockResolvedValue([
-        { ...RESERVA, estado: EstadoReserva.CONFIRMADA, cliente: CLIENTE_EMAIL, servicio: SERVICIO },
+        {
+          ...RESERVA,
+          estado: EstadoReserva.CONFIRMADA,
+          cliente: CLIENTE_EMAIL,
+          servicio: SERVICIO,
+        },
       ]);
       await service.programarRecordatorios();
       expect(notificacionRepo._tabla.filas.map((f) => f.tipo).sort()).toEqual([
