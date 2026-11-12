@@ -3839,3 +3839,98 @@ Después van las migraciones del Bloque 5. El Bloque 6 no creó ninguna.
 - El teléfono del negocio (registro, Configuración) y el de los usuarios siguen como texto libre; 5.3 pedía solo clientes y reserva pública.
 - Servidor de desarrollo de Vite: después de instalar una dependencia con el servidor corriendo, la primera carga de Clientes mostró la pantalla de error ("Failed to fetch dynamically imported module") hasta reiniciar Vite. No afecta al build de producción.
 
+## Bloque 1 — Accesibilidad y metadatos (rama `brenda`, 12/11/2026)
+**Cómo se midió.** axe-core **4.14.0**, instalado fuera del repo, en Chromium vía el Playwright que ya estaba en `node_modules`. Etiquetas `wcag2a, wcag2aa, wcag2aaa, wcag21a, wcag21aa, wcag22aa` más `best-practice`: sin esta última, axe no ejecuta `landmark-one-main`, `region` ni `heading-order`, que la auditoría sí reportó, y axe DevTools la incluye por defecto. Se midieron las 17 pantallas de la auditoría más las del punto 1.4 (modales de nueva reserva, nuevo cliente y nuevo servicio; asistente público en los pasos 2 y 3; listas con datos), en ES/EN × claro/oscuro: 88 mediciones a 1280 px y otras 88 a 390 px.
+
+Todo contra el PostgreSQL local de pruebas, con las migraciones de los Bloques 4 y 5 aplicadas. Datos "Prueba Accesibilidad": 1 negocio, 3 servicios, 7 clientes (uno Premium), 12 reservas (2 canceladas, 1 reprogramada) y sus notificaciones.
+
+La medición respeta el límite del backend de 60 peticiones/min por IP (Bloque 3); la primera corrida lo superaba y daba pantallas en error por 429. Las reglas AAA que evalúa axe son `color-contrast-enhanced`, `identical-links-same-purpose` y `meta-refresh-no-exceptions`; el resto de AAA quedó en revisión manual (1.5).
+
+- **Línea base:** 0 de 88 mediciones con 0 violaciones.
+  - `color-contrast-enhanced` 1155 nodos, casi todos propios;
+  - `color-contrast` 207;
+  - FullCalendar: `role-img-alt` 16, `aria-allowed-attr` 24 y `label-content-name-mismatch` 40;
+  - `landmark-one-main` y `region` en login, registro, onboarding y reserva pública.
+
+  `heading-order` no se reprodujo en ninguna medición (la auditoría reportó 4 nodos en las tarjetas de planes).
+- **1.1 Contraste** ✅ (`d799113`, `e86e557`).
+  - Tokens recalculados con script: el mínimo ajuste en el mismo tono para ≥7:1 contra todos los fondos donde se usan.
+    - Claro: `primary-600` `#4f46e5`→`#433bc2` (blanco encima 6.28→7.94), `slate-400/500/600`, `secondary-700`, `danger`, `warning`, `amber-600/700`.
+    - Oscuro (`.dark`): `slate-300/400/500`, `primary-300/400`, `secondary-400` y `red-400` más claros.
+  - Ajustes puntuales:
+    - la barra lateral es oscura en los dos temas: `slate-300` y variante `superficie="oscura"` de `ControlesGlobales`;
+    - `dark:text-slate-600`→`400`;
+    - FullCalendar: días de otro mes sin la opacidad 0.3, colores fijos a tokens, texto blanco en el botón activo;
+    - reserva cancelada sin `opacity-70` (ya se distingue por texto, ícono y tachado);
+    - gráficas de Reportes: ejes con `currentColor` y leyenda en gris de texto.
+- **1.2 Íconos del calendario** ✅ (`39958f5`). FullCalendar 6.1.21 dibuja `<span class="fc-icon" role="img">` sin nombre (`index.js:1728`) y no permite nombrarlo. Se usa su opción documentada `buttonIcons: false` (https://legacy.fullcalendar.io/v6/buttonIcons) con `buttonText` Anterior/Siguiente ↔ Previous/Next por i18n. `role-img-alt`: 16 → 0 nodos.
+- **1.3 Estructura** ✅ (`94b2157`). `<main>` en login, registro, onboarding y reserva pública (incluido su estado de error). `landmark-one-main` y `region`: 0.
+  - `aria-prohibited-attr` (incomplete) es de **FullCalendar**: `aria-label` en los `<a>` de encabezado de día y `aria-labelledby` en el harness. No se toca.
+  - También son de FullCalendar: `aria-allowed-attr` (`aria-expanded` en el enlace "+N más", un `<a>` sin rol) y `label-content-name-mismatch` (celdas del mes con `aria-labelledby`).
+- **1.4 Pantallas no medidas en la auditoría** ✅ (`3556369`). Modales, asistente público y listas con datos medidos. La tabla de Notificaciones con scroll horizontal no era alcanzable con teclado (`scrollable-region-focusable`, a 390 px): ahora tiene `tabIndex`, `role=region` con nombre e indicador de foco. **UserWay** (iframe de otro origen): **NO VERIFICADO**.
+- **1.5 AAA sin cobertura de axe** — revisado con script y capturas.
+  - **2.5.5** ✅ en lo sencillo (`d2075f5`), llevado a ≥44×44 px: botones de ícono de Clientes y Servicios, vista lista/cuadrícula, tema e idioma, logo, menú, cerrar sesión, "Iniciar sesión" de la landing, barra de FullCalendar y campos de hora.
+  - **2.5.5 pendiente:**
+    - barras de la gráfica del Inicio (27 px de ancho, 31 días; tienen equivalente con las flechas del día);
+    - eventos y "+N más" de FullCalendar;
+    - casillas de día de Configuración (20 px; la etiqueta del día amplía la zona clicable);
+    - enlaces dentro de texto (exentos).
+  - **2.4.12** foco no oculto: 0 casos en 8 pantallas × 2 anchos, recorriendo 25 elementos con Tab en cada una.
+  - **2.4.13** apariencia del foco: todos los elementos recorridos tienen indicador. El único marcado (campo de hora) era un falso positivo por la transición; su anillo pasó de 1 a 2 px, en `primary-500` (4.46:1).
+  - **3.3.9:** login y registro solo piden correo y contraseña, sin CAPTCHA ni pruebas cognitivas; se puede pegar y autocompletar.
+  - **2.3.3:** `@media (prefers-reduced-motion: reduce)` en `index.css` y `MotionConfig reducedMotion="user"` en `main.tsx`. Revisado en el código; la emulación en Playwright no fue concluyente.
+  - **Nombres traducidos:** `aria-label` "Abrir navegación" y "Navegación principal" estaban fijas en español; ahora van por i18n.
+- **1.6 Título, íconos y meta** ✅ (`b44109a`).
+  - `useTituloPagina`: "Pantalla · Turnify" traducido y actualizado al cambiar de idioma. Verificado: "Iniciar sesión · Turnify" → "Appointment scheduling for your business · Turnify" sin recargar; "Reservar en Prueba Accesibilidad" / "Book at Prueba Accesibilidad".
+  - Íconos generados desde `favicon.svg` sin rediseñarlo: `favicon.ico` (16/32/48), PNG 32/192/512 y `apple-touch-icon` 180 (sobre blanco, porque iOS rellena la transparencia con negro).
+  - `manifest.webmanifest`, `theme-color` claro/oscuro, `description`, Open Graph (url `https://turnify-frontend-i0kl.onrender.com`, `site_name`, `locale` es_CR + alternativa en_US) y Twitter `summary`. **Sin `og:image`**: no existía ninguna imagen para compartir (solo `favicon.svg`).
+  - `robots.txt`.
+  - Con `vite preview` todos responden 200 con su tipo (`image/x-icon`, `image/png`, `application/manifest+json`, `text/plain`); las rutas de la SPA siguen dando `index.html`.
+  - **NO VERIFICADO:**
+    - el ícono en la pestaña: la extensión de automatización reemplaza el favicon de las pestañas que controla;
+    - que Render no reescriba `robots.txt`: la regla de la SPA vive en su panel, no en el repo.
+- **1.7 CSP** — **no se dejó**.
+  - Se probó una CSP por `<meta>` con hashes del script de tema/idioma y del preámbulo de React Refresh (solo en desarrollo), más los orígenes de UserWay y `%VITE_API_URL%`.
+  - UserWay, FullCalendar y la API funcionaron, pero **el WebSocket del chatbot quedó bloqueado**: Chrome no autoriza `ws://` a partir del origen `http://`, y el chatbot solo seguía conectado por *polling*. Su origen `ws(s)` no sale de `VITE_API_URL` en el HTML sin tocar `vite.config`; la alternativa `wss:` abierto a cualquier servidor vacía la política.
+  - Además, `script-src eval` en Calendario, Clientes y la reserva pública, probablemente zod 4 probando `new Function` (no rompe, pero ensucia).
+  - Recomendación: ponerla como cabecera en el panel de Render, con el origen `wss://` explícito del backend.
+
+**Medición final, 1280 px** (violations por regla, nodos y origen):
+
+| Pantalla | ES claro | ES oscuro | EN claro | EN oscuro | incomplete (nodos, 4 combinaciones) |
+|---|---|---|---|---|---|
+| landing | 0 | 0 | 0 | 0 | 0 |
+| login | 0 | 0 | 0 | 0 | 0 |
+| registro | 0 | 0 | 0 | 0 | 0 |
+| dashboard | 0 | 0 | 0 | 0 | 20 |
+| onboarding | 0 | 0 | 0 | 0 | 0 |
+| calendario | aria-allowed-attr 3 (FullCalendar); label-content-name-mismatch 5 (FullCalendar) | aria-allowed-attr 3 (FullCalendar); label-content-name-mismatch 5 (FullCalendar) | aria-allowed-attr 3 (FullCalendar); label-content-name-mismatch 5 (FullCalendar) | aria-allowed-attr 3 (FullCalendar); label-content-name-mismatch 5 (FullCalendar) | 32 |
+| reservas | 0 | 0 | 0 | 0 | 0 |
+| servicios | 0 | 0 | 0 | 0 | 0 |
+| configuracion | 0 | 0 | 0 | 0 | 0 |
+| suscripcion | 0 | 0 | 0 | 0 | 0 |
+| suscripcion-exito | 0 | 0 | 0 | 0 | 0 |
+| suscripcion-cancelada | 0 | 0 | 0 | 0 | 0 |
+| dashboard-chatbot | 0 | 0 | 0 | 0 | 24 |
+| reservar | 0 | 0 | 0 | 0 | 0 |
+| modal-nueva-reserva | aria-allowed-attr 3 (FullCalendar); label-content-name-mismatch 5 (FullCalendar) | aria-allowed-attr 3 (FullCalendar); label-content-name-mismatch 5 (FullCalendar) | aria-allowed-attr 3 (FullCalendar); label-content-name-mismatch 5 (FullCalendar) | aria-allowed-attr 3 (FullCalendar); label-content-name-mismatch 5 (FullCalendar) | 36 |
+| modal-nuevo-cliente | 0 | 0 | 0 | 0 | 0 |
+| modal-nuevo-servicio | 0 | 0 | 0 | 0 | 0 |
+| reservar-paso2 | 0 | 0 | 0 | 0 | 0 |
+| reservar-paso3 | 0 | 0 | 0 | 0 | 0 |
+| reportes | 0 | 0 | 0 | 0 | 48 |
+| notificaciones | 0 | 0 | 0 | 0 | 0 |
+| clientes | 0 | 0 | 0 | 0 | 0 |
+
+80 de 88 mediciones con 0 violaciones.
+
+A 390 px: **88 de 88** con 0 violaciones (el calendario usa la vista de lista en móvil). Los "incomplete" restantes son textos SVG de las gráficas y elementos superpuestos (contraste por revisar), `aria-prohibited-attr` de FullCalendar y `target-size` (2.5.8, AA) a 390 px. axe DevTools puede reportar algo distinto: **no se afirma "cumple"**, porque quedan los "incomplete", lo pendiente de 1.5, UserWay y FullCalendar.
+
+**Datos creados** (solo en el PostgreSQL local de pruebas, borrado al terminar): negocio y cuenta "Prueba Accesibilidad" con sus servicios, clientes, reservas y notificaciones. En Supabase no se ejecutó nada.
+
+**Validación final:** unitarias backend 397/397 y frontend 79/79; lint con 1 advertencia en cada uno (Bloque 3); typecheck y build de ambos. Además, cada commit del bloque pasa typecheck y lint por separado. No se corrieron integración ni E2E.
+
+**Fuera de alcance (registrado, no corregido):**
+- Clientes en vista de tarjetas a 390 px (ES/EN): las tarjetas con correos largos desbordan horizontalmente (398 px en un viewport de 390). Ya pasaba antes de este bloque (comprobado con `git stash`).
+- El `Select` compartido pasa `defaultValue` y `value` a la vez; React puede advertirlo en consola.
+
