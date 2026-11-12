@@ -9,6 +9,12 @@ export interface LimitesPlanes {
   };
 }
 
+/** `GET /suscripciones/uso` — mismo conteo que aplica el límite de reservas del Plan Gratis. */
+export interface UsoPlan {
+  enPlanGratis: boolean;
+  reservasMes: { usadas: number; limite: number | null };
+}
+
 export type EstadoSuscripcion = 'activa' | 'cancelada' | 'suspendida';
 
 export interface Suscripcion {
@@ -24,6 +30,7 @@ export interface Suscripcion {
 export const suscripcionesApi = {
   /** Público (landing sin sesión) — números reales del Plan Gratis, fuente única con el backend. */
   obtenerPlanes: () => apiFetch<LimitesPlanes>('/suscripciones/planes', { autenticado: false }),
+  obtenerUso: () => apiFetch<UsoPlan>('/suscripciones/uso'),
   obtenerMiSuscripcion: () => apiFetch<Suscripcion>('/suscripciones/mi-suscripcion'),
   /** Devuelve la URL de Stripe Checkout (Test Mode) — el llamador debe redirigir el navegador ahí. */
   iniciarCheckout: (successUrl: string, cancelUrl: string) =>

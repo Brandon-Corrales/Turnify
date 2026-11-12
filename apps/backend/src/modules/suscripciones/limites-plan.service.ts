@@ -1,8 +1,9 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { I18nContext, I18nService } from 'nestjs-i18n';
-import { EntityManager, MoreThanOrEqual, Repository } from 'typeorm';
+import { EntityManager, MoreThanOrEqual, Not, Repository } from 'typeorm';
 import {
+  EstadoReserva,
   MensajeChatbot,
   Negocio,
   PlanSuscripcion,
@@ -20,7 +21,7 @@ import { RecursoLimitado } from './decorators/limite-plan.decorator';
 const LIMITES_PLAN_GRATIS: Record<RecursoLimitado, number> = {
   usuarios: 1, // solo el admin, sin poder invitar empleados
   servicios: 3, // servicios activos
-  reservas: 20, // por mes calendario
+  reservas: 20, // por mes calendario, sin contar las canceladas
   mensajesChatbot: 10, // por día calendario
 };
 
@@ -128,10 +129,20 @@ export class LimitesPlanService {
         // no algo sensible a unas horas de diferencia con la hora local
         // de Costa Rica — no vale la pena la complejidad de convertir a
         // límites de mes en hora CR para esto.
+        //
+        // Las canceladas NO cuentan (decisión del grupo, Bloque 4 punto 4.4):
+        // cancelar libera el cupo. Se cuenta por `creado_en`, así que
+        // reprogramar (que solo cambia la hora) no la cuenta dos veces. Esta
+        // misma función alimenta el límite (asegurarDentroDelLimite) y el
+        // indicador de uso de la pantalla de Suscripción.
         const ahora = new Date();
         const inicioDeMes = new Date(Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), 1));
         return (manager ? manager.getRepository(Reserva) : this.reservaRepo).count({
-          where: { idNegocio, creadoEn: MoreThanOrEqual(inicioDeMes) },
+          where: {
+            idNegocio,
+            creadoEn: MoreThanOrEqual(inicioDeMes),
+            estado: Not(EstadoReserva.CANCELADA),
+          },
         });
       }
       case 'mensajesChatbot': {

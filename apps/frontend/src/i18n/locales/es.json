@@ -133,7 +133,7 @@
     "planGratisSubtitulo": "Para empezar a probar Turnify",
     "planGratisUsuarios": "Hasta {{n}} usuario (admin)",
     "planGratisServicios": "Hasta {{n}} servicios activos",
-    "planGratisReservas": "Hasta {{n}} reservas por mes",
+    "planGratisReservas": "Hasta {{n}} reservas por mes (las canceladas no cuentan)",
     "planGratisChatbot": "Hasta {{n}} mensajes al chatbot/día",
     "planGratisEmail": "Notificaciones por correo electrónico",
     "planGratisWhatsapp": "Notificaciones por WhatsApp",
@@ -186,6 +186,12 @@
   "suscripcion": {
     "titulo": "Tu suscripción",
     "subtitulo": "Compara los planes y actualiza cuando quieras.",
+    "usoTitulo": "Uso de este mes",
+    "usoReservas": "{{usadas}} de {{limite}} reservas este mes",
+    "usoReservasSinLimite": "{{usadas}} reservas este mes, sin límite en tu plan",
+    "usoAyuda": "Cuentan las reservas creadas este mes. Las canceladas no cuentan: cancelar una libera su cupo.",
+    "usoAlcanzado": "Llegaste al límite del mes. Cancelar una reserva libera su cupo, o actualiza a un plan de pago.",
+    "usoError": "No se pudo cargar el uso del mes.",
     "tuPlanActual": "Tu plan actual",
     "botonActualizar": "Actualizar a Plan de Pago",
     "redirigiendo": "Redirigiendo a la pasarela de pago…",
@@ -330,7 +336,7 @@
     "clienteCreadoSinReserva": "El cliente se creó, pero la reserva no",
     "errorCrearCliente": "No se pudo crear el cliente",
     "limiteTitulo": "Llegaste al límite de reservas del mes del Plan Gratis",
-    "limiteDescripcion": "El Plan Gratis permite hasta 20 reservas por mes. Actualiza a un plan de pago para seguir reservando."
+    "limiteDescripcion": "El Plan Gratis permite hasta 20 reservas por mes (las canceladas no cuentan). Actualiza a un plan de pago para seguir reservando."
   },
   "clientes": {
     "subtitulo": "Gestiona la base de clientes de tu negocio.",

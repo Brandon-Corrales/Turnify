@@ -133,7 +133,7 @@
     "planGratisSubtitulo": "To start trying out Turnify",
     "planGratisUsuarios": "Up to {{n}} user (admin)",
     "planGratisServicios": "Up to {{n}} active services",
-    "planGratisReservas": "Up to {{n}} bookings per month",
+    "planGratisReservas": "Up to {{n}} bookings per month (cancelled ones don't count)",
     "planGratisChatbot": "Up to {{n}} chatbot messages/day",
     "planGratisEmail": "Email notifications",
     "planGratisWhatsapp": "WhatsApp notifications",
@@ -186,6 +186,12 @@
   "suscripcion": {
     "titulo": "Your subscription",
     "subtitulo": "Compare plans and upgrade whenever you're ready.",
+    "usoTitulo": "This month's usage",
+    "usoReservas": "{{usadas}} of {{limite}} bookings this month",
+    "usoReservasSinLimite": "{{usadas}} bookings this month, no limit on your plan",
+    "usoAyuda": "Bookings created this month count. Cancelled bookings don't: cancelling one frees its slot.",
+    "usoAlcanzado": "You've reached this month's limit. Cancelling a booking frees its slot, or upgrade to a paid plan.",
+    "usoError": "Couldn't load this month's usage.",
     "tuPlanActual": "Your current plan",
     "botonActualizar": "Upgrade to Paid Plan",
     "redirigiendo": "Redirecting to the payment gateway…",
@@ -330,7 +336,7 @@
     "clienteCreadoSinReserva": "The client was created, but the booking wasn't",
     "errorCrearCliente": "Couldn't create the client",
     "limiteTitulo": "You've reached the Free Plan's monthly bookings limit",
-    "limiteDescripcion": "The Free Plan allows up to 20 bookings per month. Upgrade to a paid plan to keep booking."
+    "limiteDescripcion": "The Free Plan allows up to 20 bookings per month (cancelled ones don't count). Upgrade to a paid plan to keep booking."
   },
   "clientes": {
     "subtitulo": "Manage your business's client base.",

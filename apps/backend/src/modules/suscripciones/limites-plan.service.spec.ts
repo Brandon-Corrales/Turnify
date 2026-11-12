@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LimitesPlanService } from './limites-plan.service';
-import { PlanSuscripcion } from '../../database/entities';
+import { FindOperator } from 'typeorm';
+import { EstadoReserva, PlanSuscripcion } from '../../database/entities';
+import { SuscripcionesService } from './suscripciones.service';
+import { TenantContextService } from '../../common/tenant';
+import { RolUsuario } from '../../database/entities';
 
 const NEGOCIO_ID = 'negocio-1';
 
@@ -123,5 +127,127 @@ describe('LimitesPlanService', () => {
     expect(service.limite('servicios')).toBe(3);
     expect(service.limite('reservas')).toBe(20);
     expect(service.limite('mensajesChatbot')).toBe(10);
+  });
+
+  describe('las canceladas no cuentan para el límite de reservas (Bloque 4, punto 4.4)', () => {
+    interface ReservaFalsa {
+      idNegocio: string;
+      estado: EstadoReserva;
+      creadoEn: Date;
+      fechaHoraInicio: Date;
+    }
+    let reservas: ReservaFalsa[];
+
+    /** Evalúa el `where` real que arma contar() (igualdad, Not y MoreThanOrEqual). */
+    function cumple(valor: unknown, condicion: unknown): boolean {
+      if (condicion instanceof FindOperator) {
+        if (condicion.type === 'not') return !cumple(valor, condicion.value);
+        if (condicion.type === 'moreThanOrEqual')
+          return (valor as Date).getTime() >= (condicion.value as Date).getTime();
+        throw new Error(`operador no simulado: ${condicion.type}`);
+      }
+      return valor === condicion;
+    }
+    const contarEnMemoria = async ({ where }: { where: Record<string, unknown> }) =>
+      reservas.filter((r) =>
+        Object.entries(where).every(([campo, cond]) => cumple((r as any)[campo], cond)),
+      ).length;
+
+    const nueva = (estado = EstadoReserva.CONFIRMADA, creadoEn = new Date()): ReservaFalsa => ({
+      idNegocio: NEGOCIO_ID,
+      estado,
+      creadoEn,
+      fechaHoraInicio: new Date(Date.now() + 86_400_000),
+    });
+
+    /** Manager mínimo para asegurarDentroDelLimite(): plan gratis + conteo en memoria. */
+    const manager = () => ({
+      query: vi.fn(),
+      getRepository: vi.fn((entidad: { name: string }) =>
+        entidad.name === 'Negocio'
+          ? { findOne: vi.fn().mockResolvedValue({ planSuscripcion: PlanSuscripcion.GRATIS }) }
+          : { count: vi.fn(contarEnMemoria) },
+      ),
+    });
+
+    beforeEach(() => {
+      reservas = [];
+      reservaRepo.count.mockImplementation(contarEnMemoria);
+    });
+
+    it('cuenta confirmadas, pendientes y ausentes del mes, pero no las canceladas ni las de meses anteriores', async () => {
+      const mesPasado = new Date();
+      mesPasado.setUTCMonth(mesPasado.getUTCMonth() - 1, 1);
+      reservas.push(
+        nueva(EstadoReserva.CONFIRMADA),
+        nueva(EstadoReserva.PENDIENTE),
+        nueva(EstadoReserva.AUSENTE),
+        nueva(EstadoReserva.CANCELADA),
+        nueva(EstadoReserva.CONFIRMADA, mesPasado),
+      );
+      reservas.push({ ...nueva(), idNegocio: 'otro-negocio' });
+      await expect(service.contar('reservas', NEGOCIO_ID)).resolves.toBe(3);
+    });
+
+    it('con 20 reservas activas la 21 se bloquea; cancelar una libera el cupo', async () => {
+      reservas.push(...Array.from({ length: 20 }, () => nueva()));
+      await expect(
+        service.asegurarDentroDelLimite(manager() as any, 'reservas', NEGOCIO_ID),
+      ).rejects.toMatchObject({ response: { errorCode: 'LIMITE_PLAN_ALCANZADO' } });
+
+      reservas[0].estado = EstadoReserva.CANCELADA;
+
+      await expect(
+        service.asegurarDentroDelLimite(manager() as any, 'reservas', NEGOCIO_ID),
+      ).resolves.toBeUndefined();
+    });
+
+    it('reprogramar (cambiar la hora) no cambia el conteo', async () => {
+      reservas.push(nueva(), nueva());
+      const antes = await service.contar('reservas', NEGOCIO_ID);
+      reservas[0].fechaHoraInicio = new Date(Date.now() + 5 * 86_400_000);
+      await expect(service.contar('reservas', NEGOCIO_ID)).resolves.toBe(antes);
+    });
+
+    it('el indicador de Suscripción usa exactamente el mismo conteo que el límite', async () => {
+      reservas.push(nueva(), nueva(), nueva(EstadoReserva.CANCELADA));
+      negocioRepo.findOne.mockResolvedValue({ planSuscripcion: PlanSuscripcion.GRATIS });
+      const tenant = new TenantContextService();
+      const suscripciones = new SuscripcionesService(
+        {} as any,
+        {} as any,
+        tenant,
+        {} as any,
+        service,
+      );
+      const contar = vi.spyOn(service, 'contar');
+
+      const uso = await tenant.run(
+        { idNegocio: NEGOCIO_ID, idUsuario: 'admin-1', rol: RolUsuario.ADMIN },
+        () => suscripciones.obtenerUso(),
+      );
+
+      expect(contar).toHaveBeenCalledWith('reservas', NEGOCIO_ID);
+      expect(uso).toEqual({ enPlanGratis: true, reservasMes: { usadas: 2, limite: 20 } });
+      expect(uso.reservasMes.usadas).toBe(await service.contar('reservas', NEGOCIO_ID));
+    });
+
+    it('en un plan de pago el indicador no tiene techo (limite null)', async () => {
+      reservas.push(nueva());
+      negocioRepo.findOne.mockResolvedValue({ planSuscripcion: PlanSuscripcion.BASICO });
+      const tenant = new TenantContextService();
+      const suscripciones = new SuscripcionesService(
+        {} as any,
+        {} as any,
+        tenant,
+        {} as any,
+        service,
+      );
+      const uso = await tenant.run(
+        { idNegocio: NEGOCIO_ID, idUsuario: 'admin-1', rol: RolUsuario.ADMIN },
+        () => suscripciones.obtenerUso(),
+      );
+      expect(uso).toEqual({ enPlanGratis: false, reservasMes: { usadas: 1, limite: null } });
+    });
   });
 });

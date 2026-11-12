@@ -16,6 +16,17 @@ export interface LimitesPlanes {
   };
 }
 
+/** Uso del mes del negocio actual (pantalla de Suscripción, Bloque 4 punto 4.4). */
+export interface UsoPlan {
+  enPlanGratis: boolean;
+  reservasMes: {
+    /** Reservas creadas este mes calendario (UTC) que no están canceladas. */
+    usadas: number;
+    /** null en un plan de pago: no hay techo. */
+    limite: number | null;
+  };
+}
+
 /**
  * Plan pago único para el MVP (punto 5.1 del brief: "si no, un solo nivel
  * de pago es suficiente"). El ER ya deja BASICO/PREMIUM/EMPRESARIAL
@@ -54,6 +65,21 @@ export class SuscripcionesService {
         reservasPorMes: this.limitesPlan.limite('reservas'),
         mensajesChatbotPorDia: this.limitesPlan.limite('mensajesChatbot'),
       },
+    };
+  }
+
+  /**
+   * Usa exactamente `LimitesPlanService.contar('reservas', ...)`, la misma
+   * función con la que `asegurarDentroDelLimite()` bloquea la reserva 21:
+   * el número que ve el admin no puede diferir del que aplica el sistema.
+   */
+  async obtenerUso(): Promise<UsoPlan> {
+    const idNegocio = this.tenantContext.idNegocio;
+    const enPlanGratis = await this.limitesPlan.estaEnPlanGratis(idNegocio);
+    const usadas = await this.limitesPlan.contar('reservas', idNegocio);
+    return {
+      enPlanGratis,
+      reservasMes: { usadas, limite: enPlanGratis ? this.limitesPlan.limite('reservas') : null },
     };
   }
 
