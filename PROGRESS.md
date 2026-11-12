@@ -3788,4 +3788,54 @@ Después van las migraciones del Bloque 5. El Bloque 6 no creó ninguna.
 **Fuera de alcance (registrado, no corregido)**:
 - Si una reserva vuelve a una hora cuyo aviso de reprogramación ya se ENVIÓ (T1 → T2 → T1 → T2), el tercer aviso no sale, porque la clave ya existe. Solo se reactivan las anuladas.
 - La base de conocimiento del chatbot (`chatbot/base-conocimiento.ts`, Bloque 8) describe los estados de Notificaciones y todavía no menciona "anulada" ni el aviso de reprogramación.
-- El mes del límite de reservas se calcula en UTC (desde las 18:00 del último día del mes en Costa Rica ya cuenta para el mes siguiente). Le toca al Bloque 5.
+- ~~El mes del límite de reservas se calcula en UTC~~ → corregido en el Bloque 5 (corte en la zona del negocio).
+
+## Bloque 5 — Zona horaria, moneda y teléfono por negocio (rama `brenda`, 12/11/2026)
+- **5.1 Zona horaria** ✅ (`10bc043`). Columna `negocios.zona_horaria` (IANA, por defecto `America/Costa_Rica`), validada con `Intl` sin librería nueva. `common/utils/zona-horaria-negocio.ts` reemplaza el desfase fijo UTC-6 por conversión con `Intl` y horario de verano: hora inexistente de primavera → se corre adelante; hora repetida de otoño → la primera. Se usa en:
+  - disponibilidad y "fuera de horario";
+  - horarios de la reserva pública (antes sumaba minutos a la medianoche: el día del cambio de hora corría todo una hora);
+  - hora escrita en las notificaciones;
+  - reportes por día (`AT TIME ZONE`, a pedido de Brenda);
+  - cortes de mes (límite de reservas) y de día (chatbot; el límite de 10 no cambia), también a pedido de Brenda.
+
+  Frontend: la zona del negocio en `fecha-negocio.ts`, el calendario (`timeZone` de FullCalendar con el plugin `moment-timezone` que ya estaba), inicio, reservas, notificaciones, el período de reportes y la reserva pública, con una nota visible ("Los horarios están en la hora del negocio: New York — hora oriental (UTC−05:00)"). Selector traducido (`<select>` nativo, más de 400 zonas de `Intl`) en el onboarding y en Configuración.
+
+  Verificado contra la base local con dos negocios "Prueba Globalización" (CR y NY):
+  - 09:00 locales = 15:00 UTC en CR, 14:00 UTC en NY y 13:00 UTC el día del cambio de hora;
+  - las 08:00 se rechazan por estar fuera del horario;
+  - una cita a las 19:00 cae el día 13 en Reportes (en UTC era el 14);
+  - la confirmación dice "7:00 p. m." en los dos negocios;
+  - en Chrome, ES y EN: Configuración, calendario semanal, reserva pública con la nota, y el onboarding guarda la zona al continuar.
+- **5.2 Moneda** ✅ (`e2e21e4`). Columna `negocios.moneda` (CRC o USD, por defecto CRC), con validación traducida. `lib/dinero.ts` → `formatearDinero()`:
+  - usa los decimales de `Intl`, pero sin ",00" en montos enteros (opción A del grupo): "₡15 000", "₡15 000,50", "$15.50". Antes CRC se redondeaba a entero;
+  - muestra el símbolo corto (₡, $) en los dos idiomas; con el valor por defecto de `Intl` salía "CRC 15,000" o "USD 15 000".
+
+  Se usa en inicio, servicios (incluida la etiqueta "Precio ($)"), reportes y reserva pública. El "₡0" de los planes de Turnify usa el formateador, siempre en colones. Chatbot: "precio en colones" pasa a "la moneda del negocio" en `base-conocimiento.ts`, y `chatbot.service.ts` agrega una línea de contexto con la moneda (sin esa línea el modelo no podía saberla). Selector en Configuración y onboarding. Verificado en Chrome (ES/EN): el negocio de NY en USD muestra "$15,000.50" (el mismo monto guardado, sin convertir); el de CR sigue en "₡15 000,50".
+- **5.3 Teléfono E.164** ✅ (`8d177fd`).
+  - Librería: `libphonenumber-js` **1.13.15** fija (la 1.13.16 tenía dos días), con los metadatos `min` por defecto. Agrega ~30 kB gzip al chunk `validation` del frontend (612 → 643 kB gzip en total); en el backend no suma paquetes, porque `class-validator` ya la traía.
+  - Formularios de clientes, reserva pública y cliente nuevo del calendario: país con prefijo (Costa Rica +506 por defecto) + número; se envía en E.164. El error está traducido y asociado al campo.
+  - Backend: `@NormalizarTelefono` + `@EsTelefono` en los DTOs de clientes y de reserva pública. Un número sin prefijo se interpreta como de Costa Rica, así que el frontend anterior sigue funcionando.
+  - Los teléfonos guardados no se migran: se aceptan como están y se normalizan al editar. Verificado: "8888-0000" se abre como CR + 88880000.
+  - WhatsApp Cloud API recomienda el "+" y el código de país (documentación oficial de números de teléfono), que es E.164.
+  - Verificado en Chrome (ES/EN): error de número inválido para el país, edición guardada como `+12015550123`, reserva pública guardada como `+50688883333`. El backend rechaza en ES/EN.
+- **5.4 Revisión de constantes** ✅. `grep` de `Costa_Rica`, `-06:00`, `UTC-6`, `₡`, `colones`, `es-CR`, `+506`:
+  - **Legítimo:** los valores por defecto (`ZONA_HORARIA_POR_DEFECTO`, columnas, país del selector), el precio de los planes de Turnify en colones, `es-CR` como locale de formato de la interfaz en español (solo existen ES y EN), el pie "UNA Costa Rica", y ejemplos en comentarios, Swagger y mensajes de validación.
+  - **Pendiente, fuera de los puntos del bloque:** ver la lista de abajo.
+
+**Migraciones nuevas del Bloque 5, en este orden** (ninguna ejecutada en Supabase; van después de las del Bloque 4):
+1. `NegocioZonaHoraria1794466959859` — riesgo bajo: agrega `negocios.zona_horaria` con `DEFAULT 'America/Costa_Rica'`, sin tocar datos. Simulación: `npm run migration:simular -- 1794466959859-NegocioZonaHoraria.sql`.
+2. `NegocioMoneda1794469437426` — riesgo bajo: agrega `negocios.moneda` con `DEFAULT 'CRC'`, sin tocar precios. Simulación: `npm run migration:simular -- 1794469437426-NegocioMoneda.sql`.
+
+`down` quita cada columna. El teléfono no tiene migración (decisión del grupo).
+
+**Compatibilidad con el código anterior durante el despliegue** (probada con el build de `203c86e` contra la base local migrada): registro, edición del negocio, reserva y horarios públicos funcionan, y el negocio que registra queda en `America/Costa_Rica` y `CRC` por los valores por defecto. El frontend anterior contra el backend nuevo: los campos nuevos son opcionales y un teléfono sin prefijo se interpreta como de Costa Rica. Orden seguro: respaldo → simulaciones → migraciones (Bloque 4 y Bloque 5) → desplegar backend → desplegar frontend.
+
+**Datos creados** (solo en el PostgreSQL local de pruebas, 5433, tmpfs; se borran al bajar el contenedor): negocios "Prueba Globalización CR", "Prueba Globalización NY", "Prueba Globalización Viejo 2" (dos, creados por el backend anterior), sus clientes, servicios y reservas. En Supabase no se ejecutó nada.
+
+**Validación final:** unitarias backend 397/397 y frontend 77/77; lint con 1 advertencia en cada uno (Bloque 3); typecheck y build de ambos. No se corrieron integración ni E2E (regla del prompt del bloque).
+
+**Fuera de alcance (registrado, no corregido):**
+- El chatbot cuenta "reservas de hoy" con el día en UTC (`chatbot.service.ts:92`, Bloque 8): desde las 18:00 en Costa Rica ya cuenta las de mañana. Reproducir: abrir el chatbot después de las 18:00 (CR) y preguntar cuántas reservas hay hoy.
+- El teléfono del negocio (registro, Configuración) y el de los usuarios siguen como texto libre; 5.3 pedía solo clientes y reserva pública.
+- Servidor de desarrollo de Vite: después de instalar una dependencia con el servidor corriendo, la primera carga de Clientes mostró la pantalla de error ("Failed to fetch dynamically imported module") hasta reiniciar Vite. No afecta al build de producción.
+

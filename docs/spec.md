@@ -20,11 +20,20 @@ nombre literal para que el equipo la mueva de "Backlog técnico" a
 - NEGOCIO(id_negocio PK, nombre, tipo_negocio[barberia|salon_belleza|clinica|
   clinica_dental|spa|estudio_tatuajes|entrenamiento_personal|estetica|
   veterinaria_grooming|otro], correo_electronico, telefono, direccion,
-  plan_suscripcion, estado, fecha_registro)
+  plan_suscripcion, estado, fecha_registro, zona_horaria, moneda)
+  - `zona_horaria` (Bloque 5, migración `NegocioZonaHoraria`): nombre IANA,
+    por defecto `America/Costa_Rica`. Las fechas se guardan en UTC; la zona
+    define cómo se interpreta la hora local del negocio (disponibilidad,
+    reserva pública, notificaciones, reportes por día, cortes de los límites
+    del plan) y cómo se muestra en el frontend.
+  - `moneda` (Bloque 5, migración `NegocioMoneda`): ISO 4217, `CRC` o `USD`,
+    por defecto `CRC`. Solo cambia cómo se muestran los montos; no los
+    convierte. Los precios de los planes de Turnify siguen en colones.
 - USUARIO(id_usuario PK, id_negocio FK, nombre_completo, correo_electronico,
   contrasena_hash, rol[admin|empleado], telefono, activo, creado_en)
 - CLIENTE(id_cliente PK, id_negocio FK, nombre_completo, correo_electronico,
-  telefono, notas, canal_preferido[email|whatsapp], idioma_preferido[es|en],
+  telefono [E.164 al crear o editar desde el Bloque 5; los anteriores se
+  aceptan como están], notas, canal_preferido[email|whatsapp], idioma_preferido[es|en],
   nivel_cliente[gratis|premium], activo, creado_en)
 - SERVICIO(id_servicio PK, id_negocio FK, nombre, descripcion, duracion_minutos,
   precio, activo, color_calendario)
@@ -226,7 +235,8 @@ gobierna los privilegios del/los USUARIO(s) de ese negocio.
   - Máximo 1 usuario (solo el admin, sin poder invitar empleados)
   - Máximo 3 servicios activos
   - Máximo 20 reservas por mes calendario (las canceladas no cuentan;
-    decisión del grupo, Bloque 4)
+    decisión del grupo, Bloque 4). El mes y el día de los límites se cortan
+    en la zona horaria del negocio (Bloque 5), no en UTC.
   - Notificaciones solo por correo electrónico (WhatsApp bloqueado)
   - Reportes básicos, sin exportación de datos
   - Límite diario de mensajes al chatbot del punto 16 (ej: 10 mensajes/día)
