@@ -117,7 +117,9 @@ describe('POST /webhooks/resend (integración HTTP real)', () => {
       where: { idReserva: reserva.body.idReserva },
       relations: { cliente: true },
     });
-    await (app.get(NotificacionesService) as any).enviarUna(notificacion);
+    // Acceso por corchetes al método privado: TypeScript sigue comprobando la
+    // firma, así que un cambio en enviarUna() rompe el typecheck de la prueba.
+    await app.get(NotificacionesService)['enviarUna'](notificacion, repo);
     idNotificacion = notificacion.idNotificacion;
   }, 60_000);
 
