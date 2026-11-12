@@ -34,6 +34,8 @@
     "idioma": "Language",
     "cambiarATemaClaro": "Switch to light theme",
     "cambiarATemaOscuro": "Switch to dark theme",
+    "abrirNavegacion": "Open navigation",
+    "navegacionPrincipal": "Main navigation",
     "anterior": "Previous",
     "siguiente": "Next",
     "paginaDe": "Page {{actual}} of {{total}}"

@@ -40,7 +40,11 @@ export function ControlesGlobales({ superficie = 'tema' }: ControlesGlobalesProp
           tema === 'oscuro' ? t('comun.cambiarATemaClaro') : t('comun.cambiarATemaOscuro')
         }
         aria-pressed={tema === 'oscuro'}
-        className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:text-slate-700 dark:border-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+        className={`flex h-11 w-11 items-center justify-center rounded-full border transition-colors ${
+          sobreOscuro
+            ? 'border-white/25 text-slate-300 hover:text-white'
+            : 'border-slate-200 text-slate-500 hover:text-slate-700 dark:border-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+        }`}
       >
         {tema === 'oscuro' ? (
           <Moon className="h-3.5 w-3.5" aria-hidden="true" />
@@ -61,7 +65,7 @@ export function ControlesGlobales({ superficie = 'tema' }: ControlesGlobalesProp
             type="button"
             onClick={() => i18n.changeLanguage(codigo)}
             aria-pressed={idiomaActual === codigo}
-            className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+            className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-full px-2.5 text-xs font-medium transition-colors ${
               idiomaActual === codigo
                 ? 'bg-primary-600 text-white'
                 : sobreOscuro

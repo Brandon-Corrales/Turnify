@@ -70,7 +70,7 @@ export default function LandingPage() {
             <ControlesGlobales />
             <Link
               to="/login"
-              className="rounded-md px-2 py-2 text-sm font-medium text-slate-600 hover:text-primary-600 sm:px-3 dark:text-slate-300 dark:hover:text-primary-400"
+              className="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium text-slate-600 hover:text-primary-600 sm:px-3 dark:text-slate-300 dark:hover:text-primary-400"
             >
               {t('comun.iniciarSesion')}
             </Link>

@@ -72,7 +72,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <Link
               to="/"
               onClick={() => setSidebarAbierto(false)}
-              className="text-xl font-semibold tracking-wide text-violet-300 transition-colors hover:text-white"
+              className="inline-flex min-h-11 items-center text-xl font-semibold tracking-wide text-violet-300 transition-colors hover:text-white"
             >
               {t('comun.turnify')}
             </Link>
@@ -80,13 +80,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
               type="button"
               aria-label={t('comun.cerrar')}
               onClick={() => setSidebarAbierto(false)}
-              className="rounded-md p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
+              className="rounded-md p-3 text-slate-300 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
             >
               <X className="h-5 w-5" aria-hidden="true" />
             </button>
           </div>
 
-          <nav aria-label="Navegación principal" className="flex-1 space-y-1 px-3 py-6">
+          <nav aria-label={t('comun.navegacionPrincipal')} className="flex-1 space-y-1 px-3 py-6">
             {enlaces.map(({ to, label, icon: Icon }) => (
               <NavLink
                 key={to}
@@ -126,7 +126,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 type="button"
                 onClick={alCerrarSesion}
                 aria-label={t('comun.cerrarSesion')}
-                className="shrink-0 rounded-md p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-violet-200"
+                className="shrink-0 rounded-md p-3 text-slate-300 transition-colors hover:bg-white/10 hover:text-violet-200"
               >
                 <LogOut className="h-5 w-5" aria-hidden="true" />
               </button>
@@ -137,14 +137,17 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <header className="flex items-center justify-between border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur lg:hidden dark:border-slate-800 dark:bg-slate-900/90">
           <button
             type="button"
-            aria-label="Abrir navegación"
+            aria-label={t('comun.abrirNavegacion')}
             aria-expanded={sidebarAbierto}
             onClick={() => setSidebarAbierto(true)}
-            className="rounded-md p-2 text-slate-600 transition-colors hover:bg-violet-100 hover:text-violet-700 dark:text-slate-300 dark:hover:bg-violet-500/10 dark:hover:text-violet-300"
+            className="rounded-md p-3 text-slate-600 transition-colors hover:bg-violet-100 hover:text-violet-700 dark:text-slate-300 dark:hover:bg-violet-500/10 dark:hover:text-violet-300"
           >
             <Menu className="h-5 w-5" aria-hidden="true" />
           </button>
-          <Link to="/" className="text-lg font-semibold text-violet-600 dark:text-violet-300">
+          <Link
+            to="/"
+            className="inline-flex min-h-11 items-center text-lg font-semibold text-primary-600 dark:text-violet-300"
+          >
             {t('comun.turnify')}
           </Link>
           <ControlesGlobales />

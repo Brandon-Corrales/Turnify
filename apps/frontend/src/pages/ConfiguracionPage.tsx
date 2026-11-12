@@ -350,7 +350,7 @@ export default function ConfiguracionPage() {
                         aria-label={t('configuracion.horaInicioAriaLabel', {
                           dia: dias.find((d) => d.valor === fila.diaSemana)?.etiqueta,
                         })}
-                        className="h-10 rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-900 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 focus:outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                        className="h-11 rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                       />
                       <span className="text-sm text-slate-400">
                         {t('configuracion.separadorHoras')}
@@ -363,7 +363,7 @@ export default function ConfiguracionPage() {
                         aria-label={t('configuracion.horaFinAriaLabel', {
                           dia: dias.find((d) => d.valor === fila.diaSemana)?.etiqueta,
                         })}
-                        className="h-10 rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-900 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 focus:outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                        className="h-11 rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                       />
                     </div>
                   ) : (

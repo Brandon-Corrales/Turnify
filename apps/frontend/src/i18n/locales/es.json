@@ -34,6 +34,8 @@
     "idioma": "Idioma",
     "cambiarATemaClaro": "Cambiar a tema claro",
     "cambiarATemaOscuro": "Cambiar a tema oscuro",
+    "abrirNavegacion": "Abrir navegación",
+    "navegacionPrincipal": "Navegación principal",
     "anterior": "Anterior",
     "siguiente": "Siguiente",
     "paginaDe": "Página {{actual}} de {{total}}"

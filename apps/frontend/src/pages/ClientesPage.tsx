@@ -469,7 +469,7 @@ function ClienteCard({
             type="button"
             onClick={onEditar}
             aria-label={t('comun.editarAriaLabel', { nombre: cliente.nombreCompleto })}
-            className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-primary-600 dark:text-slate-400 dark:hover:bg-slate-700"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-primary-600 dark:text-slate-400 dark:hover:bg-slate-700"
           >
             <Pencil className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -478,7 +478,7 @@ function ClienteCard({
               type="button"
               onClick={onDesactivar}
               aria-label={t('comun.desactivarAriaLabel', { nombre: cliente.nombreCompleto })}
-              className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-danger dark:text-slate-400 dark:hover:bg-slate-700"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-danger dark:text-slate-400 dark:hover:bg-slate-700"
             >
               <UserRoundX className="h-4 w-4" aria-hidden="true" />
             </button>
