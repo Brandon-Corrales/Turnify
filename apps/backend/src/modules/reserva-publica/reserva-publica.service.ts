@@ -42,6 +42,8 @@ export interface NegocioPublico {
   tipoNegocio: string;
   /** Zona IANA en la que se muestran los horarios del wizard. */
   zonaHoraria: string;
+  /** Moneda ISO 4217 en la que se muestran los precios. */
+  moneda: string;
 }
 
 export interface ServicioPublico {
@@ -99,6 +101,7 @@ export class ReservaPublicaService {
         tipoNegocio: negocio.tipoNegocio,
         // El wizard muestra los horarios en la zona del negocio y lo dice.
         zonaHoraria: zonaOPorDefecto(negocio.zonaHoraria),
+        moneda: negocio.moneda ?? 'CRC',
       };
     });
   }

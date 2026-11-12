@@ -51,7 +51,7 @@ pantalla; no hay otros botones de crear, guardar ni íconos "+".
   cliente". Cada cliente tiene botones para editar ("Guardar cambios") y
   desactivar. Vista de lista o cuadrícula.
 - Servicios: botón "Nuevo servicio" abre el formulario (nombre,
-  descripción, duración en minutos, precio en colones, color en el
+  descripción, duración en minutos, precio en la moneda del negocio (la del contexto), color en el
   calendario) y se confirma con "Crear servicio". Cada servicio tiene
   botones para editar ("Guardar cambios") y desactivar. Vista de lista o
   cuadrícula. El botón "Nuevo servicio" nunca se deshabilita: si el Plan

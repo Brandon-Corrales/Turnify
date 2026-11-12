@@ -56,6 +56,10 @@ export class Negocio extends AuditableEntity {
   })
   zonaHoraria!: string;
 
+  /** Moneda ISO 4217 del negocio (Bloque 5, punto 5.2, migración `NegocioMoneda`). Solo afecta cómo se muestran los montos. */
+  @Column({ name: 'moneda', type: 'varchar', length: 3, default: 'CRC' })
+  moneda!: string;
+
   @Column({
     name: 'plan_suscripcion',
     type: 'enum',

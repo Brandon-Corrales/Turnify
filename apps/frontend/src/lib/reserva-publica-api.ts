@@ -6,6 +6,8 @@ export interface NegocioPublico {
   tipoNegocio: string;
   /** Zona horaria IANA del negocio (Bloque 5). Opcional: un backend anterior no la manda. */
   zonaHoraria?: string;
+  /** Moneda ISO 4217 en la que se muestran los precios (Bloque 5). */
+  moneda?: string;
 }
 
 export interface ServicioPublico {

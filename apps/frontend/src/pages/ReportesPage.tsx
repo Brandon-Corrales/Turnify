@@ -21,7 +21,8 @@ import { Boton } from '@/components/ui';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { negociosApi } from '@/lib/negocios-api';
 import { rangoPeriodo, type Periodo } from '@/lib/periodo-reportes';
-import { useZonaHorariaNegocio } from '@/lib/use-zona-negocio';
+import { useMonedaNegocio, useZonaHorariaNegocio } from '@/lib/use-zona-negocio';
+import { formatearDinero } from '@/lib/dinero';
 import { reportesApi, type ResumenReportes } from '@/lib/reportes-api';
 import { crearEtiquetaEstadoReserva, type EstadoReserva } from '@/lib/reservas-api';
 
@@ -39,14 +40,6 @@ const COLOR_ESTADO: Record<EstadoReserva, string> = {
   cancelada: '#dc2626',
   ausente: '#64748b',
 };
-
-function formatearColones(monto: number): string {
-  return new Intl.NumberFormat('es-CR', {
-    style: 'currency',
-    currency: 'CRC',
-    maximumFractionDigits: 0,
-  }).format(monto);
-}
 
 function formatearDiaCorto(iso: string, idioma: string): string {
   // `iso` es una fecha sin hora (ej. "2026-09-28") que devuelve el backend:
@@ -79,6 +72,7 @@ export default function ReportesPage() {
   const { t, i18n } = useTranslation();
   const [periodo, setPeriodo] = useState<Periodo>('esteMes');
   const zona = useZonaHorariaNegocio();
+  const moneda = useMonedaNegocio();
   const { desde, hasta } = rangoPeriodo(periodo, zona);
   const etiquetaPeriodo = useMemo(() => crearEtiquetaPeriodo(t), [t]);
   const etiquetaEstado = useMemo(() => crearEtiquetaEstadoReserva(t), [t]);
@@ -201,7 +195,7 @@ export default function ReportesPage() {
                   <Coins className="h-5 w-5" aria-hidden="true" />
                 </div>
                 <p className="mt-3 text-2xl font-semibold text-slate-900 dark:text-white">
-                  {formatearColones(resumenQuery.data.ingresosEstimados)}
+                  {formatearDinero(resumenQuery.data.ingresosEstimados, moneda, i18n.language)}
                 </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   {t('dashboard.ingresosEstimados')}

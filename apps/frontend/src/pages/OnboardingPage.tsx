@@ -10,6 +10,8 @@ import { ApiError } from '@/lib/api';
 import { crearEtiquetaTipoNegocio } from '@/lib/tipo-negocio';
 import { ESPACIO_INFERIOR_WIDGETS } from '@/components/layout/espacio-widgets';
 import { SelectorZonaHoraria } from '@/components/negocio/SelectorZonaHoraria';
+import { SelectorMoneda } from '@/components/negocio/SelectorMoneda';
+import { monedaOPorDefecto } from '@/lib/dinero';
 import { zonaOPorDefecto } from '@/lib/fecha-negocio';
 
 /**
@@ -33,6 +35,7 @@ export default function OnboardingPage() {
   const mostrarToast = useToast();
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
   const [zonaElegida, setZonaElegida] = useState<string | null>(null);
+  const [monedaElegida, setMonedaElegida] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data: negocio, isLoading: cargandoNegocio } = useQuery({
@@ -50,11 +53,13 @@ export default function OnboardingPage() {
   // guarda al continuar, antes de crear los servicios.
   const zonaGuardada = zonaOPorDefecto(negocio?.zonaHoraria);
   const zona = zonaElegida ?? zonaGuardada;
+  const monedaGuardada = monedaOPorDefecto(negocio?.moneda);
+  const moneda = monedaElegida ?? monedaGuardada;
 
   const crearSeleccionados = useMutation({
     mutationFn: async () => {
-      if (zona !== zonaGuardada) {
-        await negociosApi.actualizarMiNegocio({ zonaHoraria: zona });
+      if (zona !== zonaGuardada || moneda !== monedaGuardada) {
+        await negociosApi.actualizarMiNegocio({ zonaHoraria: zona, moneda });
         await queryClient.invalidateQueries({ queryKey: ['negocios', 'mi-negocio'] });
       }
       const elegidas = plantillas.filter((p) => seleccionados.has(p.idPlantilla));
@@ -123,6 +128,13 @@ export default function OnboardingPage() {
               onChange={setZonaElegida}
               hint={t('negocio.zonaHorariaAyuda')}
             />
+            <div className="mt-4">
+              <SelectorMoneda
+                value={moneda}
+                onChange={setMonedaElegida}
+                hint={t('negocio.monedaAyuda')}
+              />
+            </div>
           </div>
         )}
 

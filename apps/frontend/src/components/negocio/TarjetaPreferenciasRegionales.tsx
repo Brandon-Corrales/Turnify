@@ -7,8 +7,10 @@ import { ApiError } from '@/lib/api';
 import { zonaOPorDefecto } from '@/lib/fecha-negocio';
 import { negociosApi } from '@/lib/negocios-api';
 import { SelectorZonaHoraria } from './SelectorZonaHoraria';
+import { SelectorMoneda } from './SelectorMoneda';
+import { monedaOPorDefecto } from '@/lib/dinero';
 
-/** Configuración → zona horaria del negocio (Bloque 5, punto 5.1). */
+/** Configuración → zona horaria (5.1) y moneda (5.2) del negocio. */
 export function TarjetaPreferenciasRegionales() {
   const { t } = useTranslation();
   const mostrarToast = useToast();
@@ -20,12 +22,17 @@ export function TarjetaPreferenciasRegionales() {
   const guardada = zonaOPorDefecto(negocioQuery.data?.zonaHoraria);
   const [zonaElegida, setZonaElegida] = useState<string | null>(null);
   const zona = zonaElegida ?? guardada;
+  const monedaGuardada = monedaOPorDefecto(negocioQuery.data?.moneda);
+  const [monedaElegida, setMonedaElegida] = useState<string | null>(null);
+  const moneda = monedaElegida ?? monedaGuardada;
+  const sinCambios = zona === guardada && moneda === monedaGuardada;
 
   const guardar = useMutation({
-    mutationFn: () => negociosApi.actualizarMiNegocio({ zonaHoraria: zona }),
+    mutationFn: () => negociosApi.actualizarMiNegocio({ zonaHoraria: zona, moneda }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['negocios', 'mi-negocio'] });
       setZonaElegida(null);
+      setMonedaElegida(null);
       mostrarToast({ variante: 'exito', titulo: t('negocio.guardado') });
     },
     onError: (error) =>
@@ -59,11 +66,16 @@ export function TarjetaPreferenciasRegionales() {
               onChange={setZonaElegida}
               hint={t('negocio.zonaHorariaAyudaCambio')}
             />
+            <SelectorMoneda
+              value={moneda}
+              onChange={setMonedaElegida}
+              hint={t('negocio.monedaAyuda')}
+            />
             <div>
               <Boton
                 onClick={() => guardar.mutate()}
                 cargando={guardar.isPending}
-                disabled={zona === guardada}
+                disabled={sinCambios}
               >
                 {t('negocio.guardar')}
               </Boton>

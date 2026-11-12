@@ -52,6 +52,14 @@ export enum EstadoNotificacion {
   FALLIDA = 'fallida',
 }
 
+/**
+ * Monedas permitidas por negocio (Bloque 5, punto 5.2), código ISO 4217.
+ * Lista inicial del grupo: CRC y USD. Agregar una es agregarla aquí (y a
+ * la lista del frontend); la columna es texto, no requiere migración.
+ */
+export const MONEDAS_PERMITIDAS = ['CRC', 'USD'] as const;
+export type Moneda = (typeof MONEDAS_PERMITIDAS)[number];
+
 export enum PlanSuscripcion {
   GRATIS = 'gratis',
   BASICO = 'basico',

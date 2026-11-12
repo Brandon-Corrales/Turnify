@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Check, X } from 'lucide-react';
 import { SkeletonText } from '@/components/ui/Skeleton';
 import { suscripcionesApi } from '@/lib/suscripciones-api';
+import { formatearDinero } from '@/lib/dinero';
 
 function ItemPlan({ incluido, texto }: { incluido: boolean; texto: string }) {
   return (
@@ -41,7 +42,7 @@ export interface TarjetasPlanesProps {
  * copias del mismo listado que se desincronizarían si cambian los límites.
  */
 export function TarjetasPlanes({ ctaGratis, ctaPago, planActual }: TarjetasPlanesProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const {
     data: planes,
     isPending,
@@ -71,7 +72,10 @@ export function TarjetasPlanes({ ctaGratis, ctaPago, planActual }: TarjetasPlane
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             {t('landing.planGratisSubtitulo')}
           </p>
-          <p className="mt-4 text-3xl font-bold text-slate-900 dark:text-white">₡0</p>
+          {/* Precio de Turnify: siempre en colones, no depende de la moneda del negocio. */}
+          <p className="mt-4 text-3xl font-bold text-slate-900 dark:text-white">
+            {formatearDinero(0, 'CRC', i18n.language)}
+          </p>
 
           {isPending ? (
             <SkeletonText lineas={6} className="mt-6" />

@@ -93,6 +93,7 @@ describe('ReservaPublicaService', () => {
       nombre: 'Barbería Demo',
       tipoNegocio: 'barberia',
       zonaHoraria: 'America/Costa_Rica', // el mock no trae zona: respaldo
+      moneda: 'CRC', // ídem
     });
     expect(ctx.tenantContext.hasContext()).toBe(false);
   });

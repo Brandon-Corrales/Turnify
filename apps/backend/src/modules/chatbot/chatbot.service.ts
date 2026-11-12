@@ -110,6 +110,7 @@ export class ChatbotService {
       `- Pantalla actual del frontend: ${pantallaActual ?? 'no especificada'}`,
       `- Nombre del negocio: ${negocio.nombre}`,
       `- Tipo de negocio: ${negocio.tipoNegocio}`,
+      `- Moneda del negocio (precios de servicios e ingresos): ${negocio.moneda ?? 'CRC'}`,
       `- Plan de suscripción actual: ${negocio.planSuscripcion}`,
       `- Servicios activos: ${servicios.total}`,
       `- Reservas de hoy: ${reservasHoy.total}`,

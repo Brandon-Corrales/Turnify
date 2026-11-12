@@ -23,7 +23,8 @@ import {
   mesYAnioEnZonaNegocio,
   rangoMesEnZonaNegocio,
 } from '@/lib/fecha-negocio';
-import { useZonaHorariaNegocio } from '@/lib/use-zona-negocio';
+import { useMonedaNegocio, useZonaHorariaNegocio } from '@/lib/use-zona-negocio';
+import { formatearDinero } from '@/lib/dinero';
 import { negociosApi } from '@/lib/negocios-api';
 import { nombreParaSaludo } from '@/lib/nombre-saludo';
 import { reportesApi, type ResumenReportes } from '@/lib/reportes-api';
@@ -42,14 +43,6 @@ async function listarTodasLasReservas(desde: string, hasta: string): Promise<Res
     reservas.push(...pagina.data);
     if (reservas.length >= pagina.total || pagina.data.length === 0) return reservas;
   }
-}
-
-function formatearColones(monto: number): string {
-  return new Intl.NumberFormat('es-CR', {
-    style: 'currency',
-    currency: 'CRC',
-    maximumFractionDigits: 0,
-  }).format(monto);
 }
 
 function totalReservas(porEstado: ResumenReportes['reservasPorEstado']): number {
@@ -380,6 +373,7 @@ export default function InicioPage() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
   const zona = useZonaHorariaNegocio();
+  const moneda = useMonedaNegocio();
   const { desde, hasta } = rangoMesEnZonaNegocio(new Date(), zona);
   const hoy = hoyEnZonaNegocio(new Date(), zona);
   const diasDelMes = diasDelMesEnZonaNegocio(new Date(), zona);
@@ -539,7 +533,7 @@ export default function InicioPage() {
                 {
                   icono: Coins,
                   etiqueta: t('dashboard.ingresosEstimados'),
-                  valor: formatearColones(resumen.ingresosEstimados),
+                  valor: formatearDinero(resumen.ingresosEstimados, moneda, i18n.language),
                   claseIcono: 'bg-amber-50 text-warning dark:bg-amber-900/30',
                 },
               ].map((tarjeta) => (

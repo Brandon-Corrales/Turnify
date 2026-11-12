@@ -14,6 +14,7 @@ import {
   crearDatosClientePublicoSchema,
   type DatosClientePublicoFormValues,
 } from '@/lib/validation';
+import { formatearDinero, monedaOPorDefecto } from '@/lib/dinero';
 import { etiquetaZona, hoyEnZonaNegocio, localeDe, zonaOPorDefecto } from '@/lib/fecha-negocio';
 import { ESPACIO_INFERIOR_WIDGETS } from '@/components/layout/espacio-widgets';
 
@@ -32,10 +33,6 @@ function formatearFecha(iso: string, idioma: string, zona: string): string {
     day: 'numeric',
     month: 'long',
   });
-}
-
-function formatearColones(monto: number, idioma: string): string {
-  return `₡${monto.toLocaleString(idioma.startsWith('en') ? 'en-US' : 'es-CR')}`;
 }
 
 function Indicador({
@@ -111,6 +108,7 @@ export default function ReservaPublicaPage() {
   // Bloque 5, punto 5.1: los horarios se muestran en la zona del NEGOCIO (no
   // en la del navegador del cliente) y la nota de abajo lo dice.
   const zona = zonaOPorDefecto(negocioQuery.data?.zonaHoraria);
+  const moneda = monedaOPorDefecto(negocioQuery.data?.moneda);
   const hoy = hoyEnZonaNegocio(new Date(), zona);
   const fecha = fechaElegida ?? hoy;
 
@@ -231,7 +229,7 @@ export default function ReservaPublicaPage() {
                         </p>
                       </div>
                       <span className="whitespace-nowrap font-semibold text-slate-900 dark:text-white">
-                        {formatearColones(Number(s.precio), i18n.language)}
+                        {formatearDinero(s.precio, moneda, i18n.language)}
                       </span>
                     </button>
                   ))}
@@ -439,7 +437,7 @@ export default function ReservaPublicaPage() {
                             {t('reservaPublica.precio')}
                           </dt>
                           <dd className="font-medium text-slate-900 dark:text-white">
-                            {formatearColones(Number(servicio.precio), i18n.language)}
+                            {formatearDinero(servicio.precio, moneda, i18n.language)}
                           </dd>
                         </div>
                         <div className="flex justify-between">

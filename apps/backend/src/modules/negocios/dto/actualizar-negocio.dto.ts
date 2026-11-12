@@ -1,5 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { i18nValidationMessage } from 'nestjs-i18n';
+import { MONEDAS_PERMITIDAS } from '../../../database/entities';
 import { EsZonaHoraria } from '../../../common/validation/es-zona-horaria.validator';
 
 export class ActualizarNegocioDto {
@@ -37,4 +39,15 @@ export class ActualizarNegocioDto {
   @IsOptional()
   @EsZonaHoraria()
   zonaHoraria?: string;
+
+  @ApiProperty({
+    required: false,
+    example: 'CRC',
+    enum: MONEDAS_PERMITIDAS,
+    description:
+      'Moneda ISO 4217 en la que se muestran los precios. No convierte los montos guardados.',
+  })
+  @IsOptional()
+  @IsIn(MONEDAS_PERMITIDAS, { message: i18nValidationMessage('validacion.MONEDA_INVALIDA') })
+  moneda?: string;
 }
