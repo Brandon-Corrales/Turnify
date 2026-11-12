@@ -119,14 +119,14 @@ export class ReservaPublicaService {
       const finDeDia = new Date(inicioDeDia.getTime() + 24 * 60 * 60 * 1000);
 
       const [usuarios, disponibilidades, reservasDelDia] = await Promise.all([
-        this.usuarioRepo.find({ where: { activo: true } as any }),
-        this.disponibilidadRepo.find({ where: { diaSemana, activo: true } as any }),
+        this.usuarioRepo.find({ where: { activo: true } }),
+        this.disponibilidadRepo.find({ where: { diaSemana, activo: true } }),
         this.reservaRepo.find({
           where: {
             estado: Not(EstadoReserva.CANCELADA),
             fechaHoraInicio: MoreThanOrEqual(inicioDeDia),
             fechaHoraFin: LessThanOrEqual(finDeDia),
-          } as any,
+          },
         }),
       ]);
       const idsUsuariosActivos = new Set(usuarios.map((u) => u.idUsuario));
@@ -220,20 +220,20 @@ export class ReservaPublicaService {
     if (diaFin !== diaSemana) return null;
 
     const [usuarios, disponibilidades, traslapes] = await Promise.all([
-      this.usuarioRepo.find({ where: { activo: true } as any }),
+      this.usuarioRepo.find({ where: { activo: true } }),
       this.disponibilidadRepo.find({
         where: {
           diaSemana,
           activo: true,
           horaInicio: LessThanOrEqual(horaInicio),
           horaFin: MoreThanOrEqual(horaFin),
-        } as any,
+        },
       }),
       this.reservaRepo.find({
         where: {
           estado: Not(EstadoReserva.CANCELADA),
           fechaHoraInicio: MoreThanOrEqual(new Date(inicio.getTime() - 24 * 60 * 60 * 1000)),
-        } as any,
+        },
       }),
     ]);
     const idsUsuariosActivos = new Set(usuarios.map((u) => u.idUsuario));

@@ -143,9 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             )}
           </p>
           <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
-            <Boton onClick={() => restaurarSesion()}>
-              {t('comun.reintentar', 'Reintentar')}
-            </Boton>
+            <Boton onClick={() => restaurarSesion()}>{t('comun.reintentar', 'Reintentar')}</Boton>
             <Boton variante="secundario" onClick={() => logout()}>
               {t('auth.cerrarSesion', 'Cerrar sesión')}
             </Boton>
@@ -158,6 +156,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// Excepción justificada (Bloque 6, punto 6.7): separar este hook del
+// proveedor obliga a reestructurar el archivo, que es del Bloque 2, y a
+// cambiar los imports de las 16 pantallas que usan `useAuth`. La regla solo
+// afecta a Fast Refresh en desarrollo: al editar este archivo se recarga la
+// página completa en vez de solo el componente.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth(): AuthContextValue {
   const contexto = useContext(AuthContext);
   if (!contexto) {

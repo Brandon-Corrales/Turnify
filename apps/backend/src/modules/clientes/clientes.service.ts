@@ -34,7 +34,7 @@ export class ClientesService {
 
   /** Usado por el wizard de reserva pública para no duplicar un cliente que ya escribió a este negocio antes (find-or-create por correo, sin exponer el resto del CRUD de Clientes a un visitante anónimo). */
   async buscarPorCorreo(correoElectronico: string): Promise<Cliente | null> {
-    return this.clienteRepo.findOne({ where: { correoElectronico } as any });
+    return this.clienteRepo.findOne({ where: { correoElectronico } });
   }
 
   async listar(query: PaginationQueryDto): Promise<PaginatedResult<Cliente>> {
@@ -54,7 +54,7 @@ export class ClientesService {
   async actualizar(idCliente: string, dto: ActualizarClienteDto): Promise<Cliente> {
     await this.buscarOFallar(idCliente);
     try {
-      await this.clienteRepo.update({ idCliente } as any, dto as any);
+      await this.clienteRepo.update({ idCliente }, dto);
     } catch (err) {
       if (isUniqueViolation(err)) {
         throw new ConflictException({
@@ -70,13 +70,13 @@ export class ClientesService {
 
   async desactivar(idCliente: string): Promise<void> {
     await this.buscarOFallar(idCliente);
-    await this.clienteRepo.update({ idCliente } as any, { activo: false } as any);
-    await this.clienteRepo.softDelete({ idCliente } as any);
+    await this.clienteRepo.update({ idCliente }, { activo: false });
+    await this.clienteRepo.softDelete({ idCliente });
     this.logger.log(`Cliente ${idCliente} desactivado`);
   }
 
   private async buscarOFallar(idCliente: string): Promise<Cliente> {
-    const cliente = await this.clienteRepo.findOne({ where: { idCliente } as any });
+    const cliente = await this.clienteRepo.findOne({ where: { idCliente } });
     if (!cliente) {
       throw new NotFoundException({
         errorCode: 'CLIENTE_NO_ENCONTRADO',

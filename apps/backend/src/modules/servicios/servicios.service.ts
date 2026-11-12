@@ -59,8 +59,8 @@ export class ServiciosService {
     await this.buscarOFallar(idServicio);
     const { precio, ...resto } = dto;
     await this.servicioRepo.update(
-      { idServicio } as any,
-      { ...resto, ...(precio !== undefined ? { precio: precio.toFixed(2) } : {}) } as any,
+      { idServicio },
+      { ...resto, ...(precio !== undefined ? { precio: precio.toFixed(2) } : {}) },
     );
     this.logger.log(`Servicio ${idServicio} actualizado`);
     return this.buscarOFallar(idServicio);
@@ -68,13 +68,13 @@ export class ServiciosService {
 
   async desactivar(idServicio: string): Promise<void> {
     await this.buscarOFallar(idServicio);
-    await this.servicioRepo.update({ idServicio } as any, { activo: false } as any);
-    await this.servicioRepo.softDelete({ idServicio } as any);
+    await this.servicioRepo.update({ idServicio }, { activo: false });
+    await this.servicioRepo.softDelete({ idServicio });
     this.logger.log(`Servicio ${idServicio} desactivado`);
   }
 
   private async buscarOFallar(idServicio: string): Promise<Servicio> {
-    const servicio = await this.servicioRepo.findOne({ where: { idServicio } as any });
+    const servicio = await this.servicioRepo.findOne({ where: { idServicio } });
     if (!servicio) {
       throw new NotFoundException({
         errorCode: 'SERVICIO_NO_ENCONTRADO',

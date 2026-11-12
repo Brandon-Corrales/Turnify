@@ -66,7 +66,7 @@ export class ReservasService {
     const idNegocio = this.tenantContext.idNegocio;
 
     const servicio = await this.servicioRepo.findOne({
-      where: { idServicio: dto.idServicio } as any,
+      where: { idServicio: dto.idServicio },
     });
     if (!servicio) {
       throw new NotFoundException({
@@ -74,14 +74,14 @@ export class ReservasService {
         message: 'Servicio no encontrado',
       });
     }
-    const cliente = await this.clienteRepo.findOne({ where: { idCliente: dto.idCliente } as any });
+    const cliente = await this.clienteRepo.findOne({ where: { idCliente: dto.idCliente } });
     if (!cliente) {
       throw new NotFoundException({
         errorCode: 'CLIENTE_NO_ENCONTRADO',
         message: 'Cliente no encontrado',
       });
     }
-    const usuario = await this.usuarioRepo.findOne({ where: { idUsuario: dto.idUsuario } as any });
+    const usuario = await this.usuarioRepo.findOne({ where: { idUsuario: dto.idUsuario } });
     if (!usuario) {
       throw new NotFoundException({
         errorCode: 'USUARIO_NO_ENCONTRADO',
@@ -167,7 +167,7 @@ export class ReservasService {
     else if (hasta) where.fechaHoraInicio = LessThanOrEqual(new Date(hasta));
 
     const [reservas, total] = await this.reservaRepo.findAndCount({
-      where: where as any,
+      where,
       // El calendario del frontend necesita nombre de cliente, nombre/color
       // del servicio y nombre del empleado para mostrar algo útil — sin
       // esto solo tendría los UUID crudos de las FK.
@@ -198,7 +198,7 @@ export class ReservasService {
         message: 'Esta reserva ya estaba cancelada',
       });
     }
-    await this.reservaRepo.update({ idReserva } as any, { estado: EstadoReserva.CANCELADA } as any);
+    await this.reservaRepo.update({ idReserva }, { estado: EstadoReserva.CANCELADA });
     this.logger.log(`Reserva ${idReserva} cancelada`);
     const actualizada = await this.buscarOFallar(idReserva);
     await this.notificaciones.programarCancelacion(actualizada, reserva.cliente, reserva.servicio);
@@ -216,7 +216,7 @@ export class ReservasService {
     }
 
     const servicio = await this.servicioRepo.findOne({
-      where: { idServicio: actual.idServicio } as any,
+      where: { idServicio: actual.idServicio },
     });
     if (!servicio) {
       throw new NotFoundException({
@@ -291,7 +291,7 @@ export class ReservasService {
         activo: true,
         horaInicio: LessThanOrEqual(horaInicio),
         horaFin: MoreThanOrEqual(horaFin),
-      } as any,
+      },
     });
     if (disponibilidad.length === 0) {
       throw new ConflictException({
@@ -303,7 +303,7 @@ export class ReservasService {
 
   private async buscarOFallar(idReserva: string): Promise<Reserva> {
     const reserva = await this.reservaRepo.findOne({
-      where: { idReserva } as any,
+      where: { idReserva },
       relations: { cliente: true, servicio: true, usuario: true },
       withDeleted: true, // ver comentario en listar()
     });
