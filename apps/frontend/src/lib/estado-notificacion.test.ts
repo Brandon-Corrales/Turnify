@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { esAnuladaPorReprogramacion, esFalloReal, estadoVisible } from './estado-notificacion';
+import {
+  esAnulada,
+  esAnuladaPorReprogramacion,
+  esFalloReal,
+  estadoVisible,
+} from './estado-notificacion';
 
 describe('notificaciones anuladas por reprogramación (Bloque 4, punto 4.3)', () => {
   const anulada = { estado: 'fallida', ultimoError: 'REPROGRAMADA' } as const;
@@ -26,5 +31,25 @@ describe('notificaciones anuladas por reprogramación (Bloque 4, punto 4.3)', ()
     for (const estado of ['pendiente', 'enviada', 'entregada'] as const) {
       expect(estadoVisible({ estado, ultimoError: null })).toBe(estado);
     }
+  });
+});
+
+describe('notificaciones anuladas por cancelación', () => {
+  const cancelada = { estado: 'fallida', ultimoError: 'CANCELADA' } as const;
+
+  it('se muestra como anulada y no es un fallo', () => {
+    expect(esAnulada(cancelada)).toBe(true);
+    expect(esFalloReal(cancelada)).toBe(false);
+    expect(estadoVisible(cancelada)).toBe('anulada');
+    expect(esAnuladaPorReprogramacion(cancelada)).toBe(false);
+  });
+
+  it('un conteo con esFalloReal excluye las dos anulaciones', () => {
+    const historial = [
+      cancelada,
+      { estado: 'fallida', ultimoError: 'REPROGRAMADA' } as const,
+      { estado: 'fallida', ultimoError: 'REBOTE_PERMANENTE' } as const,
+    ];
+    expect(historial.filter(esFalloReal)).toHaveLength(1);
   });
 });

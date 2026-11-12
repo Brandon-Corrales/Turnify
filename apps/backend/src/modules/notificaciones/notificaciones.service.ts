@@ -94,6 +94,20 @@ export const SQL_ANULAR_AVISOS_HORA_ANTERIOR = `
     AND "fecha_hora_reserva" <> $2
   RETURNING "id_notificacion"`;
 
+/**
+ * Al cancelar: los recordatorios y avisos de reprogramación de la reserva que
+ * siguen pendientes ya no tienen sentido (el cliente recibiría "te recordamos
+ * tu cita" después de "tu reserva fue cancelada"). Se anulan igual que al
+ * reprogramar, con motivo CANCELADA, sin borrarlos. SQL_REACTIVAR_ANULADA solo
+ * toca REPROGRAMADA, así que estas nunca se reactivan.
+ */
+export const SQL_ANULAR_AVISOS_POR_CANCELACION = `
+  UPDATE "notificaciones"
+  SET "estado" = 'fallida', "ultimo_error" = '${MotivoFallo.CANCELADA}', "actualizado_en" = now()
+  WHERE "id_reserva" = $1 AND "estado" = 'pendiente'
+    AND "tipo" IN ('${TipoNotificacion.RECORDATORIO}', '${TipoNotificacion.REPROGRAMACION}')
+  RETURNING "id_notificacion"`;
+
 /** TypeORM devuelve `[filas, cantidad]` para UPDATE y solo `filas` para el resto. */
 function filasDe<T>(resultado: unknown): T[] {
   const r = resultado as unknown[];
@@ -143,6 +157,14 @@ export class NotificacionesService {
     cliente: Cliente,
     servicio: Servicio,
   ): Promise<void> {
+    const anuladas = filasDe<{ id_notificacion: string }>(
+      await this.notificacionRepo.query(SQL_ANULAR_AVISOS_POR_CANCELACION, [reserva.idReserva]),
+    );
+    if (anuladas.length > 0) {
+      this.logger.log(
+        `Reserva ${reserva.idReserva} cancelada: ${anuladas.length} aviso(s) pendiente(s) anulado(s)`,
+      );
+    }
     await this.programar(TipoNotificacion.CANCELACION, reserva, cliente, servicio);
   }
 

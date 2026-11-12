@@ -451,7 +451,8 @@
       "REBOTE_TEMPORAL": "el servidor del destinatario rechazó el mensaje temporalmente (rebote)",
       "ENTREGA_DEMORADA": "entrega demorada; el proveedor sigue intentando",
       "MARCADO_COMO_SPAM": "el destinatario lo marcó como spam",
-      "REPROGRAMADA": "la reserva se reprogramó antes del envío; este aviso tenía la hora anterior y no se envió"
+      "REPROGRAMADA": "la reserva se reprogramó antes del envío; este aviso tenía la hora anterior y no se envió",
+      "CANCELADA": "la reserva se canceló antes del envío; este aviso no se envió"
     }
   }
 }

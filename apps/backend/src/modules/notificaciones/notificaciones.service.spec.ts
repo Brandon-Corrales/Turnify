@@ -91,6 +91,19 @@ function crearTablaNotificacionesFalsa() {
       });
       return [[{ id_notificacion: fila.idNotificacion }], 1];
     }
+    if (sql.includes('"ultimo_error" = \'CANCELADA\'')) {
+      // SQL_ANULAR_AVISOS_POR_CANCELACION
+      const [idReserva] = params;
+      const afectadas = filas.filter(
+        (f) =>
+          f.idReserva === idReserva &&
+          f.estado === EstadoNotificacion.PENDIENTE &&
+          [TipoNotificacion.RECORDATORIO, TipoNotificacion.REPROGRAMACION].includes(f.tipo),
+      );
+      for (const f of afectadas)
+        Object.assign(f, { estado: EstadoNotificacion.FALLIDA, ultimoError: 'CANCELADA' });
+      return [afectadas.map((f) => ({ id_notificacion: f.idNotificacion })), afectadas.length];
+    }
     if (sql.includes('SET "estado" = \'fallida\'')) {
       // SQL_ANULAR_AVISOS_HORA_ANTERIOR
       const [idReserva, fechaNueva] = params;
@@ -930,6 +943,114 @@ describe('NotificacionesService', () => {
       await correrCronCon(T1);
       expect(filasDe(TipoNotificacion.RECORDATORIO)).toEqual([
         expect.objectContaining({ estado: EstadoNotificacion.FALLIDA, reintentos: 3 }),
+      ]);
+    });
+  });
+
+  describe('cancelación anula los avisos pendientes', () => {
+    const T1 = new Date(Date.now() + 5 * 60 * 60 * 1000);
+    const T2 = new Date(Date.now() + 8 * 60 * 60 * 1000);
+    const reservaEn = (fecha: Date) => ({
+      idReserva: 'reserva-c',
+      estado: EstadoReserva.CONFIRMADA,
+      fechaHoraInicio: fecha,
+      cliente: CLIENTE_EMAIL,
+      servicio: SERVICIO,
+    });
+    const filasDe = (tipo: TipoNotificacion) =>
+      notificacionRepo._tabla.filas.filter((f) => f.tipo === tipo);
+    const correrCronCon = async (fecha: Date) => {
+      reservaRepo.find.mockResolvedValue([reservaEn(fecha)]);
+      notificacionRepo.find.mockImplementation(async () =>
+        notificacionRepo._tabla.filas.filter((f) => f.tipo === TipoNotificacion.RECORDATORIO),
+      );
+      await service.programarRecordatorios();
+    };
+
+    it('anula (sin borrar) el recordatorio pendiente con motivo CANCELADA y programa la cancelación', async () => {
+      await correrCronCon(T1);
+      await service.programarCancelacion(
+        reservaEn(T1) as any,
+        CLIENTE_EMAIL as any,
+        SERVICIO as any,
+      );
+
+      expect(filasDe(TipoNotificacion.RECORDATORIO)).toEqual([
+        expect.objectContaining({ estado: EstadoNotificacion.FALLIDA, ultimoError: 'CANCELADA' }),
+      ]);
+      expect(filasDe(TipoNotificacion.CANCELACION)).toEqual([
+        expect.objectContaining({ estado: EstadoNotificacion.PENDIENTE }),
+      ]);
+    });
+
+    it('también anula un aviso de reprogramación pendiente', async () => {
+      await service.programarReprogramacion(
+        reservaEn(T2) as any,
+        CLIENTE_EMAIL as any,
+        SERVICIO as any,
+      );
+      await service.programarCancelacion(
+        reservaEn(T2) as any,
+        CLIENTE_EMAIL as any,
+        SERVICIO as any,
+      );
+      expect(filasDe(TipoNotificacion.REPROGRAMACION)[0]).toMatchObject({
+        estado: EstadoNotificacion.FALLIDA,
+        ultimoError: 'CANCELADA',
+      });
+    });
+
+    it('no toca los avisos ya enviados ni la confirmación', async () => {
+      await service.programarConfirmacion(
+        reservaEn(T1) as any,
+        CLIENTE_EMAIL as any,
+        SERVICIO as any,
+      );
+      await correrCronCon(T1);
+      filasDe(TipoNotificacion.RECORDATORIO)[0].estado = EstadoNotificacion.ENVIADA;
+
+      await service.programarCancelacion(
+        reservaEn(T1) as any,
+        CLIENTE_EMAIL as any,
+        SERVICIO as any,
+      );
+
+      expect(filasDe(TipoNotificacion.RECORDATORIO)[0].estado).toBe(EstadoNotificacion.ENVIADA);
+      expect(filasDe(TipoNotificacion.CONFIRMACION)[0].estado).toBe(EstadoNotificacion.PENDIENTE);
+    });
+
+    it('las anuladas por cancelación nunca se envían ni se reintentan: el cliente solo recibe la cancelación', async () => {
+      await correrCronCon(T1);
+      await service.programarCancelacion(
+        reservaEn(T1) as any,
+        CLIENTE_EMAIL as any,
+        SERVICIO as any,
+      );
+      resend.enviarCorreo.mockResolvedValue({ exito: true });
+
+      for (let i = 0; i < 4; i++) await service.procesarPendientes();
+
+      expect(filasDe(TipoNotificacion.RECORDATORIO)[0]).toMatchObject({
+        estado: EstadoNotificacion.FALLIDA,
+        ultimoError: 'CANCELADA',
+        reintentos: 0,
+      });
+      expect(resend.enviarCorreo).toHaveBeenCalledTimes(1);
+      expect(resend.enviarCorreo.mock.calls[0][1]).toBe('Reserva cancelada');
+    });
+
+    it('una anulada por cancelación nunca se reactiva, aunque se vuelva a programar la misma clave', async () => {
+      await correrCronCon(T1);
+      await service.programarCancelacion(
+        reservaEn(T1) as any,
+        CLIENTE_EMAIL as any,
+        SERVICIO as any,
+      );
+
+      await correrCronCon(T1); // aunque el cron volviera a ver la reserva
+
+      expect(filasDe(TipoNotificacion.RECORDATORIO)).toEqual([
+        expect.objectContaining({ estado: EstadoNotificacion.FALLIDA, ultimoError: 'CANCELADA' }),
       ]);
     });
   });

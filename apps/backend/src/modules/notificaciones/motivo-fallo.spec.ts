@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   clasificarRechazoProveedor,
+  esAnulada,
   esAnuladaPorReprogramacion,
   esFalloReal,
   MotivoFallo,
@@ -69,5 +70,30 @@ describe('anuladas por reprogramación (Bloque 4, punto 4.3)', () => {
       expect(esFalloReal(estado, MotivoFallo.ENTREGA_DEMORADA)).toBe(false);
       expect(esAnuladaPorReprogramacion(estado, MotivoFallo.REPROGRAMADA)).toBe(false);
     }
+  });
+});
+
+describe('anuladas por cancelación', () => {
+  it('motivoPublico deja pasar CANCELADA', () => {
+    expect(motivoPublico('CANCELADA')).toBe(MotivoFallo.CANCELADA);
+  });
+
+  it('una FALLIDA con motivo CANCELADA está anulada y no es un fallo real', () => {
+    expect(esAnulada('fallida', MotivoFallo.CANCELADA)).toBe(true);
+    expect(esFalloReal('fallida', MotivoFallo.CANCELADA)).toBe(false);
+  });
+
+  it('no cuenta como anulada por reprogramación (no se reactiva)', () => {
+    expect(esAnuladaPorReprogramacion('fallida', MotivoFallo.CANCELADA)).toBe(false);
+  });
+
+  it('un conteo de fallos con esFalloReal excluye las dos anulaciones', () => {
+    const filas = [
+      ['fallida', MotivoFallo.CANCELADA],
+      ['fallida', MotivoFallo.REPROGRAMADA],
+      ['fallida', MotivoFallo.RECHAZADO_POR_PROVEEDOR],
+      ['enviada', null],
+    ] as const;
+    expect(filas.filter(([e, m]) => esFalloReal(e, m))).toHaveLength(1);
   });
 });

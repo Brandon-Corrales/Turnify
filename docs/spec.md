@@ -46,7 +46,9 @@ nombre literal para que el equipo la mueva de "Backlog técnico" a
     avisos de reprogramación aún pendientes con la hora anterior quedan
     `fallida` con motivo `REPROGRAMADA` (anulados, no fallos: nunca se
     reintentan ni cuentan como fallo). Si la reserva vuelve a esa hora, la
-    fila anulada se reactiva como pendiente.
+    fila anulada se reactiva como pendiente. Al cancelar, los recordatorios y
+    avisos de reprogramación pendientes quedan `fallida` con motivo `CANCELADA`
+    (también anulados, nunca se reactivan).
   - `ultimo_error` (agregado en el cierre del Seguimiento #3, nullable): la
     CATEGORÍA del motivo del último intento fallido
     (`DESTINATARIO_NO_HABILITADO` | `CREDENCIALES_FALTANTES` |

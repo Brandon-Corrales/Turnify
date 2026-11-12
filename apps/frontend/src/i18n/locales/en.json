@@ -451,7 +451,8 @@
       "REBOTE_TEMPORAL": "the recipient's server temporarily rejected the message (bounce)",
       "ENTREGA_DEMORADA": "delivery delayed; the provider keeps trying",
       "MARCADO_COMO_SPAM": "the recipient marked it as spam",
-      "REPROGRAMADA": "the booking was rescheduled before sending; this notice had the previous time and was not sent"
+      "REPROGRAMADA": "the booking was rescheduled before sending; this notice had the previous time and was not sent",
+      "CANCELADA": "the booking was cancelled before sending; this notice was not sent"
     }
   }
 }

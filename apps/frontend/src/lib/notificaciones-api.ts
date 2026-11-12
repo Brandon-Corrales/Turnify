@@ -14,7 +14,9 @@ export type MotivoFallo =
   | 'ENTREGA_DEMORADA'
   | 'MARCADO_COMO_SPAM'
   // No es un fallo: aviso anulado porque la reserva se reprogramó antes de enviarlo.
-  | 'REPROGRAMADA';
+  | 'REPROGRAMADA'
+  // Tampoco es un fallo: aviso anulado porque la reserva se canceló antes de enviarlo.
+  | 'CANCELADA';
 
 export interface Notificacion {
   idNotificacion: string;
